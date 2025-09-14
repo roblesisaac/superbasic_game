@@ -60,6 +60,31 @@ import {
       }
       this.charging = false; this.chargeTime = 0;
     }
+
+    releaseMove(dx, dy) {
+      if (this.charging && this.hooks.energyBar.state === 'cooldown') {
+        this.vy = -JUMP_SMALL_COOLDOWN;
+        this.onGround = false;
+        this.fallStartY = this.y;
+        this.hooks.energyBar.extendCooldown(0.22);
+        this._doFollowThroughStretch();
+        this.charging = false; this.chargeTime = 0;
+        return;
+      }
+      if (this.charging && this.onGround && !this.stunned) {
+        const r = Math.min(1, this.chargeTime / CHARGE_TIME);
+        const speed = JUMP_MIN + (JUMP_MAX - JUMP_MIN) * r;
+        const mag = Math.hypot(dx, dy) || 1;
+        const nx = dx / mag;
+        const ny = dy / mag;
+        this.vx = -nx * speed;
+        this.vy = -ny * speed;
+        this.onGround = false;
+        this.fallStartY = this.y;
+        this._doFollowThroughStretch();
+      }
+      this.charging = false; this.chargeTime = 0;
+    }
   
     startGliding() {
       if (!this.onGround && this.vy > 0 && !this.stunned && this.hooks.energyBar.canUse()) {
@@ -78,14 +103,13 @@ import {
     _doFollowThroughStretch() { this.stretchTimer = STRETCH_TIME; }
   
     _updateVelocityStretch() {
-      const speed = Math.abs(this.vy);
-      const amt = Math.min(speed * VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH);
-      if (this.vy < 0) {
-        this.velocityScaleY = 1 + amt;
-        this.velocityScaleX = 1 - amt * 0.5;
-      } else if (this.vy > 0) {
-        this.velocityScaleY = 1 - amt * 0.7;
-        this.velocityScaleX = 1 + amt * 0.3;
+      const speed = Math.hypot(this.vx, this.vy);
+      if (speed > 0) {
+        const amt = Math.min(speed * VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH);
+        const nx = Math.abs(this.vx) / speed;
+        const ny = Math.abs(this.vy) / speed;
+        this.velocityScaleX = 1 + amt * nx - amt * ny * 0.5;
+        this.velocityScaleY = 1 + amt * ny - amt * nx * 0.5;
       } else {
         const ease = 12, dt = 0.016;
         this.velocityScaleY += (1 - this.velocityScaleY) * ease * dt;
