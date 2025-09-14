@@ -290,7 +290,7 @@ function drawFrame() {
   if (!showSettings) game.sprite.draw(ctx, cameraY);
 
   drawHUD();
-  drawSettings(ctx, budgetData);
+  drawSettings(resetGame);
 }
 
 // kick off

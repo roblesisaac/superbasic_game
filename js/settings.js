@@ -1,8 +1,11 @@
-import { canvasWidth, canvasHeight } from './globals.js';
+import { canvasWidth } from './globals.js';
+import { budgetData } from './budget.js';
 
 export let showSettings = false;
 export function toggleSettings() { showSettings = !showSettings; }
 export function hideSettings() { showSettings = false; }
+
+let overlay = null;
 
 export function drawSettingsIcon(ctx) {
   const iconSize = 20;
@@ -13,42 +16,79 @@ export function drawSettingsIcon(ctx) {
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 2;
 
-  ctx.beginPath(); ctx.arc(iconX, iconY, iconSize/2, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(iconX, iconY, iconSize/4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(iconX, iconY, iconSize / 2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(iconX, iconY, iconSize / 4, 0, Math.PI * 2);
+  ctx.fill();
 }
 
-export function drawSettings(ctx, budgetData) {
-  if (!showSettings) return;
+export function drawSettings(onPlay) {
+  if (!showSettings) {
+    if (overlay) {
+      document.body.removeChild(overlay);
+      overlay = null;
+    }
+    return;
+  }
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  if (overlay) return;
 
-  const panelWidth = Math.min(400, canvasWidth - 40);
-  const panelHeight = Math.min(500, canvasHeight - 40);
-  const panelX = (canvasWidth - panelWidth) / 2;
-  const panelY = (canvasHeight - panelHeight) / 2;
+  overlay = document.createElement('div');
+  overlay.style.position = 'absolute';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.background = 'rgba(0,0,0,0.8)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
 
-  ctx.fillStyle = '#2a2a2a';
-  ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-  ctx.strokeStyle = '#555';
-  ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+  const panel = document.createElement('div');
+  panel.style.background = '#2a2a2a';
+  panel.style.border = '1px solid #555';
+  panel.style.width = '80%';
+  panel.style.maxWidth = '400px';
+  panel.style.height = '80%';
+  panel.style.maxHeight = '500px';
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
 
-  ctx.fillStyle = '#fff';
-  ctx.font = '16px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText('Budget Settings', panelX + panelWidth/2, panelY + 30);
+  const title = document.createElement('h3');
+  title.textContent = 'Budget Settings';
+  title.style.color = '#fff';
+  title.style.fontFamily = 'Arial';
+  title.style.margin = '10px 0';
+  title.style.textAlign = 'center';
 
-  ctx.font = '12px Arial';
-  ctx.fillText('Click to close and restart game', panelX + panelWidth/2, panelY + 50);
+  const textarea = document.createElement('textarea');
+  textarea.style.flex = '1';
+  textarea.style.margin = '10px';
+  textarea.value = JSON.stringify(budgetData, null, 2);
 
-  ctx.textAlign = 'left';
-  ctx.font = '10px Arial';
-  let yOffset = 80;
-
-  budgetData.forEach(([title, amount]) => {
-    const color = amount > 0 ? '#4CAF50' : '#F44336';
-    ctx.fillStyle = color;
-    ctx.fillText(`${title}: $${amount}`, panelX + 20, panelY + yOffset);
-    yOffset += 25;
+  const playButton = document.createElement('button');
+  playButton.textContent = 'Play';
+  playButton.style.margin = '10px auto';
+  playButton.style.padding = '8px 16px';
+  playButton.addEventListener('click', () => {
+    try {
+      const parsed = JSON.parse(textarea.value);
+      if (Array.isArray(parsed)) {
+        budgetData.length = 0;
+        budgetData.push(...parsed);
+      }
+    } catch (e) {
+      console.error('Invalid budget data', e);
+    }
+    hideSettings();
+    if (typeof onPlay === 'function') onPlay();
   });
+
+  panel.appendChild(title);
+  panel.appendChild(textarea);
+  panel.appendChild(playButton);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
 }
