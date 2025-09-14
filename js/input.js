@@ -35,19 +35,27 @@ export class InputHandler {
   bind() {
     // Touch
     canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault();
       const t = e.touches[0];
       const r = canvas.getBoundingClientRect();
       const x = t.clientX - r.left;
       const y = t.clientY - r.top;
 
       if (x > canvasWidth - 50 && y < 50) {
+        e.preventDefault();
         toggleSettings();
         if (!showSettings) this.ensureReset();
         return;
       }
-      if (showSettings) { hideSettings(); this.ensureReset(); return; }
+      if (showSettings) {
+        e.preventDefault();
+        hideSettings();
+        this.ensureReset();
+        return;
+      }
 
+      if (!this.game.sprite.onGround) return;
+
+      e.preventDefault();
       this.touchStart = { x, y };
       this.lastTouch = { x, y };
       this._startCharge();
@@ -85,6 +93,7 @@ export class InputHandler {
         return;
       }
       if (showSettings) { hideSettings(); this.ensureReset(); return; }
+      if (!this.game.sprite.onGround) return;
       this.mouseStart = { x, y };
       this.lastMouse = { x, y };
       this.isMouseDown = true;
@@ -118,6 +127,7 @@ export class InputHandler {
         this._startCharge();
       }
       if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code) && !showSettings) {
+        if (!this.game.sprite.onGround) return;
         e.preventDefault();
         if (!this.arrowCharging) {
           this.arrowCharging = true;
