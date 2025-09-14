@@ -1,0 +1,25 @@
+:root { --ink: #fff; --bg: #000; }
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.2 "Courier New", ui-monospace, monospace;
+}
+#wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px;
+  text-align: center;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg);
+  border: 4px solid var(--ink);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.hud { margin-top: 8px; opacity: .9; }
