@@ -62,8 +62,8 @@ export class InputHandler {
     }, { passive: false });
 
     canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault();
       if (!this.touchStart || showSettings) return;
+      e.preventDefault();
       const t = e.touches[0];
       const r = canvas.getBoundingClientRect();
       this.lastTouch = { x: t.clientX - r.left, y: t.clientY - r.top };
@@ -73,8 +73,8 @@ export class InputHandler {
     }, { passive: false });
 
     canvas.addEventListener('touchend', (e) => {
-      e.preventDefault();
       if (!this.touchStart || showSettings) return;
+      e.preventDefault();
       const end = this.lastTouch || this.touchStart;
       const dx = end.x - this.touchStart.x;
       const dy = end.y - this.touchStart.y;
