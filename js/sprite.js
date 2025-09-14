@@ -5,7 +5,8 @@ import {
     VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH,
     IMPACT_SQUASH_FACTOR, IMPACT_DECAY_RATE,
     CHARGE_SQUASH_MAX, CHARGE_WIDEN_MAX,
-    SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME, SPRITE_SIZE
+    SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME, SPRITE_SIZE,
+    MOVEMENT_MIN, MOVEMENT_MAX
   } from './constants.js';
   import { clamp } from './utils.js';
   import { canvasWidth, groundY, cameraY } from './globals.js';
@@ -15,7 +16,15 @@ import {
       this.x = x; this.y = y;
       this.vx = 0; this.vy = 0;
       this.onGround = true; this.onPlatform = false;
+      
+      // Jump charging
       this.charging = false; this.chargeTime = 0;
+      
+      // Movement charging (joystick)
+      this.movementCharging = false;
+      this.movementChargeTime = 0;
+      this.movementDirection = { x: 0, y: 0 }; // normalized direction vector
+      
       this.gliding = false;
       this.stunned = false; this.stunTime = 0;
       this.fallStartY = y;
@@ -26,6 +35,7 @@ import {
       this.impactSquash = 0;
       this.velocityScaleX = 1;
       this.velocityScaleY = 1;
+      this.lastMovementDirection = { x: 0, y: 0 }; // for stretch effects
   
       // hooks to access game state without circular imports
       this.hooks = hooks; // { energyBar, hearts, onGameOver, isOnGate:(p)=>boolean, getPlatforms:()=>[] }
@@ -33,10 +43,33 @@ import {
   
     startCharging() {
       if (this.hooks.energyBar.state === 'cooldown') {
-        this.charging = true; this.chargeTime = 0; return;
+        this.charging = true; 
+        this.chargeTime = 0; 
+        return;
       }
       if (this.onGround && !this.stunned && this.hooks.energyBar.canUse()) {
-        this.charging = true; this.chargeTime = 0;
+        this.charging = true; 
+        this.chargeTime = 0;
+      }
+    }
+
+    startMovementCharging(direction) {
+      if (this.hooks.energyBar.state === 'cooldown') {
+        this.movementCharging = true;
+        this.movementChargeTime = 0;
+        this.movementDirection = { ...direction };
+        return;
+      }
+      if (!this.stunned && this.hooks.energyBar.canUse()) {
+        this.movementCharging = true;
+        this.movementChargeTime = 0;
+        this.movementDirection = { ...direction };
+      }
+    }
+
+    updateMovementCharging(direction) {
+      if (this.movementCharging) {
+        this.movementDirection = { ...direction };
       }
     }
   
@@ -46,8 +79,9 @@ import {
         this.onGround = false;
         this.fallStartY = this.y;
         this.hooks.energyBar.extendCooldown(0.22);
-        this._doFollowThroughStretch();
-        this.charging = false; this.chargeTime = 0;
+        this._doFollowThroughStretch({ x: 0, y: -1 });
+        this.charging = false; 
+        this.chargeTime = 0;
         return;
       }
       if (this.charging && this.onGround && !this.stunned) {
@@ -56,9 +90,50 @@ import {
         this.vy = -vy;
         this.onGround = false;
         this.fallStartY = this.y;
-        this._doFollowThroughStretch();
+        this._doFollowThroughStretch({ x: 0, y: -1 });
       }
-      this.charging = false; this.chargeTime = 0;
+      this.charging = false; 
+      this.chargeTime = 0;
+    }
+
+    releaseMovement() {
+      if (this.movementCharging) {
+        if (this.hooks.energyBar.state === 'cooldown') {
+          // Small movement during cooldown
+          const force = MOVEMENT_MIN * 0.5;
+          this.vx += -this.movementDirection.x * force;
+          this.vy += -this.movementDirection.y * force;
+          this.hooks.energyBar.extendCooldown(0.15);
+        } else if (!this.stunned) {
+          // Normal movement
+          const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
+          const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+          
+          // Apply movement in opposite direction of drag
+          this.vx += -this.movementDirection.x * force;
+          this.vy += -this.movementDirection.y * force;
+          
+          // Clamp velocity to prevent extreme speeds
+          const maxVel = MOVEMENT_MAX * 1.2;
+          this.vx = clamp(this.vx, -maxVel, maxVel);
+          this.vy = clamp(this.vy, -maxVel, maxVel);
+          
+          if (!this.onGround) {
+            this.fallStartY = this.y;
+          }
+        }
+        
+        // Store direction for stretch effects
+        this.lastMovementDirection = { 
+          x: -this.movementDirection.x, 
+          y: -this.movementDirection.y 
+        };
+        this._doFollowThroughStretch(this.lastMovementDirection);
+      }
+      
+      this.movementCharging = false;
+      this.movementChargeTime = 0;
+      this.movementDirection = { x: 0, y: 0 };
     }
   
     startGliding() {
@@ -66,7 +141,10 @@ import {
         this.gliding = true;
       }
     }
-    stopGliding() { this.gliding = false; }
+    
+    stopGliding() { 
+      this.gliding = false; 
+    }
   
     takeDamage() {
       this.hooks.hearts.takeDamage(() => this.hooks.onGameOver());
@@ -75,53 +153,101 @@ import {
       this.impactSquash = IMPACT_SQUASH_FACTOR * 0.5;
     }
   
-    _doFollowThroughStretch() { this.stretchTimer = STRETCH_TIME; }
+    _doFollowThroughStretch(direction) { 
+      this.stretchTimer = STRETCH_TIME;
+      if (direction) {
+        this.lastMovementDirection = { ...direction };
+      }
+    }
   
     _updateVelocityStretch() {
-      const speed = Math.abs(this.vy);
+      const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
       const amt = Math.min(speed * VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH);
-      if (this.vy < 0) {
-        this.velocityScaleY = 1 + amt;
-        this.velocityScaleX = 1 - amt * 0.5;
-      } else if (this.vy > 0) {
-        this.velocityScaleY = 1 - amt * 0.7;
-        this.velocityScaleX = 1 + amt * 0.3;
+      
+      if (speed > 50) {
+        // Stretch based on movement direction
+        const normalizedVx = this.vx / speed;
+        const normalizedVy = this.vy / speed;
+        
+        // Horizontal stretch
+        if (Math.abs(normalizedVx) > 0.3) {
+          this.velocityScaleX = 1 + amt * Math.abs(normalizedVx);
+          this.velocityScaleY = 1 - amt * Math.abs(normalizedVx) * 0.5;
+        }
+        
+        // Vertical stretch
+        if (Math.abs(normalizedVy) > 0.3) {
+          this.velocityScaleY = 1 + amt * Math.abs(normalizedVy);
+          this.velocityScaleX = 1 - amt * Math.abs(normalizedVy) * 0.3;
+        }
       } else {
         const ease = 12, dt = 0.016;
         this.velocityScaleY += (1 - this.velocityScaleY) * ease * dt;
         this.velocityScaleX += (1 - this.velocityScaleX) * ease * dt;
       }
     }
+
     _updateImpactSquash(dt) {
       if (this.impactSquash > 0) {
         this.impactSquash -= this.impactSquash * IMPACT_DECAY_RATE * dt;
         if (this.impactSquash < 0.01) this.impactSquash = 0;
       }
     }
+
     _updateFollowThrough(dt) {
       if (this.stretchTimer > 0) {
         this.stretchTimer -= dt;
         if (this.stretchTimer <= 0) this.stretchTimer = 0;
       }
     }
+
     _applyFinalScale() {
       let sx = 1, sy = 1;
-      sx *= this.velocityScaleX; sy *= this.velocityScaleY;
+      sx *= this.velocityScaleX; 
+      sy *= this.velocityScaleY;
   
+      // Charging effects
       if (this.charging && this.hooks.energyBar.state === 'active') {
         const chargeRatio = Math.min(1, this.chargeTime / CHARGE_TIME);
         sx *= (1 + CHARGE_WIDEN_MAX * chargeRatio);
         sy *= (1 - CHARGE_SQUASH_MAX * chargeRatio);
       }
+
+      // Movement charging effects
+      if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+        const chargeRatio = Math.min(1, this.movementChargeTime / CHARGE_TIME);
+        const intensity = chargeRatio * 0.3; // Less intense than jump charging
+        
+        // Squash in direction of intended movement
+        if (Math.abs(this.movementDirection.x) > 0.1) {
+          sx *= (1 + intensity * Math.abs(this.movementDirection.x));
+        }
+        if (Math.abs(this.movementDirection.y) > 0.1) {
+          sy *= (1 + intensity * Math.abs(this.movementDirection.y));
+        }
+      }
+      
+      // Follow-through stretch
       if (this.stretchTimer > 0) {
         const r = this.stretchTimer / STRETCH_TIME;
-        sx *= (STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r));
-        sy *= (STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r));
+        const dir = this.lastMovementDirection;
+        
+        if (Math.abs(dir.x) > Math.abs(dir.y)) {
+          // Horizontal stretch
+          sx *= (STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r));
+          sy *= (STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r));
+        } else {
+          // Vertical stretch  
+          sy *= (STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r));
+          sx *= (STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r));
+        }
       }
+      
       if (this.impactSquash > 0) {
         sx *= (1 + this.impactSquash * 0.4);
         sy *= (1 - this.impactSquash * 0.6);
       }
+      
       this.scaleX = clamp(sx, 0.3, 2.0);
       this.scaleY = clamp(sy, 0.3, 2.0);
     }
@@ -136,7 +262,8 @@ import {
         if (this.stunTime <= 0) this.stunned = false;
         if (this.onGround && Math.abs(this.vx) > 0) {
           const fr = GROUND_FRICTION * dt;
-          if (Math.abs(this.vx) <= fr) this.vx = 0; else this.vx -= Math.sign(this.vx) * fr;
+          if (Math.abs(this.vx) <= fr) this.vx = 0; 
+          else this.vx -= Math.sign(this.vx) * fr;
         }
       }
   
@@ -144,10 +271,18 @@ import {
       const hs = SPRITE_SIZE / 2;
       const wasOnGround = this.onGround;
   
+      // Handle charging
       if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
         this.chargeTime = Math.min(this.chargeTime + dt, CHARGE_TIME);
         this.hooks.energyBar.drain(45 * dt);
       }
+
+      // Handle movement charging
+      if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+        this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
+        this.hooks.energyBar.drain(35 * dt); // Slightly less drain than jump
+      }
+
       if (this.gliding && this.vy > 0 && !this.onGround) {
         if (this.hooks.energyBar.canUse()) this.hooks.energyBar.drain(30 * dt);
         else this.gliding = false;
@@ -159,7 +294,8 @@ import {
   
       if (this.onGround && Math.abs(this.vx) > 0) {
         const fr = GROUND_FRICTION * dt;
-        if (Math.abs(this.vx) <= fr) this.vx = 0; else this.vx -= Math.sign(this.vx) * fr;
+        if (Math.abs(this.vx) <= fr) this.vx = 0; 
+        else this.vx -= Math.sign(this.vx) * fr;
       }
   
       this.x += this.vx * dt;
@@ -169,7 +305,8 @@ import {
       const prevTop = prevY - hs;
       const prevBottom = prevY + hs;
   
-      this.onGround = false; this.onPlatform = false;
+      this.onGround = false; 
+      this.onPlatform = false;
   
       // platform collisions
       const plats = this.hooks.getPlatforms();
@@ -243,6 +380,49 @@ import {
       ctx.scale(this.scaleX, this.scaleY);
       ctx.fillStyle = '#fff';
       ctx.fillRect(-SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
+
+      // Movement charging indicator
+      if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+        const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
+        const intensity = r * 255;
+        ctx.fillStyle = `rgba(100, 200, 255, ${r * 0.8})`;
+        
+        // Draw directional indicator
+        if (Math.abs(this.movementDirection.x) > 0.1 || Math.abs(this.movementDirection.y) > 0.1) {
+          const arrowLength = 15 + r * 10;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(
+            this.movementDirection.x * arrowLength,
+            this.movementDirection.y * arrowLength
+          );
+          ctx.lineWidth = 2 + r * 2;
+          ctx.strokeStyle = `rgba(100, 200, 255, ${r})`;
+          ctx.stroke();
+          
+          // Arrow head
+          const angle = Math.atan2(this.movementDirection.y, this.movementDirection.x);
+          const headLength = 5 + r * 3;
+          ctx.beginPath();
+          ctx.moveTo(
+            this.movementDirection.x * arrowLength,
+            this.movementDirection.y * arrowLength
+          );
+          ctx.lineTo(
+            this.movementDirection.x * arrowLength - headLength * Math.cos(angle - Math.PI / 6),
+            this.movementDirection.y * arrowLength - headLength * Math.sin(angle - Math.PI / 6)
+          );
+          ctx.moveTo(
+            this.movementDirection.x * arrowLength,
+            this.movementDirection.y * arrowLength
+          );
+          ctx.lineTo(
+            this.movementDirection.x * arrowLength - headLength * Math.cos(angle + Math.PI / 6),
+            this.movementDirection.y * arrowLength - headLength * Math.sin(angle + Math.PI / 6)
+          );
+          ctx.stroke();
+        }
+      }
   
       if (this.vy > 0 && this.gliding) {
         ctx.fillStyle = '#f66';
@@ -256,4 +436,3 @@ import {
       ctx.restore();
     }
   }
-  
