@@ -288,6 +288,7 @@ function drawFrame() {
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
 
   if (!showSettings) game.sprite.draw(ctx, cameraY);
+  if (game.input && !showSettings) game.input.draw(ctx);
 
   drawHUD();
   drawSettings(resetGame);
