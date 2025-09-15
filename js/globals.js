@@ -1,4 +1,4 @@
-import { GRID_SIZE } from './constants.js';
+import { GRID_SIZE, CANVAS_MAX_WIDTH } from './constants.js';
 
 export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d', { alpha: true });
@@ -16,7 +16,9 @@ export function setCameraY(v) { cameraY = v; }
 export function addMaxHeight(v) { maxHeight = Math.max(maxHeight, v); }
 
 export function resize() {
-  canvas.width = window.innerWidth;
+  const desiredWidth = Math.min(window.innerWidth, CANVAS_MAX_WIDTH);
+  canvas.width = desiredWidth;
+  canvas.style.width = `${desiredWidth}px`;
   canvas.height = window.innerHeight;
   canvasWidth = canvas.width;
   canvasHeight = canvas.height;
