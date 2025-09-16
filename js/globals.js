@@ -31,6 +31,7 @@ resize();
 export const game = {
   sprite: null,
   platforms: [],
+  platformManager: null,
   input: null,
   energyBar: null,
   hearts: null,

@@ -4,6 +4,7 @@ import {
 } from './constants.js';
 import { clamp, now, rectsIntersect } from './utils.js';
 import { Platform, SegmentedGatePlatform } from './platforms.js';
+import { PlatformManager } from './platformManager.js';
 import { Sprite } from './sprite.js';
 import { EnergyBar, Hearts } from './hud.js';
 import { InputHandler } from './input.js';
@@ -173,6 +174,7 @@ function startGame() {
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
   game.platforms = [];
+  game.platformManager = new PlatformManager(game);
   resetBudgetContainers();
 
   const startX = canvasWidth / 2;
@@ -202,6 +204,7 @@ export function resetGame() {
   gameOverDiv.style.display = 'none';
   game.running = true;
   game.platforms = [];
+  game.platformManager = new PlatformManager(game);
   resetBudgetContainers();
 
   calculateBudgetSections();
