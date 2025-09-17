@@ -49,6 +49,7 @@ export const RIDE_MIN_WIDTH = 80;
 export const RIDE_MAX_WIDTH = 320;
 
 // Gates
+export const USE_RANDOM_GATES = false;
 export const GATE_THICKNESS = 20;
 
 // Grid / Gates / Height

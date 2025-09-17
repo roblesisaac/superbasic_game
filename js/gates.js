@@ -2,8 +2,10 @@ import {
   GATE_THICKNESS,
   PIXELS_PER_FOOT,
   GATE_EVERY_FEET,
-  GATE_GAP_WIDTH
+  GATE_GAP_WIDTH,
+  USE_RANDOM_GATES
 } from './constants.js';
+import { ControlledGate, CONTROLLED_GATE_PATTERNS } from './controlledGate.js';
 
 export class Gate {
   constructor({ y, canvasWidth, gapWidth, segmentCount }) {
@@ -170,6 +172,7 @@ export class GateGenerator {
     this.spacingFeet = spacingFeet;
     this.createdFeet = createdFeet;
     this.lastSegmentCount = 0;
+    this.patternIndex = 0;
   }
 
   setCanvasWidth(width) {
@@ -178,6 +181,7 @@ export class GateGenerator {
 
   resetLastSegmentCount() {
     this.lastSegmentCount = 0;
+    this.patternIndex = 0;
   }
 
   ensureGates({ spriteY, groundY }) {
@@ -200,12 +204,27 @@ export class GateGenerator {
     if (this.createdFeet.has(feet) || feet <= 0) return null;
 
     const y = groundY - feet * PIXELS_PER_FOOT;
-    const gate = new Gate({
-      y,
-      canvasWidth: this.canvasWidth,
-      gapWidth: this.gapWidth,
-      segmentCount: this._chooseSegmentCount()
-    });
+    let gate = null;
+
+    if (USE_RANDOM_GATES) {
+      gate = new Gate({
+        y,
+        canvasWidth: this.canvasWidth,
+        gapWidth: this.gapWidth,
+        segmentCount: this._chooseSegmentCount()
+      });
+    } else {
+      const patterns = CONTROLLED_GATE_PATTERNS.length ? CONTROLLED_GATE_PATTERNS : [100];
+      const index = this.patternIndex % patterns.length;
+      const pattern = patterns[index];
+      gate = new ControlledGate({
+        y,
+        canvasWidth: this.canvasWidth,
+        gapWidth: this.gapWidth,
+        pattern
+      });
+      this.patternIndex = (this.patternIndex + 1) % patterns.length;
+    }
     this.createdFeet.add(feet);
     return gate;
   }
