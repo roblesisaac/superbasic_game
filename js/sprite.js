@@ -6,7 +6,8 @@ import {
     IMPACT_SQUASH_FACTOR, IMPACT_DECAY_RATE,
     CHARGE_SQUASH_MAX, CHARGE_WIDEN_MAX,
     SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME, SPRITE_SIZE,
-    MOVEMENT_MIN, MOVEMENT_MAX
+    MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
+    RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY
   } from './constants.js';
   import { clamp } from './utils.js';
   import { canvasWidth, groundY, cameraY } from './globals.js';
@@ -38,7 +39,7 @@ import {
       this.lastMovementDirection = { x: 0, y: 0 }; // for stretch effects
   
       // hooks to access game state without circular imports
-      this.hooks = hooks; // { energyBar, hearts, onGameOver, isOnGate:(p)=>boolean, getPlatforms:()=>[] }
+      this.hooks = hooks; // { energyBar, hearts, onGameOver, getRides:()=>[], getGates:()=>[] }
     }
   
     startCharging() {
@@ -308,46 +309,50 @@ import {
       this.onGround = false; 
       this.onPlatform = false;
   
-      // platform collisions
-      const plats = this.hooks.getPlatforms();
+      // ride and gate collisions
+      const surfaceCollections = [];
+      if (typeof this.hooks.getRides === 'function') surfaceCollections.push(this.hooks.getRides());
+      if (typeof this.hooks.getGates === 'function') surfaceCollections.push(this.hooks.getGates());
+
       outer:
-      for (const p of plats) {
-        if (!p || p.active === false) continue;
-        const rects = (typeof p.getRects === 'function') ? p.getRects(canvasWidth) : [p.getRect()];
-        for (const r of rects) {
-          const hOverlap = (this.x + hs >= r.x) && (this.x - hs <= r.x + r.w);
-          if (!hOverlap || r.w <= 0) continue;
-  
-          const top = this.y - hs;
-          const bottom = this.y + hs;
-          const platTop = r.y;
-          const platBottom = r.y + r.h;
-  
-          // land on top
-          if (this.vy >= 0 && prevBottom <= platTop && bottom >= platTop) {
-            if (!('getRects' in p) && !p.floating && (p.speed >= 650)) {
-              this.vx = 0.9 * p.speed * (p.direction || 1);
-              this.vy = -900;
-              this.impactSquash = 1.8 * 1.2;
-            } else {
-              this.y = platTop - hs;
+      for (const collection of surfaceCollections) {
+        if (!collection) continue;
+        for (const surface of collection) {
+          if (!surface || surface.active === false) continue;
+          const rects = (typeof surface.getRects === 'function') ? surface.getRects() : [surface.getRect()];
+          for (const rect of rects) {
+            const hOverlap = (this.x + hs >= rect.x) && (this.x - hs <= rect.x + rect.w);
+            if (!hOverlap || rect.w <= 0) continue;
+
+            const top = this.y - hs;
+            const bottom = this.y + hs;
+            const surfaceTop = rect.y;
+            const surfaceBottom = rect.y + rect.h;
+
+            if (this.vy >= 0 && prevBottom <= surfaceTop && bottom >= surfaceTop) {
+              if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
+                this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
+                this.vy = RIDE_BOUNCE_VY;
+                this.impactSquash = 1.8 * 1.2;
+              } else {
+                this.y = surfaceTop - hs;
+                this.vy = 0;
+                this.onGround = true;
+                this.onPlatform = true;
+                this.vx = (surface.speed || 0) * (surface.direction || 0);
+                this.gliding = false;
+                if (!wasOnGround) this.impactSquash = 1.8;
+                break outer;
+              }
+            }
+
+            if (this.vy < 0 && prevTop >= surfaceBottom && top <= surfaceBottom) {
+              this.y = surfaceBottom + hs;
               this.vy = 0;
-              this.onGround = true;
-              this.onPlatform = true;
-              this.vx = (p.speed || 0) * (p.direction || 0);
               this.gliding = false;
-              if (!wasOnGround) this.impactSquash = 1.8;
+              this.impactSquash = 1.8 * 0.3;
               break outer;
             }
-          }
-  
-          // hit from below
-          if (this.vy < 0 && prevTop >= platBottom && top <= platBottom) {
-            this.y = platBottom + hs;
-            this.vy = 0;
-            this.gliding = false;
-            this.impactSquash = 1.8 * 0.3;
-            break outer;
           }
         }
       }

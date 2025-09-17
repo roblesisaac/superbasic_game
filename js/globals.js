@@ -30,7 +30,8 @@ resize();
 // Shared game singleton state
 export const game = {
   sprite: null,
-  platforms: [],
+  rides: [],
+  gates: [],
   input: null,
   energyBar: null,
   hearts: null,

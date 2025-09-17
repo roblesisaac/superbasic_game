@@ -33,20 +33,23 @@ export const SAFE_FALL_HEIGHT = 64;
 export const STUN_TIME = 1.0;
 export const SPRITE_SIZE = 16;
 
-// Platforms
-export const PLATFORM_THICKNESS = 20;
-export const PLATFORM_SPEED_THRESHOLD = 650;
-export const BOUNCE_VX_FACTOR = 0.9;
-export const BOUNCE_VY = -900;
-export const MIN_PLATFORM_SPEED = 200;
-export const MAX_PLATFORM_SPEED = 900;
+// Rides
+export const RIDE_THICKNESS = 20;
+export const RIDE_SPEED_THRESHOLD = 650;
+export const RIDE_BOUNCE_VX_FACTOR = 0.9;
+export const RIDE_BOUNCE_VY = -900;
+export const MIN_RIDE_SPEED = 200;
+export const MAX_RIDE_SPEED = 900;
 export const MIN_SWIPE_DISTANCE = 24;
 export const MIN_SWIPE_TIME = 80;
 export const VELOCITY_SAMPLE_TIME = 120;
-export const MAX_PLATFORMS = 2;
-export const PLATFORM_FLOAT_TIME = 5.0;
-export const PLATFORM_MIN_WIDTH = 80;
-export const PLATFORM_MAX_WIDTH = 320;
+export const MAX_RIDES = 2;
+export const RIDE_FLOAT_TIME = 5.0;
+export const RIDE_MIN_WIDTH = 80;
+export const RIDE_MAX_WIDTH = 320;
+
+// Gates
+export const GATE_THICKNESS = 20;
 
 // Grid / Gates / Height
 export const PIXELS_PER_FOOT = 32;

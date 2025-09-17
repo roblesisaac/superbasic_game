@@ -1,11 +1,9 @@
 import {
     MIN_SWIPE_DISTANCE, MIN_SWIPE_TIME, VELOCITY_SAMPLE_TIME,
-    MIN_PLATFORM_SPEED, MAX_PLATFORM_SPEED, MAX_PLATFORMS,
-    PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH
+    MAX_RIDES
   } from './constants.js';
   import { canvas, canvasWidth, cameraY } from './globals.js';
-  import { Platform } from './platforms.js';
-  import { clamp } from './utils.js';
+  import { createRideFromInput, countActiveMovingRides } from './rides.js';
   import { showSettings, toggleSettings, hideSettings } from './settings.js';
   
   export class InputHandler {
@@ -104,9 +102,9 @@ import {
         const direction = this.calculateDirection(this.touchStart.x, this.touchStart.y, s.x, s.y);
         const dt = s.time - this.touchStart.time;
         
-        // Determine if this is a joystick movement or platform spawn swipe
+        // Determine if this is a joystick movement or ride spawn swipe
         if (!this.touchSwipe && !this.isJoystickMode && direction.distance >= MIN_SWIPE_DISTANCE && dt >= MIN_SWIPE_TIME) {
-          // Check if sprite is airborne (required for platform spawning)
+          // Check if sprite is airborne (required for ride spawning)
           if (!this.game.sprite.onGround) {
             this.touchSwipe = true;
             this.game.sprite.charging = false;
@@ -137,7 +135,7 @@ import {
         const total = Math.max(1, endTime - this.touchStart.time);
   
         if (this.touchSwipe && !this.game.sprite.onGround) {
-          this.createPlatformFromGesture(dx, total, last.y);
+          this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode) {
           this.game.sprite.releaseMovement();
         } else {
@@ -218,7 +216,7 @@ import {
         const total = Math.max(1, endTime - this.mouseStart.time);
   
         if (this.mouseSwipe && !this.game.sprite.onGround) {
-          this.createPlatformFromGesture(dx, total, last.y);
+          this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isMouseJoystickMode) {
           this.game.sprite.releaseMovement();
         } else {
@@ -256,7 +254,7 @@ import {
           if (Math.abs(totalDeltaX) > 50 && totalTime > 100 && !this.game.sprite.onGround) {
             const rect = canvas.getBoundingClientRect();
             const mouseY = e.clientY - rect.top;
-            this.createPlatformFromGesture(totalDeltaX, totalTime, mouseY);
+            this.spawnRideFromGesture(totalDeltaX, totalTime, mouseY);
             this.trackpadGestureActive = false;
           }
         } else {
@@ -347,28 +345,24 @@ import {
     }
   
     /**
-     * Creates a platform from a left/right swipe or trackpad gesture.
+     * Creates a ride from a left/right swipe or trackpad gesture.
      * Spawns from the corresponding canvas edge and moves inward.
-     * Only works when sprite is airborne.
+     * Only works when the sprite is airborne.
      */
-    createPlatformFromGesture(dx, totalTimeMs, screenY) {
-      if (this.game.sprite.onGround) return; // Prevent platform spawning when grounded
-      
-      const activeMovers = this.game.platforms.filter(p => p.direction !== 0).length;
-      if (activeMovers >= MAX_PLATFORMS) return;
-  
-      const dir = (dx >= 0) ? 1 : -1;
-      const speedRaw = Math.abs(dx) / (totalTimeMs / 1000);
-      const speed = clamp(speedRaw, MIN_PLATFORM_SPEED, MAX_PLATFORM_SPEED);
-  
-      const w = clamp(
-        PLATFORM_MIN_WIDTH + (PLATFORM_MAX_WIDTH - PLATFORM_MIN_WIDTH) * (totalTimeMs / 700),
-        PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH
-      );
-  
-      const worldY = screenY + cameraY;
-      const x = (dir > 0) ? -w : canvasWidth;
-      const platform = new Platform(x, worldY, w, speed, dir);
-      this.game.platforms.push(platform);
+    spawnRideFromGesture(dx, totalTimeMs, screenY) {
+      if (this.game.sprite.onGround) return;
+
+      const activeMovers = countActiveMovingRides(this.game.rides);
+      if (activeMovers >= MAX_RIDES) return;
+
+      const ride = createRideFromInput({
+        distance: dx,
+        durationMs: totalTimeMs,
+        screenY,
+        cameraY,
+        canvasWidth
+      });
+
+      this.game.rides.push(ride);
     }
   }
