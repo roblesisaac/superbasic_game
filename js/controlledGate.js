@@ -349,10 +349,10 @@ export const CONTROLLED_GATE_PATTERNS = [
   // { width: 100 }, // Single span
   
   // S-curve
-  // [
-  //   { width: 50 },
-  //   { width: 50 } // Auto S-curve behavior
-  // ],
+  [
+    { width: 50 },
+    { width: 50 } // Auto S-curve behavior
+  ],
   
   // [
   //   { width: 30 },
