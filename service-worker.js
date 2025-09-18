@@ -31,6 +31,15 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
+// Notify clients when a new service worker is waiting
+function notifyClientsAboutUpdate() {
+  self.clients.matchAll({ type: 'window' }).then((clients) => {
+    for (const client of clients) {
+      client.postMessage({ type: 'SW_UPDATE_AVAILABLE' });
+    }
+  });
+}
+
 // Activate: cleanup old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -39,6 +48,7 @@ self.addEventListener("activate", (event) => {
     )
   );
   self.clients.claim();
+  notifyClientsAboutUpdate();
 });
 
 // Fetch:
