@@ -31,7 +31,7 @@ export const COOLDOWN_PENALTY_PER_PRESS = 0.22;
 export const SAFE_FALL_VY = 700;
 export const SAFE_FALL_HEIGHT = 64;
 export const STUN_TIME = 1.0;
-export const SPRITE_SIZE = 20;
+export const SPRITE_SIZE = 25;
 
 // Rides
 export const RIDE_THICKNESS = 20;
@@ -56,7 +56,7 @@ export const GATE_THICKNESS = 20;
 export const PIXELS_PER_FOOT = 16;
 export const GRID_SIZE = 16;
 export const GATE_EVERY_FEET = 30;
-export const GATE_GAP_WIDTH = 50;
+export const GATE_GAP_WIDTH = 55;
 
 // Budget game data
 export const TOTAL_ITEMS = 100;
