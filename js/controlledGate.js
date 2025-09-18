@@ -346,7 +346,7 @@ export class ControlledGate {
 // Predefined gate patterns using the new clear object syntax
 export const CONTROLLED_GATE_PATTERNS = [
   // Simple cases
-  // { width: 100 }, // Single span
+  { width: 100 }, // Single span
   
   // S-curve
   [
