@@ -1,9 +1,7 @@
 import {
   GATE_THICKNESS,
   PIXELS_PER_FOOT,
-  GATE_EVERY_FEET,
   GATE_GAP_WIDTH,
-  USE_RANDOM_GATES
 } from './constants.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
