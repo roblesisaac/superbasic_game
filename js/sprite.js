@@ -12,6 +12,12 @@ import {
   import { clamp } from './utils.js';
   import { canvasWidth, groundY, cameraY } from './globals.js';
   
+  const SPRITE_SRC = '/icons/sprite.svg';
+  const spriteImg = new window.Image();
+  spriteImg.src = SPRITE_SRC;
+  let spriteLoaded = false;
+  spriteImg.onload = () => { spriteLoaded = true; };
+  
   export class Sprite {
     constructor(x, y, hooks) {
       this.x = x; this.y = y;
@@ -37,6 +43,7 @@ import {
       this.velocityScaleX = 1;
       this.velocityScaleY = 1;
       this.lastMovementDirection = { x: 0, y: 0 }; // for stretch effects
+      this.facingLeft = false; // true if last moving left
   
       // hooks to access game state without circular imports
       this.hooks = hooks; // { energyBar, hearts, onGameOver, getRides:()=>[], getGates:()=>[] }
@@ -257,6 +264,13 @@ import {
       this._updateVelocityStretch();
       this._updateImpactSquash(dt);
       this._updateFollowThrough(dt);
+
+      // Track facing direction based on vx
+      if (this.vx > 20) {
+        this.facingLeft = false;
+      } else if (this.vx < -20) {
+        this.facingLeft = true;
+      }
   
       if (this.stunned) {
         this.stunTime -= dt;
@@ -396,16 +410,30 @@ import {
     draw(ctx, cameraY) {
       const px = this.x;
       const py = this.y - cameraY;
-      const frog = "o\n_`O'_";
-  
+
       ctx.save();
       ctx.translate(px, py);
+
+      // Use facingLeft to determine mirroring
+      let flip = this.facingLeft;
+      if (flip) {
+        ctx.scale(-1, 1);
+      }
       ctx.scale(this.scaleX, this.scaleY);
-      ctx.fillStyle = '#fff';
-      ctx.font = '16px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText("O", 0, 0);
+
+      if (spriteLoaded) {
+        const size = SPRITE_SIZE;
+        ctx.drawImage(
+          spriteImg,
+          flip ? -size / 2 - size : -size / 2,
+          -size / 2,
+          size,
+          size
+        );
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(flip ? -SPRITE_SIZE / 2 - SPRITE_SIZE : -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
+      }
 
       // Movement charging indicator
       if (this.movementCharging && this.hooks.energyBar.state === 'active') {
