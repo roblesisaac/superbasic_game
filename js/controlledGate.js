@@ -345,13 +345,13 @@ export class ControlledGate {
 
     // Draw gap indicators
     if (this.gapInfo) {
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillStyle = 'rgba(255,255,255,1)';
       if (this.gapInfo.type === 'H') {
-        ctx.fillRect(this.gapX, this.gapY - cameraY, 1, GATE_THICKNESS);
-        ctx.fillRect(this.gapX + this.gapWidth, this.gapY - cameraY, 1, GATE_THICKNESS);
+        ctx.fillRect(this.gapX, this.gapY - cameraY, 3, GATE_THICKNESS);
+        ctx.fillRect(this.gapX + this.gapWidth, this.gapY - cameraY, 3, GATE_THICKNESS);
       } else {
-        ctx.fillRect(this.gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-        ctx.fillRect(this.gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+        ctx.fillRect(this.gapX, this.gapY - cameraY, GATE_THICKNESS, 3);
+        ctx.fillRect(this.gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 3);
       }
     }
   }
