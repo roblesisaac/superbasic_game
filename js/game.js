@@ -241,7 +241,7 @@ function loop() {
 function drawFrame() {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  drawBackgroundGrid();
+  // drawBackgroundGrid();
 
   // ground line
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -263,3 +263,14 @@ function drawFrame() {
 
 // kick off
 startGame();
+
+// Service Worker update alert
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SW_UPDATE_AVAILABLE') {
+      if (window.confirm('A new version is available. Reload now?')) {
+        window.location.reload();
+      }
+    }
+  });
+}
