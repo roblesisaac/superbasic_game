@@ -354,11 +354,11 @@ export const CONTROLLED_GATE_PATTERNS = [
     { width: 50 } // Auto S-curve behavior
   ],
   
-  // [
-  //   { width: 30 },
-  //   { width: 40 },
-  //   { width: 30 }
-  // ],
+  [
+    { width: 30 },
+    { width: 40 },
+    { width: 30 }
+  ],
   
   // Explicit positioning
   // [
