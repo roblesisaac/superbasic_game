@@ -58,15 +58,14 @@ export class Collectible {
       ctx.fillText('$', 0, 0);
     } else {
       ctx.fillStyle = '#FF4444';
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('X', 0, 0);
       ctx.strokeStyle = '#CC0000';
       ctx.lineWidth = 2;
-      ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+      // Optionally, keep the strokeRect for outline
       ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(-3, -3, 2, 2);
-      ctx.fillRect(1, -3, 2, 2);
-      ctx.fillRect(-2, 1, 4, 1);
     }
 
     ctx.restore();

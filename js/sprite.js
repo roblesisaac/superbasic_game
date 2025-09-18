@@ -375,16 +375,37 @@ import {
       if (wasOnGround && !this.onGround) this.fallStartY = this.y;
       this._applyFinalScale();
     }
+    
+    drawMultilineText(ctx, text, x, y, lineHeight) {
+      const lines = String(text).split(/\r?\n/);
+    
+      // if no lineHeight provided, estimate from font metrics
+      if (!lineHeight) {
+        const m = ctx.measureText('M');
+        lineHeight =
+          (m.actualBoundingBoxAscent || 0) +
+          (m.actualBoundingBoxDescent || 0) ||
+          parseInt(ctx.font, 10) * 1.2;
+      }
+    
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], x, y + i * lineHeight);
+      }
+    }
   
     draw(ctx, cameraY) {
       const px = this.x;
       const py = this.y - cameraY;
+      const frog = "o\n_`O'_";
   
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(this.scaleX, this.scaleY);
       ctx.fillStyle = '#fff';
-      ctx.fillRect(-SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText("O", 0, 0);
 
       // Movement charging indicator
       if (this.movementCharging && this.hooks.energyBar.state === 'active') {

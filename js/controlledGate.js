@@ -323,9 +323,23 @@ export class ControlledGate {
     if (!this.active) return;
 
     ctx.fillStyle = '#5aa2ff';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (const rect of this.getRects()) {
       if (rect.w > 0 && rect.h > 0) {
-        ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+        if (rect.w > rect.h) {
+          // Horizontal: draw dashes
+          const count = Math.max(1, Math.floor(rect.w / 10));
+          const ascii = ':'.repeat(count);
+          ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+        } else {
+          // Vertical: draw pipes
+          const count = Math.max(1, Math.floor(rect.h / 16));
+          for (let i = 0; i < count; i++) {
+            ctx.fillText('::', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+          }
+        }
       }
     }
 
@@ -346,25 +360,25 @@ export class ControlledGate {
 // Predefined gate patterns using the new clear object syntax
 export const CONTROLLED_GATE_PATTERNS = [
   // Simple cases
-  // { width: 100 }, // Single span
+  { width: 100 }, // Single span
   
   // S-curve
-  // [
-  //   { width: 50 },
-  //   { width: 50 } // Auto S-curve behavior
-  // ],
+  [
+    { width: 50 },
+    { width: 50 } // Auto S-curve behavior
+  ],
   
-  // [
-  //   { width: 30 },
-  //   { width: 40 },
-  //   { width: 30 }
-  // ],
+  [
+    { width: 30 },
+    { width: 40 },
+    { width: 30 }
+  ],
   
-  // Explicit positioning
-  // [
-  //   { width: 40 },
-  //   { width: 60, y: 120, gate: true }
-  // ],
+  Explicit positioning
+  [
+    { width: 40 },
+    { width: 60, y: 120, gate: true }
+  ],
   
   // Vertical segments
   [
@@ -374,54 +388,54 @@ export const CONTROLLED_GATE_PATTERNS = [
   ],
   
   // Complex with all options
-  // [
-  //   { width: 30 },
-  //   { 
-  //     width: 40, 
-  //     x: 10, // x offset as % of canvas
-  //     y: -80, // y offset in pixels
-  //     gate: { 
-  //       position: 25, // 25% along segment
-  //       width: 35 // custom gate width
-  //     }
-  //   },
-  //   { width: 30, y: 60 }
-  // ],
+  [
+    { width: 30 },
+    { 
+      width: 40, 
+      x: 10, // x offset as % of canvas
+      y: -80, // y offset in pixels
+      gate: { 
+        position: 25, // 25% along segment
+        width: 35 // custom gate width
+      }
+    },
+    { width: 30, y: 60 }
+  ],
   
   // Even more explicit using segments property
-  // {
-  //   segments: [
-  //     { type: 'horizontal', width: 25 },
-  //     { 
-  //       type: 'vertical', 
-  //       height: 150, 
-  //       gate: { position: 30, width: 40 }
-  //     },
-  //     { 
-  //       type: 'horizontal', 
-  //       width: 75, 
-  //       x: -2, // TO-DO should not need this
-  //       y: 0, // relative to end of previous segment
-  //       gate: true // default centered gate
-  //     }
-  //   ]
-  // },
+  {
+    segments: [
+      { type: 'horizontal', width: 25 },
+      { 
+        type: 'vertical', 
+        height: 150, 
+        gate: { position: 30, width: 40 }
+      },
+      { 
+        type: 'horizontal', 
+        width: 75, 
+        x: -2, // TO-DO should not need this
+        y: 0, // relative to end of previous segment
+        gate: true // default centered gate
+      }
+    ]
+  },
   
   // Mixed formats for variety
-  // [
-  //   { width: 25, gate: { position: 80 } },
-  //   { width: 50, y: -100 },
-  //   { width: 25, y: 120 }
-  // ],
+  [
+    { width: 25, gate: { position: 80 } },
+    { width: 50, y: -100 },
+    { width: 25, y: 120 }
+  ],
   
   // Another vertical example
-  // [
-  //   { width: 20 },
-  //   { type: 'vertical', height: 200 },
-  //   { width: 60, gate: true },
-  //   { type: 'vertical', height: 150, gate: { position: 25 } },
-  //   { width: 20, type: 'horizontal' } // TO-DO 
-  // ]
+  [
+    { width: 20 },
+    { type: 'vertical', height: 200 },
+    { width: 60, gate: true },
+    { type: 'vertical', height: 150, gate: { position: 25 } },
+    { width: 20, type: 'horizontal' } // TO-DO 
+  ]
 ];
 
 export class ControlledGateGenerator {

@@ -53,7 +53,14 @@ export class Ride {
     if (this.floating) color = '#9b59b6';
 
     ctx.fillStyle = color;
-    ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Draw ASCII ride as a row of '='
+    const char = '=';
+    const count = Math.max(1, Math.floor(this.width / 10));
+    const ascii = char.repeat(count);
+    ctx.fillText(ascii, this.x + this.width / 2, this.y - cameraY);
   }
 
   getRect() {

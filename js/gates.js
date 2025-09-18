@@ -148,8 +148,24 @@ export class Gate {
     if (!this.active) return;
 
     ctx.fillStyle = '#5aa2ff';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (const rect of this.getRects()) {
-      if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+      if (rect.w > 0 && rect.h > 0) {
+        if (rect.w > rect.h) {
+          // Horizontal: draw dashes
+          const count = Math.max(1, Math.floor(rect.w / 10));
+          const ascii = ':'.repeat(count);
+          ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+        } else {
+          // Vertical: draw pipes
+          const count = Math.max(1, Math.floor(rect.h / 16));
+          for (let i = 0; i < count; i++) {
+            ctx.fillText(':', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+          }
+        }
+      }
     }
 
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
