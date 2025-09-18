@@ -1,0 +1,12 @@
+{
+  "name": "superbasic_game",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx http-server -c-1 -p 5173 .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

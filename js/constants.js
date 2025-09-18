@@ -53,9 +53,9 @@ export const USE_RANDOM_GATES = false;
 export const GATE_THICKNESS = 20;
 
 // Grid / Gates / Height
-export const PIXELS_PER_FOOT = 32;
-export const GRID_SIZE = 32;
-export const GATE_EVERY_FEET = 15;
+export const PIXELS_PER_FOOT = 16;
+export const GRID_SIZE = 16;
+export const GATE_EVERY_FEET = 30;
 export const GATE_GAP_WIDTH = 50;
 
 // Budget game data
