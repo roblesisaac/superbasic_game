@@ -374,7 +374,7 @@ export const CONTROLLED_GATE_PATTERNS = [
     { width: 30 }
   ],
   
-  Explicit positioning
+  // Explicit positioning
   [
     { width: 40 },
     { width: 60, y: 120, gate: true }
