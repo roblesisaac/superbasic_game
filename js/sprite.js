@@ -394,16 +394,14 @@ import {
       const px = this.x;
       const py = this.y - cameraY;
 
+      // --- Draw sprite (with mirroring and scaling) ---
       ctx.save();
       ctx.translate(px, py);
-
-      // Use facingLeft to determine mirroring
       let flip = this.facingLeft;
       if (flip) {
         ctx.scale(-1, 1);
       }
       ctx.scale(this.scaleX, this.scaleY);
-
       if (spriteLoaded) {
         const size = SPRITE_SIZE;
         ctx.drawImage(
@@ -417,13 +415,16 @@ import {
         ctx.fillStyle = '#fff';
         ctx.fillRect(flip ? -SPRITE_SIZE / 2 - SPRITE_SIZE : -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
       }
+      ctx.restore();
 
-      // Movement charging indicator
+      // --- Draw movement charging arrows (never mirrored, but still stretched) ---
       if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(this.scaleX, this.scaleY); // Only stretch, no mirroring
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
         const intensity = r * 255;
         ctx.fillStyle = `rgba(100, 200, 255, ${r * 0.8})`;
-        
         // Draw directional indicator
         if (Math.abs(this.movementDirection.x) > 0.1 || Math.abs(this.movementDirection.y) > 0.1) {
           const arrowLength = 15 + r * 10;
@@ -436,7 +437,6 @@ import {
           ctx.lineWidth = 2 + r * 2;
           ctx.strokeStyle = `rgba(100, 200, 255, ${r})`;
           ctx.stroke();
-          
           // Arrow head
           const angle = Math.atan2(this.movementDirection.y, this.movementDirection.x);
           const headLength = 5 + r * 3;
@@ -459,9 +459,14 @@ import {
           );
           ctx.stroke();
         }
+        ctx.restore();
       }
-  
+
+      // --- Draw gliding indicator (mirroring doesn't matter) ---
       if (this.vy > 0 && this.gliding) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(this.scaleX, this.scaleY);
         ctx.fillStyle = '#f66';
         ctx.beginPath();
         ctx.moveTo(SPRITE_SIZE / 2, -4);
@@ -469,7 +474,7 @@ import {
         ctx.lineTo(SPRITE_SIZE / 2, 4);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
       }
-      ctx.restore();
     }
   }
