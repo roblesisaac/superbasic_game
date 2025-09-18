@@ -6,10 +6,21 @@ const CORE_ASSETS = [
   "./styles.css",
   "./manifest.webmanifest",
   "./js/game.js",
+  "./js/budget.js",
+  "./js/canvas.js",
+  "./js/collectibles.js",
+  "./js/constants.js",
+  "./js/controlledGate.js",
+  "./js/gates.js",
+  "./js/globals.js",
+  "./js/hud.js",
+  "./js/input.js",
+  "./js/rides.js",
+  "./js/settings.js",
+  "./js/sprite.js",
+  "./js/utils.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
-  // "./js/other-file-1.js",
-  // "./js/other-file-2.js",
 ];
 
 // Install: pre-cache core assets
