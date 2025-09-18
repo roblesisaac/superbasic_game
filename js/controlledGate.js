@@ -322,7 +322,7 @@ export class ControlledGate {
   draw(ctx, cameraY) {
     if (!this.active) return;
 
-    ctx.fillStyle = '#5aa2ff';
+    ctx.fillStyle = '#fff';
     ctx.font = '16px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
