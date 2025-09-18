@@ -31,7 +31,7 @@ export const COOLDOWN_PENALTY_PER_PRESS = 0.22;
 export const SAFE_FALL_VY = 700;
 export const SAFE_FALL_HEIGHT = 64;
 export const STUN_TIME = 1.0;
-export const SPRITE_SIZE = 16;
+export const SPRITE_SIZE = 20;
 
 // Rides
 export const RIDE_THICKNESS = 20;
