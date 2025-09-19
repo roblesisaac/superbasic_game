@@ -361,10 +361,10 @@ export const CONTROLLED_GATE_PATTERNS = [
   ],
   
   // Explicit positioning
-  // [
-  //   { width: 40 },
-  //   { width: 60, y: 120, gate: true }
-  // ],
+  [
+    { width: 40 },
+    { width: 60, y: 120, gate: true }
+  ],
   
   // Vertical segments
   [
@@ -374,54 +374,54 @@ export const CONTROLLED_GATE_PATTERNS = [
   ],
   
   // Complex with all options
-  // [
-  //   { width: 30 },
-  //   { 
-  //     width: 40, 
-  //     x: 10, // x offset as % of canvas
-  //     y: -80, // y offset in pixels
-  //     gate: { 
-  //       position: 25, // 25% along segment
-  //       width: 35 // custom gate width
-  //     }
-  //   },
-  //   { width: 30, y: 60 }
-  // ],
+  [
+    { width: 30 },
+    { 
+      width: 40, 
+      x: 10, // x offset as % of canvas
+      y: -80, // y offset in pixels
+      gate: { 
+        position: 25, // 25% along segment
+        width: 35 // custom gate width
+      }
+    },
+    { width: 30, y: 60 }
+  ],
   
   // Even more explicit using segments property
-  // {
-  //   segments: [
-  //     { type: 'horizontal', width: 25 },
-  //     { 
-  //       type: 'vertical', 
-  //       height: 150, 
-  //       gate: { position: 30, width: 40 }
-  //     },
-  //     { 
-  //       type: 'horizontal', 
-  //       width: 75, 
-  //       x: -2, // TO-DO should not need this
-  //       y: 0, // relative to end of previous segment
-  //       gate: true // default centered gate
-  //     }
-  //   ]
-  // },
+  {
+    segments: [
+      { type: 'horizontal', width: 25 },
+      { 
+        type: 'vertical', 
+        height: 150, 
+        gate: { position: 30, width: 40 }
+      },
+      { 
+        type: 'horizontal', 
+        width: 75, 
+        x: -2, // TO-DO should not need this
+        y: 0, // relative to end of previous segment
+        gate: true // default centered gate
+      }
+    ]
+  },
   
   // Mixed formats for variety
-  // [
-  //   { width: 25, gate: { position: 80 } },
-  //   { width: 50, y: -100 },
-  //   { width: 25, y: 120 }
-  // ],
+  [
+    { width: 25, gate: { position: 80 } },
+    { width: 50, y: -100 },
+    { width: 25, y: 120 }
+  ],
   
   // Another vertical example
-  // [
-  //   { width: 20 },
-  //   { type: 'vertical', height: 200 },
-  //   { width: 60, gate: true },
-  //   { type: 'vertical', height: 150, gate: { position: 25 } },
-  //   { width: 20, type: 'horizontal' } // TO-DO 
-  // ]
+  [
+    { width: 20 },
+    { type: 'vertical', height: 200 },
+    { width: 60, gate: true },
+    { type: 'vertical', height: 150, gate: { position: 25 } },
+    { width: 20, type: 'horizontal' } // TO-DO 
+  ]
 ];
 
 export class ControlledGateGenerator {
