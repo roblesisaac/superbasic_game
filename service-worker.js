@@ -1,4 +1,4 @@
-const CACHE_NAME = "game-cache-v7";
+const CACHE_NAME = "game-cache-v8";
 
 const CORE_ASSETS = [
   "./",
