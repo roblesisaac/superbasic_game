@@ -5,13 +5,17 @@ import {
   MIN_RIDE_SPEED,
   MAX_RIDE_SPEED,
   RIDE_MIN_WIDTH,
-  RIDE_MAX_WIDTH
+  RIDE_MAX_WIDTH,
+  RIDE_WEIGHT_SHIFT_MIN,
+  RIDE_WEIGHT_SHIFT_MAX,
+  RIDE_WEIGHT_RETURN_RATE
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
 
 export class Ride {
   constructor({ x, y, width, speed, direction, canvasWidth }) {
     this.x = x;
+    this.baseY = y;
     this.y = y;
     this.width = width;
     this.speed = speed;
@@ -22,10 +26,15 @@ export class Ride {
     this.floating = false;
     this.floatTime = 0;
     this.originalSpeed = speed;
+
+    this.weightOffset = 0;
+    this._applyWeightOffset();
   }
 
   update(dt) {
     if (!this.active) return;
+
+    this._updateWeightShift(dt);
 
     if (this.floating) {
       this.floatTime -= dt;
@@ -63,6 +72,35 @@ export class Ride {
       w: this.width,
       h: RIDE_THICKNESS
     };
+  }
+
+  applyWeightShift() {
+    const minDrop = RIDE_WEIGHT_SHIFT_MIN;
+    const maxDrop = RIDE_WEIGHT_SHIFT_MAX;
+    const span = Math.max(0, maxDrop - minDrop);
+    const drop = span > 0 ? minDrop + Math.random() * span : minDrop;
+
+    if (drop > this.weightOffset) this.weightOffset = drop;
+    this._applyWeightOffset();
+  }
+
+  _updateWeightShift(dt) {
+    if (!Number.isFinite(dt)) {
+      this._applyWeightOffset();
+      return;
+    }
+
+    if (Math.abs(this.weightOffset) > 0.0001) {
+      const factor = Math.max(0, Math.min(1, RIDE_WEIGHT_RETURN_RATE * dt));
+      this.weightOffset += (0 - this.weightOffset) * factor;
+      if (Math.abs(this.weightOffset) < 0.01) this.weightOffset = 0;
+    }
+
+    this._applyWeightOffset();
+  }
+
+  _applyWeightOffset() {
+    this.y = this.baseY + this.weightOffset;
   }
 }
 
