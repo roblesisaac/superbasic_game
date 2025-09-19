@@ -413,14 +413,6 @@ export class Sprite {
       this.x = activeSideCollision.pushX;
       this.vx = 0;
       this.impactSquash = Math.max(this.impactSquash, 0.6);
-
-      if (landingCandidate) {
-        const landingSurface = landingCandidate.surface;
-        const landingIsRide = landingSurface && typeof landingSurface.getRects !== 'function';
-        if (landingIsRide && landingSurface !== activeSideCollision.surface && wasOnPlatform) {
-          landingCandidate = null;
-        }
-      }
     }
 
     if (ceilingCandidate) {
