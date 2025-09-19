@@ -342,6 +342,7 @@ export class Sprite {
     let ceilingCandidate = null;
     let leftSideCandidate = null;
     let rightSideCandidate = null;
+    let blockedHorizontally = false;
 
     for (const collection of surfaceCollections) {
       if (!collection) continue;
@@ -413,6 +414,7 @@ export class Sprite {
       this.x = activeSideCollision.pushX;
       this.vx = 0;
       this.impactSquash = Math.max(this.impactSquash, 0.6);
+      blockedHorizontally = true;
     }
 
     if (ceilingCandidate) {
@@ -433,7 +435,11 @@ export class Sprite {
         this.vy = 0;
         this.onGround = true;
         this.onPlatform = true;
-        this.vx = (surface.speed || 0) * (surface.direction || 0);
+        if (!blockedHorizontally) {
+          this.vx = (surface.speed || 0) * (surface.direction || 0);
+        } else {
+          this.vx = 0;
+        }
         this.gliding = false;
         if (!wasOnGround) this.impactSquash = 1.8;
       }
