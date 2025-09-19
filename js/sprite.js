@@ -7,7 +7,8 @@ import {
   CHARGE_SQUASH_MAX, CHARGE_WIDEN_MAX,
   SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME, SPRITE_SIZE,
   MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
-  RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY
+  RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
+  RIDE_WEIGHT_SHIFT_MAX
 } from './constants.js';
 import { clamp } from './utils.js';
 import { canvasWidth, groundY, cameraY } from './globals.js';
@@ -23,6 +24,7 @@ export class Sprite {
     this.x = x; this.y = y;
     this.vx = 0; this.vy = 0;
     this.onGround = true; this.onPlatform = false;
+    this.platformSurface = null;
 
     // Jump charging
     this.charging = false; this.chargeTime = 0;
@@ -327,6 +329,9 @@ export class Sprite {
     this.onGround = false;
     this.onPlatform = false;
 
+    const previousPlatform = this.platformSurface;
+    let newPlatformSurface = null;
+
     // ride and gate collisions
     const surfaceCollections = [];
     if (typeof this.hooks.getRides === 'function') surfaceCollections.push(this.hooks.getRides());
@@ -360,7 +365,12 @@ export class Sprite {
           const hOverlap = (currRight >= surfaceLeft) && (currLeft <= surfaceRight);
           const vOverlap = (currBottom >= surfaceTop) && (currTop <= surfaceBottom);
 
-          if (hOverlap && this.vy >= 0 && prevBottom <= surfaceTop + epsilon && currBottom >= surfaceTop) {
+          const sameSurfaceAsBefore = surface === previousPlatform;
+          const landingTolerance = sameSurfaceAsBefore
+            ? Math.max(epsilon, RIDE_WEIGHT_SHIFT_MAX)
+            : epsilon;
+
+          if (hOverlap && this.vy >= 0 && prevBottom <= surfaceTop + landingTolerance && currBottom >= surfaceTop) {
             if (!landingCandidate || surfaceTop < landingCandidate.top) {
               landingCandidate = { surface, top: surfaceTop };
             }
@@ -430,11 +440,27 @@ export class Sprite {
         this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
         this.vy = RIDE_BOUNCE_VY;
         this.impactSquash = 1.8 * 1.2;
+        newPlatformSurface = null;
       } else {
-        this.y = landingCandidate.top - hs;
+        let landingTop = landingCandidate.top;
+        const shouldShiftRide =
+          typeof surface.applyWeightShift === 'function' &&
+          (surface !== previousPlatform || !wasOnGround);
+
+        if (shouldShiftRide) {
+          surface.applyWeightShift();
+          if (typeof surface.getRect === 'function') {
+            const updatedRect = surface.getRect();
+            if (updatedRect && typeof updatedRect.y === 'number') {
+              landingTop = updatedRect.y;
+            }
+          }
+        }
+        this.y = landingTop - hs;
         this.vy = 0;
         this.onGround = true;
         this.onPlatform = true;
+        newPlatformSurface = surface;
         if (!blockedHorizontally) {
           this.vx = (surface.speed || 0) * (surface.direction || 0);
         } else {
@@ -444,6 +470,8 @@ export class Sprite {
         if (!wasOnGround) this.impactSquash = 1.8;
       }
     }
+
+    this.platformSurface = newPlatformSurface;
 
     // ground
     if (!this.onPlatform && this.y + hs >= groundY) {

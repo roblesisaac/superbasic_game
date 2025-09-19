@@ -5,13 +5,17 @@ import {
   MIN_RIDE_SPEED,
   MAX_RIDE_SPEED,
   RIDE_MIN_WIDTH,
-  RIDE_MAX_WIDTH
+  RIDE_MAX_WIDTH,
+  RIDE_WEIGHT_SHIFT_MIN,
+  RIDE_WEIGHT_SHIFT_MAX,
+  RIDE_WEIGHT_RETURN_DURATION
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
 
 export class Ride {
   constructor({ x, y, width, speed, direction, canvasWidth }) {
     this.x = x;
+    this.baseY = y;
     this.y = y;
     this.width = width;
     this.speed = speed;
@@ -22,10 +26,18 @@ export class Ride {
     this.floating = false;
     this.floatTime = 0;
     this.originalSpeed = speed;
+
+    this.weightOffset = 0;
+    this.weightDrop = 0;
+    this.weightReturnTime = 0;
+    this.weightReturning = false;
+    this._applyWeightOffset();
   }
 
   update(dt) {
     if (!this.active) return;
+
+    this._updateWeightShift(dt);
 
     if (this.floating) {
       this.floatTime -= dt;
@@ -70,6 +82,49 @@ export class Ride {
       w: this.width,
       h: RIDE_THICKNESS
     };
+  }
+
+  applyWeightShift() {
+    const minDrop = RIDE_WEIGHT_SHIFT_MIN;
+    const maxDrop = RIDE_WEIGHT_SHIFT_MAX;
+    const span = Math.max(0, maxDrop - minDrop);
+    const drop = span > 0 ? minDrop + Math.random() * span : minDrop;
+
+    const newDrop = Math.max(drop, this.weightOffset, this.weightDrop);
+    this.weightDrop = newDrop;
+    this.weightOffset = newDrop;
+    this.weightReturnTime = 0;
+    this.weightReturning = true;
+    this._applyWeightOffset();
+  }
+
+  _updateWeightShift(dt) {
+    if (!Number.isFinite(dt)) {
+      this._applyWeightOffset();
+      return;
+    }
+
+    if (this.weightReturning) {
+      const duration = Math.max(0.001, RIDE_WEIGHT_RETURN_DURATION);
+      this.weightReturnTime += dt;
+
+      const t = clamp(this.weightReturnTime / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      this.weightOffset = this.weightDrop * (1 - eased);
+
+      if (t >= 1) {
+        this.weightOffset = 0;
+        this.weightDrop = 0;
+        this.weightReturnTime = 0;
+        this.weightReturning = false;
+      }
+    }
+
+    this._applyWeightOffset();
+  }
+
+  _applyWeightOffset() {
+    this.y = this.baseY + this.weightOffset;
   }
 }
 
