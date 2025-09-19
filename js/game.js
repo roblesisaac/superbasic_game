@@ -250,8 +250,8 @@ function drawFrame() {
   ctx.lineTo(canvasWidth, groundY - cameraY);
   ctx.stroke();
 
-  drawGates(ctx, game.gates, cameraY);
   drawRides(ctx, game.rides, cameraY);
+  drawGates(ctx, game.gates, cameraY);
 
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
 
