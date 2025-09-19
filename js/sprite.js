@@ -282,6 +282,7 @@ export class Sprite {
       }
     }
 
+    const prevX = this.x;
     const prevY = this.y;
     const hs = SPRITE_SIZE / 2;
     const wasOnGround = this.onGround;
@@ -319,6 +320,8 @@ export class Sprite {
 
     const prevTop = prevY - hs;
     const prevBottom = prevY + hs;
+    const prevLeft = prevX - hs;
+    const prevRight = prevX + hs;
 
     this.onGround = false; 
     this.onPlatform = false;
@@ -335,13 +338,18 @@ export class Sprite {
         if (!surface || surface.active === false) continue;
         const rects = (typeof surface.getRects === 'function') ? surface.getRects() : [surface.getRect()];
         for (const rect of rects) {
-          const hOverlap = (this.x + hs >= rect.x) && (this.x - hs <= rect.x + rect.w);
-          if (!hOverlap || rect.w <= 0) continue;
-
+          const left = this.x - hs;
+          const right = this.x + hs;
           const top = this.y - hs;
           const bottom = this.y + hs;
+          const surfaceLeft = rect.x;
+          const surfaceRight = rect.x + rect.w;
           const surfaceTop = rect.y;
           const surfaceBottom = rect.y + rect.h;
+
+          const hOverlap = (right >= surfaceLeft) && (left <= surfaceRight);
+          if (!hOverlap || rect.w <= 0 || rect.h <= 0) continue;
+          const vOverlap = (bottom >= surfaceTop) && (top <= surfaceBottom);
 
           if (this.vy >= 0 && prevBottom <= surfaceTop && bottom >= surfaceTop) {
             if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
@@ -366,6 +374,22 @@ export class Sprite {
             this.gliding = false;
             this.impactSquash = 1.8 * 0.3;
             break outer;
+          }
+
+          if (vOverlap) {
+            const epsilon = 0.1;
+            if (this.vx > 0 && prevRight <= surfaceLeft + epsilon && right >= surfaceLeft) {
+              this.x = surfaceLeft - hs;
+              this.vx = 0;
+              this.impactSquash = Math.max(this.impactSquash, 0.6);
+              break outer;
+            }
+            if (this.vx < 0 && prevLeft >= surfaceRight - epsilon && left <= surfaceRight) {
+              this.x = surfaceRight + hs;
+              this.vx = 0;
+              this.impactSquash = Math.max(this.impactSquash, 0.6);
+              break outer;
+            }
           }
         }
       }
