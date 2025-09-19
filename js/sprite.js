@@ -286,6 +286,7 @@ export class Sprite {
     const prevY = this.y;
     const hs = SPRITE_SIZE / 2;
     const wasOnGround = this.onGround;
+    const wasOnPlatform = this.onPlatform;
 
     // Handle charging
     if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
@@ -323,7 +324,7 @@ export class Sprite {
     const prevLeft = prevX - hs;
     const prevRight = prevX + hs;
 
-    this.onGround = false; 
+    this.onGround = false;
     this.onPlatform = false;
 
     // ride and gate collisions
@@ -331,67 +332,118 @@ export class Sprite {
     if (typeof this.hooks.getRides === 'function') surfaceCollections.push(this.hooks.getRides());
     if (typeof this.hooks.getGates === 'function') surfaceCollections.push(this.hooks.getGates());
 
-    outer:
+    const currLeft = this.x - hs;
+    const currRight = this.x + hs;
+    const currTop = this.y - hs;
+    const currBottom = this.y + hs;
+    const epsilon = 0.1;
+
+    let landingCandidate = null;
+    let ceilingCandidate = null;
+    let leftSideCandidate = null;
+    let rightSideCandidate = null;
+
     for (const collection of surfaceCollections) {
       if (!collection) continue;
       for (const surface of collection) {
         if (!surface || surface.active === false) continue;
         const rects = (typeof surface.getRects === 'function') ? surface.getRects() : [surface.getRect()];
         for (const rect of rects) {
-          const left = this.x - hs;
-          const right = this.x + hs;
-          const top = this.y - hs;
-          const bottom = this.y + hs;
+          if (!rect || rect.w <= 0 || rect.h <= 0) continue;
+
           const surfaceLeft = rect.x;
           const surfaceRight = rect.x + rect.w;
           const surfaceTop = rect.y;
           const surfaceBottom = rect.y + rect.h;
 
-          const hOverlap = (right >= surfaceLeft) && (left <= surfaceRight);
-          if (!hOverlap || rect.w <= 0 || rect.h <= 0) continue;
-          const vOverlap = (bottom >= surfaceTop) && (top <= surfaceBottom);
+          const hOverlap = (currRight >= surfaceLeft) && (currLeft <= surfaceRight);
+          const vOverlap = (currBottom >= surfaceTop) && (currTop <= surfaceBottom);
 
-          if (this.vy >= 0 && prevBottom <= surfaceTop && bottom >= surfaceTop) {
-            if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
-              this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
-              this.vy = RIDE_BOUNCE_VY;
-              this.impactSquash = 1.8 * 1.2;
-            } else {
-              this.y = surfaceTop - hs;
-              this.vy = 0;
-              this.onGround = true;
-              this.onPlatform = true;
-              this.vx = (surface.speed || 0) * (surface.direction || 0);
-              this.gliding = false;
-              if (!wasOnGround) this.impactSquash = 1.8;
-              break outer;
+          if (hOverlap && this.vy >= 0 && prevBottom <= surfaceTop + epsilon && currBottom >= surfaceTop) {
+            if (!landingCandidate || surfaceTop < landingCandidate.top) {
+              landingCandidate = { surface, top: surfaceTop };
             }
           }
 
-          if (this.vy < 0 && prevTop >= surfaceBottom && top <= surfaceBottom) {
-            this.y = surfaceBottom + hs;
-            this.vy = 0;
-            this.gliding = false;
-            this.impactSquash = 1.8 * 0.3;
-            break outer;
+          if (hOverlap && this.vy < 0 && prevTop >= surfaceBottom - epsilon && currTop <= surfaceBottom) {
+            if (!ceilingCandidate || surfaceBottom > ceilingCandidate.bottom) {
+              ceilingCandidate = { surface, bottom: surfaceBottom };
+            }
           }
 
-          if (vOverlap) {
-            const epsilon = 0.1;
-            if (this.vx > 0 && prevRight <= surfaceLeft + epsilon && right >= surfaceLeft) {
-              this.x = surfaceLeft - hs;
-              this.vx = 0;
-              this.impactSquash = Math.max(this.impactSquash, 0.6);
-              break outer;
+          if (!vOverlap) continue;
+
+          if (prevRight <= surfaceLeft + epsilon && currRight >= surfaceLeft) {
+            const overlap = currRight - surfaceLeft;
+            if (!leftSideCandidate || overlap < leftSideCandidate.overlap) {
+              leftSideCandidate = {
+                surface,
+                overlap,
+                pushX: surfaceLeft - hs
+              };
             }
-            if (this.vx < 0 && prevLeft >= surfaceRight - epsilon && left <= surfaceRight) {
-              this.x = surfaceRight + hs;
-              this.vx = 0;
-              this.impactSquash = Math.max(this.impactSquash, 0.6);
-              break outer;
+          }
+
+          if (prevLeft >= surfaceRight - epsilon && currLeft <= surfaceRight) {
+            const overlap = surfaceRight - currLeft;
+            if (!rightSideCandidate || overlap < rightSideCandidate.overlap) {
+              rightSideCandidate = {
+                surface,
+                overlap,
+                pushX: surfaceRight + hs
+              };
             }
           }
         }
+      }
+    }
+
+    let activeSideCollision = null;
+    if (leftSideCandidate && rightSideCandidate) {
+      activeSideCollision = leftSideCandidate.overlap <= rightSideCandidate.overlap
+        ? { ...leftSideCandidate, direction: -1 }
+        : { ...rightSideCandidate, direction: 1 };
+    } else if (leftSideCandidate) {
+      activeSideCollision = { ...leftSideCandidate, direction: -1 };
+    } else if (rightSideCandidate) {
+      activeSideCollision = { ...rightSideCandidate, direction: 1 };
+    }
+
+    if (activeSideCollision) {
+      this.x = activeSideCollision.pushX;
+      this.vx = 0;
+      this.impactSquash = Math.max(this.impactSquash, 0.6);
+
+      if (landingCandidate) {
+        const landingSurface = landingCandidate.surface;
+        const landingIsRide = landingSurface && typeof landingSurface.getRects !== 'function';
+        if (landingIsRide && landingSurface !== activeSideCollision.surface && wasOnPlatform) {
+          landingCandidate = null;
+        }
+      }
+    }
+
+    if (ceilingCandidate) {
+      this.y = ceilingCandidate.bottom + hs;
+      if (this.vy < 0) this.vy = 0;
+      this.gliding = false;
+      this.impactSquash = 1.8 * 0.3;
+    }
+
+    if (landingCandidate) {
+      const surface = landingCandidate.surface;
+      if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
+        this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
+        this.vy = RIDE_BOUNCE_VY;
+        this.impactSquash = 1.8 * 1.2;
+      } else {
+        this.y = landingCandidate.top - hs;
+        this.vy = 0;
+        this.onGround = true;
+        this.onPlatform = true;
+        this.vx = (surface.speed || 0) * (surface.direction || 0);
+        this.gliding = false;
+        if (!wasOnGround) this.impactSquash = 1.8;
       }
     }
 
