@@ -77,12 +77,22 @@ export class Ride {
     };
   }
 
-  applyWeightShift() {
+  applyWeightShift(impactVelocity = 0) {
     const minDrop = RIDE_WEIGHT_SHIFT_MIN;
     const maxDrop = RIDE_WEIGHT_SHIFT_MAX;
     const span = Math.max(0, maxDrop - minDrop);
-    const drop = span > 0 ? minDrop + Math.random() * span : minDrop;
-
+    
+    // Base drop amount
+    let drop = span > 0 ? minDrop + Math.random() * span : minDrop;
+    
+    // Scale drop based on impact velocity for more realistic physics
+    // Higher velocity = more dramatic weight shift
+    if (impactVelocity > 0) {
+      const velocityFactor = Math.min(1.5, impactVelocity / 800); // Cap at 1.5x
+      drop *= (1 + velocityFactor * 0.4); // Up to 40% more drop for hard impacts
+    }
+    
+    // If already dropping, accumulate the impact
     const newDrop = Math.max(drop, this.weightOffset, this.weightDrop);
     this.weightDrop = newDrop;
     this.weightOffset = newDrop;
@@ -102,8 +112,11 @@ export class Ride {
       this.weightReturnTime += dt;
 
       const t = clamp(this.weightReturnTime / duration, 0, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      this.weightOffset = this.weightDrop * (1 - eased);
+      
+      // Use a more natural spring-like easing for hoverboard feel
+      // Creates a slight overshoot and settle effect
+      const springEase = this._springEase(t);
+      this.weightOffset = this.weightDrop * (1 - springEase);
 
       if (t >= 1) {
         this.weightOffset = 0;
@@ -114,6 +127,19 @@ export class Ride {
     }
 
     this._applyWeightOffset();
+  }
+
+  _springEase(t) {
+    // Spring-like easing with slight overshoot for natural hoverboard feel
+    // Uses a combination of cubic and sine functions for smooth, bouncy motion
+    const c1 = 1.70158; // Overshoot factor
+    const c2 = c1 * 1.525;
+    
+    if (t < 0.5) {
+      return (Math.pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2;
+    } else {
+      return (Math.pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2;
+    }
   }
 
   _applyWeightOffset() {

@@ -47,6 +47,12 @@ export class Sprite {
     this.lastMovementDirection = { x: 0, y: 0 }; // for stretch effects
     this.facingLeft = false; // true if last moving left
 
+    // ride bobbing animation
+    this.rideBobOffset = 0;
+    this.rideBobTime = 0;
+    this.rideBobDuration = 0;
+    this.rideBobActive = false;
+
     // hooks to access game state without circular imports
     this.hooks = hooks; // { energyBar, hearts, onGameOver, getRides:()=>[], getGates:()=>[] }
   }
@@ -211,6 +217,47 @@ export class Sprite {
     }
   }
 
+  _updateRideBobbing(dt) {
+    if (this.rideBobActive) {
+      this.rideBobTime += dt;
+      const t = Math.min(this.rideBobTime / this.rideBobDuration, 1);
+      
+      // Use a spring-like easing for natural bobbing motion
+      const springEase = this._springEase(t);
+      this.rideBobOffset = springEase * this.rideBobMaxOffset;
+      
+      if (t >= 1) {
+        this.rideBobActive = false;
+        this.rideBobOffset = 0;
+        this.rideBobTime = 0;
+      }
+    }
+  }
+
+  _springEase(t) {
+    // Spring-like easing with slight overshoot for natural bobbing feel
+    const c1 = 1.70158;
+    const c2 = c1 * 1.525;
+    
+    if (t < 0.5) {
+      return (Math.pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2;
+    } else {
+      return (Math.pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2;
+    }
+  }
+
+  _startRideBobbing(impactVelocity) {
+    // Start bobbing animation synchronized with ride weight shift
+    this.rideBobActive = true;
+    this.rideBobTime = 0;
+    this.rideBobDuration = 0.6; // Slightly longer than ride return duration for smooth sync
+    
+    // Bob amount based on impact - more impact = more bob
+    const baseBob = 3;
+    const velocityFactor = Math.min(1.0, impactVelocity / 600);
+    this.rideBobMaxOffset = baseBob + (velocityFactor * 2);
+  }
+
   _applyFinalScale() {
     let sx = 1, sy = 1;
     sx *= this.velocityScaleX; 
@@ -266,6 +313,7 @@ export class Sprite {
     this._updateVelocityStretch();
     this._updateImpactSquash(dt);
     this._updateFollowThrough(dt);
+    this._updateRideBobbing(dt);
 
     // Track facing direction based on vx
     if (this.vx > 20) {
@@ -448,7 +496,13 @@ export class Sprite {
           (surface !== previousPlatform || !wasOnGround);
 
         if (shouldShiftRide) {
-          surface.applyWeightShift();
+          // Pass the sprite's downward velocity for impact-based weight shift
+          const impactVelocity = Math.max(0, this.vy);
+          surface.applyWeightShift(impactVelocity);
+          
+          // Start sprite bobbing animation synchronized with ride weight shift
+          this._startRideBobbing(impactVelocity);
+          
           if (typeof surface.getRect === 'function') {
             const updatedRect = surface.getRect();
             if (updatedRect && typeof updatedRect.y === 'number') {
@@ -467,7 +521,11 @@ export class Sprite {
           this.vx = 0;
         }
         this.gliding = false;
-        if (!wasOnGround) this.impactSquash = 1.8;
+        if (!wasOnGround) {
+          // More cushioned impact when landing on rides vs ground
+          const cushionedImpact = 1.8 * 0.7; // 30% less impact than ground landing
+          this.impactSquash = cushionedImpact;
+        }
       }
     }
 
@@ -494,7 +552,7 @@ export class Sprite {
 
   draw(ctx, cameraY) {
     const px = this.x;
-    const py = this.y - cameraY;
+    const py = this.y - cameraY + this.rideBobOffset;
     const size = SPRITE_SIZE;
 
     // --- Draw sprite (with mirroring and scaling) ---
