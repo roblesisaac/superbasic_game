@@ -21,10 +21,18 @@ import { EnergyBar, Hearts } from './hud.js';
 import { InputHandler } from './input.js';
 import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from './settings.js';
 import {
-  budgetData, budgetSections, collectibles, gameStats,
+  budgetSections, collectibles, gameStats,
   calculateBudgetSections, preloadSectionCollectibles,
-  preloadedSections, createdGates, resetBudgetContainers
+  createdGates, resetBudgetContainers,
+  getSectionIndexForY
 } from './budget.js';
+import {
+  resetEnemies,
+  updateEnemies,
+  drawEnemies,
+  pruneInactiveEnemies,
+  spawnEnemiesForGate
+} from './enemies.js';
 
 let currentSection = 0;
 let gateGenerator = null;
@@ -46,6 +54,33 @@ function ensureGatesForCurrentHeight() {
 
   for (const gate of newGates) {
     game.gates.push(gate);
+    spawnGateEnemies(gate);
+  }
+}
+
+function spawnGateEnemies(gate) {
+  if (!gate) return;
+
+  const sectionIndex = getSectionIndexForY(gate.y);
+  if (sectionIndex === -1) return;
+
+  preloadSectionCollectibles(sectionIndex);
+  const section = budgetSections[sectionIndex];
+  if (!section || section.amount >= 0) return;
+
+  const pending = section.pendingEnemies || 0;
+  if (pending <= 0) return;
+
+  const spawned = spawnEnemiesForGate(gate, {
+    count: pending,
+    title: section.title,
+    value: section.amount,
+    sectionIndex
+  });
+
+  if (spawned > 0) {
+    section.spawned += spawned;
+    section.pendingEnemies = Math.max(0, (section.pendingEnemies || 0) - spawned);
   }
 }
 
@@ -139,6 +174,7 @@ function startGame() {
   game.hearts = new Hearts();
   game.rides = [];
   game.gates = [];
+  resetEnemies();
   gateGenerator = new GateGenerator({
     canvasWidth,
     gapWidth: GATE_GAP_WIDTH,
@@ -178,6 +214,7 @@ export function resetGame() {
 
   game.rides = [];
   game.gates = [];
+  resetEnemies();
   gateGenerator = new GateGenerator({
     canvasWidth,
     gapWidth: GATE_GAP_WIDTH,
@@ -220,11 +257,13 @@ function loop() {
 
     updateRides(game.rides, dt);
     updateGates(game.gates, dt);
+    updateEnemies(game, dt, gameStats);
     for (const c of collectibles) c.update(dt, game, gameStats);
 
     for (let i = collectibles.length - 1; i >= 0; i--) {
       if (!collectibles[i].active) collectibles.splice(i, 1);
     }
+    pruneInactiveEnemies();
     pruneInactiveRides(game.rides);
     pruneInactiveGates(game.gates);
 
@@ -252,6 +291,7 @@ function drawFrame() {
 
   drawRides(ctx, game.rides, cameraY);
   drawGates(ctx, game.gates, cameraY);
+  drawEnemies(ctx, cameraY);
 
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
 
