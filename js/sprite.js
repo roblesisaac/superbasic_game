@@ -8,7 +8,7 @@ import {
   SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME, SPRITE_SIZE,
   MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
   RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
-  RIDE_WEIGHT_SHIFT_MAX
+  RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
 } from './constants.js';
 import { clamp } from './utils.js';
 import { canvasWidth, groundY, cameraY } from './globals.js';
@@ -49,6 +49,8 @@ export class Sprite {
 
     // hooks to access game state without circular imports
     this.hooks = hooks; // { energyBar, hearts, onGameOver, getRides:()=>[], getGates:()=>[] }
+
+    this.gateStates = new WeakMap();
 
     this.prevX = x;
     this.prevY = y;
@@ -167,11 +169,145 @@ export class Sprite {
     this.impactSquash = IMPACT_SQUASH_FACTOR * 0.5;
   }
 
-  _doFollowThroughStretch(direction) { 
+  _doFollowThroughStretch(direction) {
     this.stretchTimer = STRETCH_TIME;
     if (direction) {
       this.lastMovementDirection = { ...direction };
     }
+  }
+
+  _isGateSurface(surface) {
+    return surface && typeof surface === 'object' && typeof surface.getRects === 'function' && surface.gapInfo;
+  }
+
+  _getGateState(gate) {
+    if (!this.gateStates.has(gate)) {
+      this.gateStates.set(gate, {
+        started: false,
+        entrySide: null,
+        touched: false,
+        pendingCollision: false
+      });
+    }
+    return this.gateStates.get(gate);
+  }
+
+  _markGateCollision(surface) {
+    if (!this._isGateSurface(surface)) return;
+    const state = this._getGateState(surface);
+    state.pendingCollision = true;
+  }
+
+  _getGateGapRect(gate) {
+    if (!this._isGateSurface(gate) || !gate.gapInfo) return null;
+    const type = gate.gapInfo.type;
+    if (type === 'H') {
+      return { x: gate.gapX, y: gate.gapY, w: gate.gapWidth, h: GATE_THICKNESS };
+    }
+    if (type === 'V') {
+      return { x: gate.gapX, y: gate.gapY, w: GATE_THICKNESS, h: gate.gapWidth };
+    }
+    return null;
+  }
+
+  _determineGateSide(rect, gapRect, orientation) {
+    if (!rect || !gapRect) return 'outside';
+    if (orientation === 'H') {
+      if (rect.bottom <= gapRect.y) return 'below';
+      if (rect.top >= gapRect.y + gapRect.h) return 'above';
+      if (rect.right <= gapRect.x) return 'left';
+      if (rect.left >= gapRect.x + gapRect.w) return 'right';
+    } else {
+      if (rect.right <= gapRect.x) return 'left';
+      if (rect.left >= gapRect.x + gapRect.w) return 'right';
+      if (rect.bottom <= gapRect.y) return 'above';
+      if (rect.top >= gapRect.y + gapRect.h) return 'below';
+    }
+    return 'inside';
+  }
+
+  _isValidEntrySide(side, orientation) {
+    if (orientation === 'H') return side === 'below' || side === 'above';
+    return side === 'left' || side === 'right';
+  }
+
+  _isOppositeSide(entrySide, exitSide, orientation) {
+    if (orientation === 'H') {
+      return (
+        (entrySide === 'below' && exitSide === 'above') ||
+        (entrySide === 'above' && exitSide === 'below')
+      );
+    }
+    return (
+      (entrySide === 'left' && exitSide === 'right') ||
+      (entrySide === 'right' && exitSide === 'left')
+    );
+  }
+
+  _isRectNearGap(rect, gapRect, margin = GATE_THICKNESS * 2) {
+    if (!rect || !gapRect) return false;
+    const expanded = {
+      left: gapRect.x - margin,
+      right: gapRect.x + gapRect.w + margin,
+      top: gapRect.y - margin,
+      bottom: gapRect.y + gapRect.h + margin
+    };
+    return !(
+      rect.right < expanded.left ||
+      rect.left > expanded.right ||
+      rect.bottom < expanded.top ||
+      rect.top > expanded.bottom
+    );
+  }
+
+  _updateGatePassage(prevRect, currRect) {
+    if (!this.hooks || typeof this.hooks.getGates !== 'function') return;
+    const gates = this.hooks.getGates();
+    if (!Array.isArray(gates) || gates.length === 0) return;
+
+    for (const gate of gates) {
+      if (!this._isGateSurface(gate)) continue;
+      const gapRect = this._getGateGapRect(gate);
+      if (!gapRect) continue;
+
+      const state = this._getGateState(gate);
+      const orientation = gate.gapInfo?.type === 'V' ? 'V' : 'H';
+      const prevSide = this._determineGateSide(prevRect, gapRect, orientation);
+      const currSide = this._determineGateSide(currRect, gapRect, orientation);
+      const currInside = currSide === 'inside';
+
+      if (state.started) {
+        if (state.pendingCollision) {
+          state.touched = true;
+          state.pendingCollision = false;
+        }
+        if (!currInside) {
+          const passed = this._isOppositeSide(state.entrySide, currSide, orientation);
+          if (passed && !state.touched) this._handleGateClear();
+
+          state.started = false;
+          state.entrySide = null;
+          state.touched = false;
+          state.pendingCollision = false;
+        }
+      } else {
+        if (currInside && prevSide !== 'inside') {
+          const entrySide = prevSide;
+          const validEntry = this._isValidEntrySide(entrySide, orientation);
+          state.started = true;
+          state.entrySide = entrySide;
+          state.touched = state.pendingCollision || !validEntry;
+          state.pendingCollision = false;
+        } else if (!currInside && state.pendingCollision && !this._isRectNearGap(currRect, gapRect)) {
+          state.pendingCollision = false;
+        }
+      }
+    }
+  }
+
+  _handleGateClear() {
+    if (!this.hooks || !this.hooks.hearts || typeof this.hooks.hearts.gain !== 'function') return;
+    this.hooks.hearts.gain(1);
   }
 
   _updateVelocityStretch() {
@@ -433,6 +569,7 @@ export class Sprite {
       this.vx = 0;
       this.impactSquash = Math.max(this.impactSquash, 0.6);
       blockedHorizontally = true;
+      this._markGateCollision(activeSideCollision.surface);
     }
 
     if (ceilingCandidate) {
@@ -440,10 +577,12 @@ export class Sprite {
       if (this.vy < 0) this.vy = 0;
       this.gliding = false;
       this.impactSquash = 1.8 * 0.3;
+      this._markGateCollision(ceilingCandidate.surface);
     }
 
     if (landingCandidate) {
       const surface = landingCandidate.surface;
+      this._markGateCollision(surface);
       if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
         this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
         this.vy = RIDE_BOUNCE_VY;
@@ -491,6 +630,15 @@ export class Sprite {
       this.vy = 0;
       this.gliding = false;
     }
+
+    const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
+    const currRect = {
+      left: this.x - hs,
+      right: this.x + hs,
+      top: this.y - hs,
+      bottom: this.y + hs
+    };
+    this._updateGatePassage(prevRect, currRect);
 
     if (wasOnGround && !this.onGround) this.fallStartY = this.y;
     this._applyFinalScale();
