@@ -214,10 +214,7 @@ function loop() {
   game.lastTime = t;
 
   if (!showSettings) {
-    game.sprite.update(dt);
-    ensureGatesForCurrentHeight();
-    ensurePreloadedCollectibles();
-
+    // Update moving platforms and gates first so sprite collisions use latest positions
     updateRides(game.rides, dt);
     updateGates(game.gates, dt);
     for (const c of collectibles) c.update(dt, game, gameStats);
@@ -225,10 +222,15 @@ function loop() {
     for (let i = collectibles.length - 1; i >= 0; i--) {
       if (!collectibles[i].active) collectibles.splice(i, 1);
     }
+    // Merge and prune before sprite update to ensure stable platforms
+    while (mergeCollidingRides(game.rides, canvasWidth)) {}
     pruneInactiveRides(game.rides);
     pruneInactiveGates(game.gates);
 
-    while (mergeCollidingRides(game.rides, canvasWidth)) {}
+    // Now update the sprite so it rides the latest platform positions
+    game.sprite.update(dt);
+    ensureGatesForCurrentHeight();
+    ensurePreloadedCollectibles();
 
     game.energyBar.update(dt);
     updateCamera();

@@ -8,7 +8,9 @@ import {
   RIDE_MAX_WIDTH,
   RIDE_WEIGHT_SHIFT_MIN,
   RIDE_WEIGHT_SHIFT_MAX,
-  RIDE_WEIGHT_RETURN_DURATION
+  RIDE_SPRING_STIFFNESS,
+  RIDE_SPRING_DAMPING,
+  RIDE_IMPACT_TO_DROP
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
 
@@ -28,9 +30,7 @@ export class Ride {
     this.originalSpeed = speed;
 
     this.weightOffset = 0;
-    this.weightDrop = 0;
-    this.weightReturnTime = 0;
-    this.weightReturning = false;
+    this.weightVel = 0;
     this._applyWeightOffset();
   }
 
@@ -77,17 +77,15 @@ export class Ride {
     };
   }
 
-  applyWeightShift() {
+  applyWeightShift(impactVy = 0) {
     const minDrop = RIDE_WEIGHT_SHIFT_MIN;
     const maxDrop = RIDE_WEIGHT_SHIFT_MAX;
-    const span = Math.max(0, maxDrop - minDrop);
-    const drop = span > 0 ? minDrop + Math.random() * span : minDrop;
+    const extraFromImpact = clamp(impactVy * RIDE_IMPACT_TO_DROP, 0, Math.max(0, maxDrop - minDrop));
+    const drop = clamp(minDrop + extraFromImpact, minDrop, maxDrop);
 
-    const newDrop = Math.max(drop, this.weightOffset, this.weightDrop);
-    this.weightDrop = newDrop;
-    this.weightOffset = newDrop;
-    this.weightReturnTime = 0;
-    this.weightReturning = true;
+    if (drop > this.weightOffset) this.weightOffset = drop;
+    // Nudge upward so it rebounds smoothly without getting stuck at the bottom
+    if (this.weightVel > -40) this.weightVel = -40;
     this._applyWeightOffset();
   }
 
@@ -97,20 +95,18 @@ export class Ride {
       return;
     }
 
-    if (this.weightReturning) {
-      const duration = Math.max(0.001, RIDE_WEIGHT_RETURN_DURATION);
-      this.weightReturnTime += dt;
+    // Damped spring toward baseY (offset -> 0)
+    const k = RIDE_SPRING_STIFFNESS; // stiffness
+    const c = RIDE_SPRING_DAMPING;   // damping
+    const displacement = this.weightOffset;
+    const acceleration = -k * displacement - c * this.weightVel;
+    this.weightVel += acceleration * dt; // semi-implicit Euler
+    this.weightOffset += this.weightVel * dt;
 
-      const t = clamp(this.weightReturnTime / duration, 0, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      this.weightOffset = this.weightDrop * (1 - eased);
-
-      if (t >= 1) {
-        this.weightOffset = 0;
-        this.weightDrop = 0;
-        this.weightReturnTime = 0;
-        this.weightReturning = false;
-      }
+    // Snap to rest when very close to avoid jitter
+    if (Math.abs(this.weightOffset) < 0.001 && Math.abs(this.weightVel) < 0.001) {
+      this.weightOffset = 0;
+      this.weightVel = 0;
     }
 
     this._applyWeightOffset();

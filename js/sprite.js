@@ -448,7 +448,7 @@ export class Sprite {
           (surface !== previousPlatform || !wasOnGround);
 
         if (shouldShiftRide) {
-          surface.applyWeightShift();
+          surface.applyWeightShift(this.vy);
           if (typeof surface.getRect === 'function') {
             const updatedRect = surface.getRect();
             if (updatedRect && typeof updatedRect.y === 'number') {
