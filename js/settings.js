@@ -47,8 +47,8 @@ export function drawSettings(onPlay) {
   overlay.style.justifyContent = 'center';
 
   const panel = document.createElement('div');
-  panel.style.background = '#2a2a2a';
-  panel.style.border = '1px solid #555';
+  panel.style.background = '#000';
+  panel.style.border = '1px solid #fff';
   panel.style.width = '80%';
   panel.style.maxWidth = '400px';
   panel.style.height = '80%';

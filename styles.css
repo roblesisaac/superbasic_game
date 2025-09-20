@@ -21,7 +21,12 @@ canvas {
   height: auto;
   background: var(--bg);
   /* border: 4px solid var(--ink); */
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  /* image-rendering: pixelated; */
+  /* image-rendering: crisp-edges; */
 }
 .hud { margin-top: 8px; opacity: .9; }
+
+textarea {
+  background-color: #000;
+  color: #fff;
+}
