@@ -3,12 +3,14 @@ import {
     PIXELS_PER_FOOT,
     DEFAULT_BUDGET_DATA
   } from './constants.js';
-  import { Collectible } from './collectibles.js';
+import { Collectible } from './collectibles.js';
+import { enemies, createEnemiesForGate } from './enemies.js';
   import { groundY, canvasWidth } from './globals.js';
   
   export let budgetData = [...DEFAULT_BUDGET_DATA];
   export let budgetSections = [];
   export let collectibles = [];
+// enemies are managed in enemies.js and exported array is referenced there
   export let gameStats = {};
   export let preloadedSections = new Set();
   export let createdGates = new Set();
@@ -80,7 +82,7 @@ import {
         budgetSections.push({
           title, amount, itemCount: itemsInThis,
           startFeet: currentFeet, endFeet: currentFeet + 100,
-          spawned: 0
+          spawned: 0 // Tracks combined spawns (collectibles + enemies)
         });
         currentFeet += 100;
       }
@@ -103,7 +105,8 @@ import {
     const sectionHeight = 100 * PIXELS_PER_FOOT;
     const type = section.amount > 0 ? 'income' : 'expense';
   
-    let itemsToPlace = section.itemCount;
+    // Respect combined per-section limit (collectibles + enemies)
+    let itemsToPlace = Math.max(0, section.itemCount - (section.spawned || 0));
     let currentY = sectionBaseY - 50;
   
     while (itemsToPlace > 0) {
@@ -112,6 +115,7 @@ import {
       const group = createFormationGroup(groupBaseX, currentY, groupSize, section.title, section.amount, type);
       collectibles.push(...group);
       itemsToPlace -= groupSize;
+      section.spawned = (section.spawned || 0) + groupSize;
       currentY -= GROUP_SPACING;
       if (currentY < sectionBaseY - sectionHeight + 100) currentY = sectionBaseY - 50;
     }

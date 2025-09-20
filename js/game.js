@@ -20,6 +20,7 @@ import { Sprite } from './sprite.js';
 import { EnergyBar, Hearts } from './hud.js';
 import { InputHandler } from './input.js';
 import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from './settings.js';
+import { enemies, updateEnemies, pruneInactiveEnemies, drawEnemies, createEnemiesForGate, resetEnemies } from './enemies.js';
 import {
   budgetData, budgetSections, collectibles, gameStats,
   calculateBudgetSections, preloadSectionCollectibles,
@@ -46,6 +47,8 @@ function ensureGatesForCurrentHeight() {
 
   for (const gate of newGates) {
     game.gates.push(gate);
+    // Spawn enemies for this gate respecting per-section cap
+    createEnemiesForGate(gate);
   }
 }
 
@@ -135,6 +138,7 @@ function triggerGameOver() {
 function startGame() {
   resetBudgetContainers();
   calculateBudgetSections();
+  resetEnemies();
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
   game.rides = [];
@@ -175,6 +179,7 @@ export function resetGame() {
 
   resetBudgetContainers();
   calculateBudgetSections();
+  resetEnemies();
 
   game.rides = [];
   game.gates = [];
@@ -220,6 +225,7 @@ function loop() {
 
     updateRides(game.rides, dt);
     updateGates(game.gates, dt);
+    updateEnemies(enemies, dt, game);
     for (const c of collectibles) c.update(dt, game, gameStats);
 
     for (let i = collectibles.length - 1; i >= 0; i--) {
@@ -227,6 +233,7 @@ function loop() {
     }
     pruneInactiveRides(game.rides);
     pruneInactiveGates(game.gates);
+    pruneInactiveEnemies(enemies);
 
     while (mergeCollidingRides(game.rides, canvasWidth)) {}
 
@@ -254,6 +261,7 @@ function drawFrame() {
   drawGates(ctx, game.gates, cameraY);
 
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
+  drawEnemies(ctx, enemies, cameraY);
 
   if (!showSettings) game.sprite.draw(ctx, cameraY);
 
