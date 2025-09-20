@@ -49,6 +49,10 @@ export class Sprite {
 
     // hooks to access game state without circular imports
     this.hooks = hooks; // { energyBar, hearts, onGameOver, getRides:()=>[], getGates:()=>[] }
+
+    this.prevX = x;
+    this.prevY = y;
+    this.prevVy = 0;
   }
 
   startCharging() {
@@ -263,6 +267,10 @@ export class Sprite {
   }
 
   update(dt) {
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.prevVy = this.vy;
+
     this._updateVelocityStretch();
     this._updateImpactSquash(dt);
     this._updateFollowThrough(dt);
