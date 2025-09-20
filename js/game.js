@@ -21,10 +21,11 @@ import { EnergyBar, Hearts } from './hud.js';
 import { InputHandler } from './input.js';
 import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from './settings.js';
 import {
-  budgetData, budgetSections, collectibles, gameStats,
+  budgetData, budgetSections, collectibles, enemies, gameStats,
   calculateBudgetSections, preloadSectionCollectibles,
   preloadedSections, createdGates, resetBudgetContainers
 } from './budget.js';
+import { updateEnemies, pruneInactiveEnemies, drawEnemies } from './enemies.js';
 
 let currentSection = 0;
 let gateGenerator = null;
@@ -32,7 +33,7 @@ let gateGenerator = null;
 function ensurePreloadedCollectibles() {
   const currentFeet = Math.max(0, Math.floor((groundY - game.sprite.y) / PIXELS_PER_FOOT));
   const currentSectionIndex = Math.floor(currentFeet / 100);
-  for (let i = 0; i < 3; i++) preloadSectionCollectibles(currentSectionIndex + i);
+  for (let i = 0; i < 3; i++) preloadSectionCollectibles(currentSectionIndex + i, game.gates);
 }
 
 function ensureGatesForCurrentHeight() {
@@ -221,10 +222,12 @@ function loop() {
     updateRides(game.rides, dt);
     updateGates(game.gates, dt);
     for (const c of collectibles) c.update(dt, game, gameStats);
+    updateEnemies(enemies, dt, game);
 
     for (let i = collectibles.length - 1; i >= 0; i--) {
       if (!collectibles[i].active) collectibles.splice(i, 1);
     }
+    pruneInactiveEnemies(enemies);
     pruneInactiveRides(game.rides);
     pruneInactiveGates(game.gates);
 
@@ -254,6 +257,7 @@ function drawFrame() {
   drawGates(ctx, game.gates, cameraY);
 
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
+  drawEnemies(ctx, enemies, cameraY, canvasHeight);
 
   if (!showSettings) game.sprite.draw(ctx, cameraY);
 
