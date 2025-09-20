@@ -78,9 +78,13 @@ import {
       for (let i = 0; i < sectionsNeeded; i++) {
         const itemsInThis = Math.min(MAX_ITEMS_PER_SECTION, itemCount - (i * MAX_ITEMS_PER_SECTION));
         budgetSections.push({
-          title, amount, itemCount: itemsInThis,
-          startFeet: currentFeet, endFeet: currentFeet + 100,
-          spawned: 0
+          title,
+          amount,
+          itemCount: itemsInThis,
+          startFeet: currentFeet,
+          endFeet: currentFeet + 100,
+          spawned: 0,
+          pendingEnemies: 0
         });
         currentFeet += 100;
       }
@@ -102,19 +106,35 @@ import {
     const sectionBaseY = groundY - section.startFeet * PIXELS_PER_FOOT;
     const sectionHeight = 100 * PIXELS_PER_FOOT;
     const type = section.amount > 0 ? 'income' : 'expense';
-  
-    let itemsToPlace = section.itemCount;
-    let currentY = sectionBaseY - 50;
-  
-    while (itemsToPlace > 0) {
-      const groupSize = Math.min(itemsToPlace, Math.floor(Math.random() * 4) + 3);
-      const groupBaseX = Math.random() * (canvasWidth - 100) + 50;
-      const group = createFormationGroup(groupBaseX, currentY, groupSize, section.title, section.amount, type);
-      collectibles.push(...group);
-      itemsToPlace -= groupSize;
-      currentY -= GROUP_SPACING;
-      if (currentY < sectionBaseY - sectionHeight + 100) currentY = sectionBaseY - 50;
+
+    if (type === 'income') {
+      let itemsToPlace = Math.max(0, Math.min(section.itemCount - section.spawned, section.itemCount));
+      let currentY = sectionBaseY - 50;
+
+      while (itemsToPlace > 0) {
+        const groupSize = Math.min(itemsToPlace, Math.floor(Math.random() * 4) + 3);
+        const groupBaseX = Math.random() * (canvasWidth - 100) + 50;
+        const group = createFormationGroup(groupBaseX, currentY, groupSize, section.title, section.amount, type);
+        collectibles.push(...group);
+        section.spawned += group.length;
+        itemsToPlace -= groupSize;
+        currentY -= GROUP_SPACING;
+        if (currentY < sectionBaseY - sectionHeight + 100) currentY = sectionBaseY - 50;
+      }
+    } else {
+      section.pendingEnemies = Math.max(0, section.itemCount - section.spawned);
     }
     preloadedSections.add(sectionIndex);
   }
+
+  export function getSectionIndexForY(y) {
+    if (!budgetSections.length) return -1;
+    const feet = Math.max(0, Math.floor((groundY - y) / PIXELS_PER_FOOT));
+    for (let i = 0; i < budgetSections.length; i++) {
+      const section = budgetSections[i];
+      if (feet >= section.startFeet && feet < section.endFeet) return i;
+    }
+    return -1;
+  }
+
   
