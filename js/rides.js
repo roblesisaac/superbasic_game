@@ -16,6 +16,7 @@ import {
   RIDE_VELOCITY_IMPACT_FACTOR
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
+import { asciiArtEnabled } from './settings.js';
 
 export class Ride {
   constructor({ x, y, width, speed, direction, canvasWidth }) {
@@ -72,8 +73,18 @@ export class Ride {
     let color = this.originalSpeed >= RIDE_SPEED_THRESHOLD ? '#ff6b35' : '#4ecdc4';
     if (this.floating) color = '#9b59b6';
 
-    ctx.fillStyle = color;
-    ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+    if (asciiArtEnabled) {
+      ctx.fillStyle = color;
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const count = Math.max(1, Math.floor(this.width / 8));
+      const ascii = '='.repeat(count);
+      ctx.fillText(ascii, this.x, this.y - cameraY);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+    }
   }
 
   getRect() {

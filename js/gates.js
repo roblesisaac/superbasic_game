@@ -6,6 +6,7 @@ import {
   USE_RANDOM_GATES
 } from './constants.js';
 import { ControlledGateGenerator } from './controlledGate.js';
+import { asciiArtEnabled } from './settings.js';
 
 export class Gate {
   constructor({ y, canvasWidth, gapWidth, segmentCount }) {
@@ -147,20 +148,41 @@ export class Gate {
   draw(ctx, cameraY) {
     if (!this.active) return;
 
-    ctx.fillStyle = '#5aa2ff';
-    for (const rect of this.getRects()) {
-      if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
-    }
+    if (asciiArtEnabled) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const rect of this.getRects()) {
+        if (rect.w > 0 && rect.h > 0) {
+          if (rect.w > rect.h) {
+            const count = Math.max(1, Math.floor(rect.w / 10));
+            const ascii = ':'.repeat(count);
+            ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+          } else {
+            const count = Math.max(1, Math.floor(rect.h / 16));
+            for (let i = 0; i < count; i++) {
+              ctx.fillText('::', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+            }
+          }
+        }
+      }
+    } else {
+      ctx.fillStyle = '#5aa2ff';
+      for (const rect of this.getRects()) {
+        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+      }
 
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    if (this.gapInfo?.type === 'H') {
-      const gapY = this.gapY;
-      ctx.fillRect(this.gapX, gapY - cameraY, 1, GATE_THICKNESS);
-      ctx.fillRect(this.gapX + this.gapWidth, gapY - cameraY, 1, GATE_THICKNESS);
-    } else if (this.gapInfo?.type === 'V') {
-      const gapX = this.gapX;
-      ctx.fillRect(gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-      ctx.fillRect(gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      if (this.gapInfo?.type === 'H') {
+        const gapY = this.gapY;
+        ctx.fillRect(this.gapX, gapY - cameraY, 1, GATE_THICKNESS);
+        ctx.fillRect(this.gapX + this.gapWidth, gapY - cameraY, 1, GATE_THICKNESS);
+      } else if (this.gapInfo?.type === 'V') {
+        const gapX = this.gapX;
+        ctx.fillRect(gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
+        ctx.fillRect(gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+      }
     }
   }
 }

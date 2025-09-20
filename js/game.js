@@ -258,11 +258,16 @@ function drawFrame() {
   if (!showSettings) game.sprite.draw(ctx, cameraY);
 
   drawHUD();
-  drawSettings(resetGame);
+  drawSettings();
 }
 
 // kick off
 startGame();
+
+// Restart game when budget changed via settings
+window.addEventListener('budget-changed', () => {
+  resetGame();
+});
 
 // Service Worker update alert
 if (navigator.serviceWorker) {
