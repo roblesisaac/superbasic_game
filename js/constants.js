@@ -69,7 +69,7 @@ export const GATE_GAP_WIDTH = 55;
 
 // Budget game data
 export const TOTAL_ITEMS = 100;
-export const MAX_ITEMS_PER_SECTION = 50;
+export const MAX_ITEMS_PER_SECTION = 100;
 export const ITEM_SIZE = 12;
 export const GROUP_SPACING = 60;
 export const ITEM_SPACING = 16;
