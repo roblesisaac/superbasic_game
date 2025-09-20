@@ -1,22 +1,25 @@
 import {
     TOTAL_ITEMS, MAX_ITEMS_PER_SECTION, GROUP_SPACING, ITEM_SPACING,
-    PIXELS_PER_FOOT,
+    PIXELS_PER_FOOT, ENEMY_SPAWN_CHANCE,
     DEFAULT_BUDGET_DATA
   } from './constants.js';
   import { Collectible } from './collectibles.js';
+  import { Enemy } from './enemies.js';
   import { groundY, canvasWidth } from './globals.js';
   
   export let budgetData = [...DEFAULT_BUDGET_DATA];
   export let budgetSections = [];
   export let collectibles = [];
+  export let enemies = [];
   export let gameStats = {};
   export let preloadedSections = new Set();
   export let createdGates = new Set();
   
   export function resetBudgetContainers() {
-    collectibles = [];
-    preloadedSections = new Set();
-    createdGates = new Set();
+    collectibles.length = 0;
+    enemies.length = 0;
+    preloadedSections.clear();
+    createdGates.clear();
   }
   
   // formations
@@ -94,18 +97,19 @@ import {
     return positions.map(pos => new Collectible(baseX + pos.x, baseY + pos.y, value, title, type));
   }
   
-  export function preloadSectionCollectibles(sectionIndex) {
+  export function preloadSectionCollectibles(sectionIndex, gates = []) {
     if (preloadedSections.has(sectionIndex)) return;
     const section = budgetSections[sectionIndex];
     if (!section) return;
-  
+
     const sectionBaseY = groundY - section.startFeet * PIXELS_PER_FOOT;
     const sectionHeight = 100 * PIXELS_PER_FOOT;
     const type = section.amount > 0 ? 'income' : 'expense';
-  
+
     let itemsToPlace = section.itemCount;
     let currentY = sectionBaseY - 50;
-  
+
+    // Spawn collectibles
     while (itemsToPlace > 0) {
       const groupSize = Math.min(itemsToPlace, Math.floor(Math.random() * 4) + 3);
       const groupBaseX = Math.random() * (canvasWidth - 100) + 50;
@@ -115,6 +119,47 @@ import {
       currentY -= GROUP_SPACING;
       if (currentY < sectionBaseY - sectionHeight + 100) currentY = sectionBaseY - 50;
     }
+
+    // Spawn enemies on gates for expense sections
+    if (type === 'expense') {
+      spawnEnemiesInSection(sectionIndex, gates);
+    }
+
     preloadedSections.add(sectionIndex);
+  }
+
+  function spawnEnemiesInSection(sectionIndex, gates) {
+    const section = budgetSections[sectionIndex];
+    if (!section || !gates) return;
+
+    const sectionStartY = groundY - section.startFeet * PIXELS_PER_FOOT;
+    const sectionEndY = groundY - section.endFeet * PIXELS_PER_FOOT;
+
+    // Find gates within this section
+    const sectionGates = gates.filter(gate => 
+      gate.y <= sectionStartY && gate.y >= sectionEndY
+    );
+
+    // Spawn enemies on gates in this section with some randomness
+    for (const gate of sectionGates) {
+      if (Math.random() < ENEMY_SPAWN_CHANCE) {
+        const enemyCount = Math.floor(Math.random() * 2) + 1;
+        
+        for (let i = 0; i < enemyCount; i++) {
+          const rects = gate.getRects();
+          if (rects.length > 0) {
+            // Choose a random platform segment
+            const rect = rects[Math.floor(Math.random() * rects.length)];
+            
+            // Position enemy on the platform
+            const enemyX = rect.x + Math.random() * rect.w;
+            const enemyY = rect.y + rect.h / 2;
+            
+            const enemy = new Enemy(enemyX, enemyY, gate);
+            enemies.push(enemy);
+          }
+        }
+      }
+    }
   }
   

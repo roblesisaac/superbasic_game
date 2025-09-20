@@ -69,10 +69,15 @@ export const GATE_GAP_WIDTH = 55;
 
 // Budget game data
 export const TOTAL_ITEMS = 100;
-export const MAX_ITEMS_PER_SECTION = 50;
+export const MAX_ITEMS_PER_SECTION = 100; // Changed from 50 to 100 as requested
 export const ITEM_SIZE = 12;
 export const GROUP_SPACING = 60;
 export const ITEM_SPACING = 16;
+
+// Enemy constants
+export const ENEMY_SIZE = 16;
+export const ENEMY_SPEED = 80;
+export const ENEMY_SPAWN_CHANCE = 0.6; // 60% chance to spawn enemies in expense sections
 
 export const DEFAULT_BUDGET_DATA = [
   ["Salary", 1000],
