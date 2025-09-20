@@ -448,13 +448,9 @@ export class Sprite {
           (surface !== previousPlatform || !wasOnGround);
 
         if (shouldShiftRide) {
-          surface.applyWeightShift();
-          if (typeof surface.getRect === 'function') {
-            const updatedRect = surface.getRect();
-            if (updatedRect && typeof updatedRect.y === 'number') {
-              landingTop = updatedRect.y;
-            }
-          }
+          surface.applyWeightShift(this.vy);
+          // Don't reposition sprite during landing animation - only use base position
+          // The visual effect happens in the ride's rendering, not sprite positioning
         }
         this.y = landingTop - hs;
         this.vy = 0;
@@ -494,7 +490,16 @@ export class Sprite {
 
   draw(ctx, cameraY) {
     const px = this.x;
-    const py = this.y - cameraY;
+    let platformVisualYOffset = 0;
+    if (this.onPlatform && this.platformSurface) {
+      const surface = this.platformSurface;
+      if (typeof surface.getVisualYOffset === 'function') {
+        platformVisualYOffset = surface.getVisualYOffset();
+      } else if (typeof surface.y === 'number' && typeof surface.baseY === 'number') {
+        platformVisualYOffset = surface.y - surface.baseY;
+      }
+    }
+    const py = this.y - cameraY + platformVisualYOffset;
     const size = SPRITE_SIZE;
 
     // --- Draw sprite (with mirroring and scaling) ---

@@ -8,7 +8,12 @@ import {
   RIDE_MAX_WIDTH,
   RIDE_WEIGHT_SHIFT_MIN,
   RIDE_WEIGHT_SHIFT_MAX,
-  RIDE_WEIGHT_RETURN_DURATION
+  RIDE_IMPACT_PHASE_DURATION,
+  RIDE_ABSORPTION_PHASE_DURATION,
+  RIDE_RECOVERY_PHASE_DURATION,
+  RIDE_SETTLE_PHASE_DURATION,
+  RIDE_RECOVERY_OVERSHOOT,
+  RIDE_VELOCITY_IMPACT_FACTOR
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
 
@@ -27,10 +32,13 @@ export class Ride {
     this.floatTime = 0;
     this.originalSpeed = speed;
 
+    // Hoverboard landing physics state
     this.weightOffset = 0;
-    this.weightDrop = 0;
-    this.weightReturnTime = 0;
-    this.weightReturning = false;
+    this.landingPhase = 'idle'; // 'impact', 'absorption', 'recovery', 'settle'
+    this.phaseTime = 0;
+    this.impactIntensity = 0;
+    this.targetDip = 0;
+    this.landingVelocity = 0; // Store sprite's landing velocity for impact calculation
     this._applyWeightOffset();
   }
 
@@ -69,25 +77,33 @@ export class Ride {
   }
 
   getRect() {
+    // Use baseY for collision detection to prevent bouncing during landing animation
+    // Visual position (this.y) includes weightOffset, but collision should use stable position
     return {
       x: this.x,
-      y: this.y - RIDE_THICKNESS / 2,
+      y: this.baseY - RIDE_THICKNESS / 2,
       w: this.width,
       h: RIDE_THICKNESS
     };
   }
 
-  applyWeightShift() {
-    const minDrop = RIDE_WEIGHT_SHIFT_MIN;
-    const maxDrop = RIDE_WEIGHT_SHIFT_MAX;
-    const span = Math.max(0, maxDrop - minDrop);
-    const drop = span > 0 ? minDrop + Math.random() * span : minDrop;
+  getVisualYOffset() {
+    // Current visual offset from base position (used for drawing-only bobbing)
+    return this.y - this.baseY;
+  }
 
-    const newDrop = Math.max(drop, this.weightOffset, this.weightDrop);
-    this.weightDrop = newDrop;
-    this.weightOffset = newDrop;
-    this.weightReturnTime = 0;
-    this.weightReturning = true;
+  applyWeightShift(spriteVelocity = 0) {
+    // Calculate impact intensity based on sprite's landing velocity
+    const velocityImpact = Math.abs(spriteVelocity) * RIDE_VELOCITY_IMPACT_FACTOR;
+    const baseIntensity = RIDE_WEIGHT_SHIFT_MIN + Math.random() * (RIDE_WEIGHT_SHIFT_MAX - RIDE_WEIGHT_SHIFT_MIN);
+    
+    this.impactIntensity = Math.min(RIDE_WEIGHT_SHIFT_MAX, baseIntensity + velocityImpact);
+    this.targetDip = this.impactIntensity;
+    this.landingVelocity = spriteVelocity;
+    
+    // Start the impact phase
+    this.landingPhase = 'impact';
+    this.phaseTime = 0;
     this._applyWeightOffset();
   }
 
@@ -97,23 +113,96 @@ export class Ride {
       return;
     }
 
-    if (this.weightReturning) {
-      const duration = Math.max(0.001, RIDE_WEIGHT_RETURN_DURATION);
-      this.weightReturnTime += dt;
+    if (this.landingPhase === 'idle') {
+      this._applyWeightOffset();
+      return;
+    }
 
-      const t = clamp(this.weightReturnTime / duration, 0, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      this.weightOffset = this.weightDrop * (1 - eased);
+    this.phaseTime += dt;
 
-      if (t >= 1) {
-        this.weightOffset = 0;
-        this.weightDrop = 0;
-        this.weightReturnTime = 0;
-        this.weightReturning = false;
-      }
+    switch (this.landingPhase) {
+      case 'impact':
+        this._updateImpactPhase();
+        break;
+      case 'absorption':
+        this._updateAbsorptionPhase();
+        break;
+      case 'recovery':
+        this._updateRecoveryPhase();
+        break;
+      case 'settle':
+        this._updateSettlePhase();
+        break;
     }
 
     this._applyWeightOffset();
+  }
+
+  _updateImpactPhase() {
+    const duration = RIDE_IMPACT_PHASE_DURATION;
+    const t = clamp(this.phaseTime / duration, 0, 1);
+    
+    // Quick, sharp dip with ease-out
+    const eased = 1 - Math.pow(1 - t, 2);
+    this.weightOffset = this.targetDip * eased;
+
+    if (t >= 1) {
+      this.landingPhase = 'absorption';
+      this.phaseTime = 0;
+    }
+  }
+
+  _updateAbsorptionPhase() {
+    const duration = RIDE_ABSORPTION_PHASE_DURATION;
+    const t = clamp(this.phaseTime / duration, 0, 1);
+    
+    // Gradual weight absorption with slight settling
+    const settling = 1 + (0.08 * (1 - Math.cos(t * Math.PI * 2)) * (1 - t)); // Gentle settling oscillation
+    this.weightOffset = this.targetDip * settling;
+
+    if (t >= 1) {
+      this.landingPhase = 'recovery';
+      this.phaseTime = 0;
+    }
+  }
+
+  _updateRecoveryPhase() {
+    const duration = RIDE_RECOVERY_PHASE_DURATION;
+    const t = clamp(this.phaseTime / duration, 0, 1);
+    
+    // Natural bounce-back with overshoot - hoverboard compensates for the weight
+    const eased = 1 - Math.pow(1 - t, 1.8); // Smooth ease out
+    const overshootAmount = this.targetDip * RIDE_RECOVERY_OVERSHOOT;
+    
+    // Transition from full dip to slight overshoot above original position
+    this.weightOffset = this.targetDip * (1 - eased) - overshootAmount * eased;
+
+    if (t >= 1) {
+      this.landingPhase = 'settle';
+      this.phaseTime = 0;
+    }
+  }
+
+  _updateSettlePhase() {
+    const duration = RIDE_SETTLE_PHASE_DURATION;
+    const t = clamp(this.phaseTime / duration, 0, 1);
+    
+    // Gentle damped oscillation settling to natural hover position
+    const damping = Math.exp(-4 * t); // Exponential decay
+    const frequency = 3; // Number of oscillations
+    const oscillation = Math.cos(t * Math.PI * frequency) * damping;
+    const startingOffset = -this.targetDip * RIDE_RECOVERY_OVERSHOOT;
+    
+    // Gradually settle from the overshoot position to neutral
+    this.weightOffset = startingOffset * oscillation * (1 - t * t); // Quadratic fade
+
+    if (t >= 1) {
+      this.weightOffset = 0;
+      this.landingPhase = 'idle';
+      this.phaseTime = 0;
+      this.impactIntensity = 0;
+      this.targetDip = 0;
+    }
   }
 
   _applyWeightOffset() {
