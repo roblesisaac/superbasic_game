@@ -3,7 +3,6 @@
   "outputDirectory": ".",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
-  "functions": {},
   "headers": [
     {
       "source": "/service-worker.js",
