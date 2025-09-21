@@ -245,7 +245,7 @@ export function resetGame() {
 }
 
 function loop() {
-  if (!game.running) { drawFrame(0); return; }
+  if (!game.running) { drawFrame(); return; }
   const t = now();
   const dt = Math.min(0.04, (t - game.lastTime) / 1000);
   game.lastTime = t;
@@ -273,7 +273,7 @@ function loop() {
     updateCamera();
   }
 
-  drawFrame(dt);
+  drawFrame();
   if (game.running) requestAnimationFrame(loop);
 }
 

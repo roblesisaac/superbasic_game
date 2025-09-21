@@ -3,13 +3,45 @@ import {
   PIXELS_PER_FOOT,
   GATE_EVERY_FEET,
   GATE_GAP_WIDTH,
-  USE_RANDOM_GATES
+  USE_RANDOM_GATES,
 } from './constants.js';
-import { ControlledGateGenerator } from './controlledGate.js';
+import { ControlledGateGenerator, type CollisionRect } from './controlledGate.js';
 import { asciiArtEnabled } from './settings.js';
 
+type GateRect = {
+  type: 'H' | 'V';
+  index: number | string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+type GateGapInfo = { type: 'H' | 'V'; index: number | string } | null;
+
 export class Gate {
-  constructor({ y, canvasWidth, gapWidth, segmentCount }) {
+  y: number;
+  canvasWidth: number;
+  gapWidth: number;
+  segmentCount: number;
+  active: boolean;
+  floating: boolean;
+  speed: number;
+  direction: number;
+  originalSpeed: number;
+  horizontalSegments: number[];
+  verticalOffsets: number[];
+  rects: GateRect[];
+  gapInfo: GateGapInfo;
+  gapX: number;
+  gapY: number;
+
+  constructor({ y, canvasWidth, gapWidth, segmentCount }: {
+    y: number;
+    canvasWidth: number;
+    gapWidth: number;
+    segmentCount: number;
+  }) {
     this.y = y;
     this.canvasWidth = canvasWidth;
     this.gapWidth = gapWidth;
@@ -68,7 +100,7 @@ export class Gate {
 
     for (let i = 0; i < segments; i++) {
       const width = this.horizontalSegments[i];
-      const horizontalRect = {
+      const horizontalRect: GateRect = {
         type: 'H',
         index: i,
         x: cursorX,
@@ -81,7 +113,7 @@ export class Gate {
       if (i < segments - 1) {
         const nextY = currentY + this.verticalOffsets[i];
         const top = Math.min(currentY, nextY) - thickness / 2;
-        const verticalRect = {
+        const verticalRect: GateRect = {
           type: 'V',
           index: i,
           x: cursorX + width - thickness / 2,
@@ -121,8 +153,8 @@ export class Gate {
     }
   }
 
-  getRects() {
-    const output = [];
+  getRects(): CollisionRect[] {
+    const output: CollisionRect[] = [];
 
     for (const rect of this.rects) {
       if (this.gapInfo && rect.type === this.gapInfo.type && rect.index === this.gapInfo.index) {
@@ -145,7 +177,7 @@ export class Gate {
     return output;
   }
 
-  draw(ctx, cameraY) {
+  draw(ctx: CanvasRenderingContext2D, cameraY: number) {
     if (!this.active) return;
 
     if (asciiArtEnabled) {
@@ -188,7 +220,24 @@ export class Gate {
 }
 
 export class GateGenerator {
-  constructor({ canvasWidth, gapWidth = GATE_GAP_WIDTH, spacingFeet = GATE_EVERY_FEET, createdFeet = new Set() }) {
+  canvasWidth: number;
+  gapWidth: number;
+  spacingFeet: number;
+  createdFeet: Set<number>;
+  lastSegmentCount: number;
+  controlledGenerator: ControlledGateGenerator | null;
+
+  constructor({
+    canvasWidth,
+    gapWidth = GATE_GAP_WIDTH,
+    spacingFeet = GATE_EVERY_FEET,
+    createdFeet = new Set<number>(),
+  }: {
+    canvasWidth: number;
+    gapWidth?: number;
+    spacingFeet?: number;
+    createdFeet?: Set<number>;
+  }) {
     this.canvasWidth = canvasWidth;
     this.gapWidth = gapWidth;
     this.spacingFeet = spacingFeet;
@@ -199,11 +248,11 @@ export class GateGenerator {
       : new ControlledGateGenerator({
           canvasWidth: this.canvasWidth,
           spacingFeet: this.spacingFeet,
-          createdFeet: this.createdFeet
+          createdFeet: this.createdFeet,
         });
   }
 
-  setCanvasWidth(width) {
+  setCanvasWidth(width: number) {
     this.canvasWidth = width;
     if (this.controlledGenerator) {
       this.controlledGenerator.setCanvasWidth(width);
@@ -217,7 +266,7 @@ export class GateGenerator {
     }
   }
 
-  ensureGates({ spriteY, groundY }) {
+  ensureGates({ spriteY, groundY }: { spriteY: number; groundY: number }): any[] {
     if (typeof spriteY !== 'number' || typeof groundY !== 'number') return [];
 
     if (!USE_RANDOM_GATES) {
@@ -225,7 +274,7 @@ export class GateGenerator {
         this.controlledGenerator = new ControlledGateGenerator({
           canvasWidth: this.canvasWidth,
           spacingFeet: this.spacingFeet,
-          createdFeet: this.createdFeet
+          createdFeet: this.createdFeet,
         });
       }
       return this.controlledGenerator.ensureGates({ spriteY, groundY });
@@ -236,7 +285,7 @@ export class GateGenerator {
     const baseFeet = Math.max(this.spacingFeet, index * this.spacingFeet);
     const nextFeet = (index + 1) * this.spacingFeet;
 
-    const gates = [];
+    const gates: Gate[] = [];
     for (const feet of [baseFeet, nextFeet]) {
       const gate = this._createGateAtFeet(feet, groundY);
       if (gate) gates.push(gate);
@@ -244,7 +293,7 @@ export class GateGenerator {
     return gates;
   }
 
-  _createGateAtFeet(feet, groundY) {
+  _createGateAtFeet(feet: number, groundY: number) {
     if (this.createdFeet.has(feet) || feet <= 0) return null;
 
     const y = groundY - feet * PIXELS_PER_FOOT;
@@ -252,7 +301,7 @@ export class GateGenerator {
       y,
       canvasWidth: this.canvasWidth,
       gapWidth: this.gapWidth,
-      segmentCount: this._chooseSegmentCount()
+      segmentCount: this._chooseSegmentCount(),
     });
     this.createdFeet.add(feet);
     return gate;

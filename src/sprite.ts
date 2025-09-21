@@ -19,8 +19,53 @@ spriteImg.src = SPRITE_SRC;
 let spriteLoaded = false;
 spriteImg.onload = () => { spriteLoaded = true; };
 
+type SpriteHooks = {
+  energyBar: any;
+  hearts: any;
+  onGameOver: () => void;
+  getRides: () => any[];
+  getGates: () => any[];
+};
+
+interface GatePassageState {
+  started: boolean;
+  entrySide: string | null;
+  touched: boolean;
+  pendingCollision: boolean;
+}
+
 export class Sprite {
-  constructor(x, y, hooks) {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  onGround: boolean;
+  onPlatform: boolean;
+  platformSurface: any;
+  charging: boolean;
+  chargeTime: number;
+  movementCharging: boolean;
+  movementChargeTime: number;
+  movementDirection: { x: number; y: number };
+  gliding: boolean;
+  stunned: boolean;
+  stunTime: number;
+  fallStartY: number;
+  scaleX: number;
+  scaleY: number;
+  stretchTimer: number;
+  impactSquash: number;
+  velocityScaleX: number;
+  velocityScaleY: number;
+  lastMovementDirection: { x: number; y: number };
+  facingLeft: boolean;
+  hooks: SpriteHooks;
+  gateStates: WeakMap<object, GatePassageState>;
+  prevX: number;
+  prevY: number;
+  prevVy: number;
+
+  constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
     this.vx = 0; this.vy = 0;
     this.onGround = true; this.onPlatform = false;

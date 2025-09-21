@@ -1,20 +1,38 @@
-import { ITEM_SIZE } from './constants.js';
-import { SPRITE_SIZE } from './constants.js';
-import { canvasHeight, cameraY } from './globals.js';
+import { ITEM_SIZE, SPRITE_SIZE } from './constants.js';
+import { canvasHeight, cameraY, type GameState } from './globals.js';
+
+export type CollectibleType = 'income' | 'expense';
+
+export interface BudgetStatsEntry {
+  target: number;
+  collected: number;
+  total: number;
+}
+
+export type GameStats = Record<string, BudgetStatsEntry>;
 
 export class Collectible {
-  constructor(x, y, value, title, type) {
+  x: number;
+  y: number;
+  value: number;
+  title: string;
+  type: CollectibleType;
+  active: boolean;
+  collected: boolean;
+  size: number;
+
+  constructor(x: number, y: number, value: number, title: string, type: CollectibleType) {
     this.x = x;
     this.y = y;
     this.value = value;
     this.title = title;
-    this.type = type; // 'income' | 'expense'
+    this.type = type;
     this.active = true;
     this.collected = false;
     this.size = ITEM_SIZE;
   }
 
-  update(dt, game, gameStats) {
+  update(dt: number, game: GameState, gameStats: GameStats) {
     if (this.active && !this.collected) {
       const dx = this.x - game.sprite.x;
       const dy = this.y - game.sprite.y;
@@ -33,11 +51,11 @@ export class Collectible {
     if (this.y > cameraY + canvasHeight + 200) this.active = false;
   }
 
-  draw(ctx, cameraY, canvasHeight) {
+  draw(ctx: CanvasRenderingContext2D, cameraYValue: number, canvasHeightValue: number) {
     if (!this.active) return;
     const screenX = this.x;
-    const screenY = this.y - cameraY;
-    if (screenY < -50 || screenY > canvasHeight + 50) return;
+    const screenY = this.y - cameraYValue;
+    if (screenY < -50 || screenY > canvasHeightValue + 50) return;
 
     ctx.save();
     ctx.translate(screenX, screenY);

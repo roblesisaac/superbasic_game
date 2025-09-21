@@ -18,13 +18,46 @@ import {
   RIDE_LAUNCH_RELEASE_DURATION,
   RIDE_LAUNCH_SETTLE_DURATION,
   RIDE_LAUNCH_LIFT_INTENSITY,
-  RIDE_LAUNCH_VELOCITY_FACTOR
+  RIDE_LAUNCH_VELOCITY_FACTOR,
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
 import { asciiArtEnabled } from './settings.js';
 
+type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
+type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';
+
 export class Ride {
-  constructor({ x, y, width, speed, direction, canvasWidth }) {
+  x: number;
+  baseY: number;
+  y: number;
+  width: number;
+  speed: number;
+  direction: number;
+  canvasWidth: number;
+  active: boolean;
+  floating: boolean;
+  floatTime: number;
+  originalSpeed: number;
+  weightOffset: number;
+  landingPhase: LandingPhase;
+  phaseTime: number;
+  impactIntensity: number;
+  targetDip: number;
+  landingVelocity: number;
+  launchPhase: LaunchPhase;
+  launchPhaseTime: number;
+  launchIntensity: number;
+  targetLift: number;
+  launchVelocity: number;
+
+  constructor({ x, y, width, speed, direction, canvasWidth }: {
+    x: number;
+    y: number;
+    width: number;
+    speed: number;
+    direction: number;
+    canvasWidth: number;
+  }) {
     this.x = x;
     this.baseY = y;
     this.y = y;

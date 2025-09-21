@@ -4,7 +4,7 @@ export let showSettings = false;
 export function toggleSettings() { showSettings = !showSettings; }
 export function hideSettings() { showSettings = false; }
 
-export function drawSettingsIcon(ctx) {
+export function drawSettingsIcon(ctx: CanvasRenderingContext2D) {
   const iconSize = 20;
   const iconX = canvasWidth - 30;
   const iconY = 30;
@@ -13,11 +13,11 @@ export function drawSettingsIcon(ctx) {
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 2;
 
-  ctx.beginPath(); ctx.arc(iconX, iconY, iconSize/2, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(iconX, iconY, iconSize/4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(iconX, iconY, iconSize / 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(iconX, iconY, iconSize / 4, 0, Math.PI * 2); ctx.fill();
 }
 
-export function drawSettings(ctx, budgetData) {
+export function drawSettings(ctx: CanvasRenderingContext2D, budgetData: ReadonlyArray<readonly [string, number]>) {
   if (!showSettings) return;
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';

@@ -13,29 +13,25 @@
 
   <!-- iOS PWA (Safari standalone) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-  <!-- Optional: Apple touch icon -->
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
   <title>SuperBasic Game</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="gameOver"><div class="panel" id="gameOverPanel"></div></div>
-  
-    <!-- Boot the game -->
-    <script type="module" src="./js/game.js"></script>
-  </body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="gameOver"><div class="panel" id="gameOverPanel"></div></div>
 
-  <script type="module" src="./js/game.js"></script>
+  <!-- Boot the game -->
+  <script type="module" src="./dist/game.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js")
-          .catch(err => console.error("SW registration failed:", err));
+        navigator.serviceWorker
+          .register("./service-worker.js")
+          .catch((err) => console.error("SW registration failed:", err));
       });
     }
   </script>

@@ -80,7 +80,7 @@ export const ITEM_SIZE = 12;
 export const GROUP_SPACING = 60;
 export const ITEM_SPACING = 16;
 
-export const DEFAULT_BUDGET_DATA = [
+export const DEFAULT_BUDGET_DATA: ReadonlyArray<readonly [string, number]> = [
   ["Salary", 1000],
   ["McDonald's", -25],
   ["Amazon", -150],
