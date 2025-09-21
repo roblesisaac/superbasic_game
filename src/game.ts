@@ -1,4 +1,3 @@
-import '../styles.css';
 import {
   ctx,
   canvasWidth,
