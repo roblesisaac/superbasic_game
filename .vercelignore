@@ -3,8 +3,7 @@ node_modules/
 *.log
 .DS_Store
 
-# TypeScript config (not needed in production)
-tsconfig.json
+# Note: tsconfig.json is needed for Vercel to build TypeScript
 
 # Development dependencies
 package-lock.json
