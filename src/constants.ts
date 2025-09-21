@@ -81,7 +81,7 @@ export const GROUP_SPACING = 60;
 export const ITEM_SPACING = 16;
 
 export const DEFAULT_BUDGET_DATA: ReadonlyArray<readonly [string, number]> = [
-  ["Salary", 1200],
+  ["Salary", 1250],
   ["McDonald's", -25],
   ["Amazon", -150],
   ["Gas", -60],
