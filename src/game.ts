@@ -10,12 +10,9 @@ import {
   setCameraY,
   drawBackgroundGrid
 } from './globals.js';
-import {
-  CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT, GATE_EVERY_FEET, GATE_GAP_WIDTH
-} from './constants.js';
+import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT } from './constants.js';
 import { now } from './utils.js';
 import { updateRides, pruneInactiveRides, drawRides, mergeCollidingRides } from './rides.js';
-import { GateGenerator, updateGates, pruneInactiveGates, drawGates } from './gates.js';
 import { Sprite } from './sprite.js';
 import { EnergyBar, Hearts } from './hud.js';
 import { InputHandler } from './input.js';
@@ -23,8 +20,7 @@ import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from './se
 import {
   budgetSections, collectibles, gameStats,
   calculateBudgetSections, preloadSectionCollectibles,
-  createdGates, resetBudgetContainers,
-  getSectionIndexForY
+  resetBudgetContainers,
 } from './budget.js';
 import {
   resetEnemies,
@@ -33,40 +29,91 @@ import {
   pruneInactiveEnemies,
   spawnEnemiesForGate
 } from './enemies.js';
+import {
+  initSections,
+  getSectionManager,
+  getSectionLayout,
+  getSectionEnemyPlan,
+  getSectionEnemySpawned,
+  registerSectionEnemiesSpawned,
+  type SectionManager,
+} from './sections.js';
+import sectionsDb from './sectionsDb.js';
 
 let currentSection = 0;
-let gateGenerator = null;
+let sectionManager: SectionManager | null = null;
 
 function ensurePreloadedCollectibles() {
+  if (!game.sprite) return;
+
+  const manager = sectionManager ?? getSectionManager();
+  if (!manager) return;
+
   const currentFeet = Math.max(0, Math.floor((groundY - game.sprite.y) / PIXELS_PER_FOOT));
-  const currentSectionIndex = Math.floor(currentFeet / 100);
-  for (let i = 0; i < 3; i++) preloadSectionCollectibles(currentSectionIndex + i);
+  let currentSectionIndex = manager.getSectionIndexForFeet(currentFeet);
+  if (currentSectionIndex === -1) currentSectionIndex = 0;
+
+  const totalSections = manager.getSectionCount();
+  for (let i = 0; i < 3; i++) {
+    const index = currentSectionIndex + i;
+    if (index < totalSections) preloadSectionCollectibles(index);
+  }
 }
 
-function ensureGatesForCurrentHeight() {
-  if (!gateGenerator || !game.sprite) return;
+function ensureSectionsForCurrentHeight() {
+  if (!game.sprite) return;
 
-  gateGenerator.setCanvasWidth(canvasWidth);
-  const newGates = gateGenerator.ensureGates({
+  const manager = sectionManager ?? getSectionManager();
+  if (!manager) return;
+
+  const { activeGates, newlyActivatedGates } = manager.ensureSections({
     spriteY: game.sprite.y,
-    groundY
+    canvasWidth,
+    groundY,
   });
 
-  for (const gate of newGates) {
-    game.gates.push(gate);
-    spawnGateEnemies(gate);
-  }
+  game.gates = [...activeGates];
+  for (const gate of newlyActivatedGates) spawnGateEnemies(gate);
 }
 
 function spawnGateEnemies(gate) {
   if (!gate) return;
 
-  const sectionIndex = getSectionIndexForY(gate.y);
+  const manager = sectionManager ?? getSectionManager();
+  if (!manager) return;
+
+  const sectionIndex = manager.getSectionIndexForY(gate.y);
   if (sectionIndex === -1) return;
 
   preloadSectionCollectibles(sectionIndex);
   const section = budgetSections[sectionIndex];
-  if (!section || section.amount >= 0) return;
+  if (!section) return;
+
+  const gateIndex = typeof gate.gateIndex === 'number' ? gate.gateIndex : 0;
+  const planned = getSectionEnemyPlan(sectionIndex, gateIndex);
+
+  if (typeof planned === 'number') {
+    const alreadySpawned = getSectionEnemySpawned(sectionIndex, gateIndex);
+    const remaining = Math.max(0, planned - alreadySpawned);
+    section.pendingEnemies = remaining;
+    if (remaining <= 0) return;
+
+    const spawned = spawnEnemiesForGate(gate, {
+      count: remaining,
+      title: section.title,
+      value: section.amount,
+      sectionIndex,
+    });
+
+    if (spawned > 0) {
+      section.spawned += spawned;
+      section.pendingEnemies = Math.max(0, section.pendingEnemies - spawned);
+      registerSectionEnemiesSpawned(sectionIndex, gateIndex, spawned);
+    }
+    return;
+  }
+
+  if (section.amount >= 0) return;
 
   const pending = section.pendingEnemies || 0;
   if (pending <= 0) return;
@@ -75,7 +122,7 @@ function spawnGateEnemies(gate) {
     count: pending,
     title: section.title,
     value: section.amount,
-    sectionIndex
+    sectionIndex,
   });
 
   if (spawned > 0) {
@@ -169,18 +216,13 @@ function triggerGameOver() {
 
 function startGame() {
   resetBudgetContainers();
-  calculateBudgetSections();
+  sectionManager = initSections(sectionsDb, { canvasWidth, groundY });
+  calculateBudgetSections(getSectionLayout());
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
   game.rides = [];
   game.gates = [];
   resetEnemies();
-  gateGenerator = new GateGenerator({
-    canvasWidth,
-    gapWidth: GATE_GAP_WIDTH,
-    spacingFeet: GATE_EVERY_FEET,
-    createdFeet: createdGates
-  });
 
   const startX = canvasWidth / 2;
   const startY = groundY - 8;
@@ -195,7 +237,7 @@ function startGame() {
   setCameraY(0);
   currentSection = 0;
 
-  ensureGatesForCurrentHeight();
+  ensureSectionsForCurrentHeight();
   ensurePreloadedCollectibles();
 
   game.input = new InputHandler(game, resetGame);
@@ -210,17 +252,12 @@ export function resetGame() {
   game.running = true;
 
   resetBudgetContainers();
-  calculateBudgetSections();
+  sectionManager = initSections(sectionsDb, { canvasWidth, groundY });
+  calculateBudgetSections(getSectionLayout());
 
   game.rides = [];
   game.gates = [];
   resetEnemies();
-  gateGenerator = new GateGenerator({
-    canvasWidth,
-    gapWidth: GATE_GAP_WIDTH,
-    spacingFeet: GATE_EVERY_FEET,
-    createdFeet: createdGates
-  });
 
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
@@ -238,7 +275,7 @@ export function resetGame() {
   setCameraY(0);
   currentSection = 0;
 
-  ensureGatesForCurrentHeight();
+  ensureSectionsForCurrentHeight();
   ensurePreloadedCollectibles();
   game.lastTime = now();
   requestAnimationFrame(loop);
@@ -252,11 +289,10 @@ function loop() {
 
   if (!showSettings) {
     game.sprite.update(dt);
-    ensureGatesForCurrentHeight();
+    ensureSectionsForCurrentHeight();
     ensurePreloadedCollectibles();
 
     updateRides(game.rides, dt);
-    updateGates(game.gates, dt);
     updateEnemies(game, dt, gameStats);
     for (const c of collectibles) c.update(dt, game, gameStats);
 
@@ -265,7 +301,6 @@ function loop() {
     }
     pruneInactiveEnemies();
     pruneInactiveRides(game.rides);
-    pruneInactiveGates(game.gates);
 
     while (mergeCollidingRides(game.rides, canvasWidth)) {}
 
@@ -290,7 +325,8 @@ function drawFrame() {
   ctx.stroke();
 
   drawRides(ctx, game.rides, cameraY);
-  drawGates(ctx, game.gates, cameraY);
+  const activeManager = sectionManager ?? getSectionManager();
+  if (activeManager) activeManager.draw(ctx, cameraY);
   drawEnemies(ctx, cameraY);
 
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);

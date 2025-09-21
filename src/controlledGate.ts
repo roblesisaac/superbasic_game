@@ -7,7 +7,7 @@ import { asciiArtEnabled } from './settings.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
 
-type GateSpecObject = { position?: number; width?: number };
+export type GateSpecObject = { position?: number; width?: number };
 type GateSpecArray = [unknown, unknown?, unknown?];
 type GateSpec = boolean | GateSpecObject | GateSpecArray | null;
 
@@ -29,7 +29,7 @@ interface SegmentDefinitionObject {
 
 type SegmentInput = number | LegacySegmentTuple | SegmentDefinitionObject;
 
-type ControlledGateDefinition =
+export type ControlledGateDefinition =
   | number
   | SegmentDefinitionObject
   | SegmentInput[]
@@ -98,6 +98,10 @@ export class ControlledGate {
   gapX = 0;
   gapY = 0;
   gapWidth = GATE_GAP_WIDTH;
+  sectionIndex?: number;
+  sectionId?: string;
+  gateIndex?: number;
+  gateId?: string;
 
   constructor({ y, canvasWidth, definition }: ControlledGateOptions) {
     this.y = y;

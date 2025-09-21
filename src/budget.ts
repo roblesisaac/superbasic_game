@@ -8,10 +8,18 @@ import {
 } from './constants.js';
 import { Collectible, type CollectibleType, type GameStats } from './collectibles.js';
 import { groundY, canvasWidth } from './globals.js';
+import {
+  getSectionDefinition,
+  getSectionIndexForY as getSectionIndexForYFromManager,
+  type SectionLayoutEntry,
+  type NormalizedSectionDefinition,
+  type CollectibleSpawn,
+} from './sections.js';
 
 export type BudgetEntry = [string, number];
 
 export interface BudgetSection {
+  id?: string;
   title: string;
   amount: number;
   itemCount: number;
@@ -81,11 +89,12 @@ const FORMATIONS: Record<string, FormationFn> = {
   }
 };
 
-export function calculateBudgetSections() {
+export function calculateBudgetSections(layout: SectionLayoutEntry[] = []) {
   const totalAmount = budgetData.reduce((sum, [, amount]) => sum + Math.abs(amount), 0);
   budgetSections = [];
   gameStats = {} as GameStats;
-  let currentFeet = 0;
+  let fallbackFeet = 0;
+  let layoutIndex = 0;
 
   for (const [title, amount] of budgetData) {
     const percentage = totalAmount === 0 ? 0 : Math.abs(amount) / totalAmount;
@@ -96,16 +105,31 @@ export function calculateBudgetSections() {
 
     for (let i = 0; i < sectionsNeeded; i++) {
       const itemsInThis = Math.min(MAX_ITEMS_PER_SECTION, itemCount - i * MAX_ITEMS_PER_SECTION);
+      const layoutEntry = layout[layoutIndex];
+      let startFeet: number;
+      let endFeet: number;
+      let id: string | undefined;
+
+      if (layoutEntry) {
+        ({ startFeet, endFeet, id } = layoutEntry);
+        fallbackFeet = endFeet;
+      } else {
+        startFeet = fallbackFeet;
+        endFeet = fallbackFeet + 100;
+        fallbackFeet = endFeet;
+      }
+
       budgetSections.push({
+        id,
         title,
         amount,
         itemCount: Math.max(0, itemsInThis),
-        startFeet: currentFeet,
-        endFeet: currentFeet + 100,
+        startFeet,
+        endFeet,
         spawned: 0,
         pendingEnemies: 0
       });
-      currentFeet += 100;
+      layoutIndex++;
     }
   }
 }
@@ -127,13 +151,111 @@ function createFormationGroup(
   );
 }
 
+function spawnCollectibleGroupFromDefinition(
+  section: BudgetSection,
+  spawn: CollectibleSpawn,
+): number {
+  const count = Math.max(0, Math.floor(spawn.count ?? 0));
+  if (count <= 0) return 0;
+
+  const sectionHeightFeet = Math.max(0, section.endFeet - section.startFeet);
+  const offsetFeet = typeof spawn.offsetFeet === 'number' ? spawn.offsetFeet : 0;
+  const clampedOffsetFeet = Math.max(0, Math.min(sectionHeightFeet, offsetFeet));
+  const worldFeet = section.startFeet + clampedOffsetFeet;
+
+  const xPercent = typeof spawn.xPercent === 'number' ? spawn.xPercent : 50;
+  const baseX = (xPercent / 100) * Math.max(1, canvasWidth);
+  const baseY = groundY - worldFeet * PIXELS_PER_FOOT;
+
+  const spacingFeet =
+    typeof spawn.spreadFeet === 'number'
+      ? spawn.spreadFeet
+      : ITEM_SPACING / PIXELS_PER_FOOT;
+  const spacing = spacingFeet * PIXELS_PER_FOOT;
+
+  const formationName = spawn.formation ?? 'line';
+  const formation = FORMATIONS[formationName] ?? FORMATIONS.line;
+  const positions = formation(count, spacing).slice(0, count);
+  if (positions.length === 0) return 0;
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const pos of positions) {
+    if (pos.x < minX) minX = pos.x;
+    if (pos.x > maxX) maxX = pos.x;
+    if (pos.y < minY) minY = pos.y;
+    if (pos.y > maxY) maxY = pos.y;
+  }
+
+  const offsetX = (minX + maxX) / 2;
+  const offsetY = (minY + maxY) / 2;
+
+  let spawned = 0;
+  for (const pos of positions) {
+    if (spawned >= count) break;
+    const px = baseX + (pos.x - offsetX);
+    const py = baseY + (pos.y - offsetY);
+    const value = spawn.value ?? section.amount;
+    const spawnType: CollectibleType =
+      spawn.type === 'income'
+        ? 'income'
+        : value >= 0
+        ? 'income'
+        : 'expense';
+    const title = spawn.title ?? section.title;
+    collectibles.push(new Collectible(px, py, value, title, spawnType));
+    spawned++;
+  }
+
+  return spawned;
+}
+
+function spawnCollectiblesFromSectionDefinition(
+  section: BudgetSection,
+  definition: NormalizedSectionDefinition,
+): boolean {
+  const collectibleSpawns = definition.collectibles ?? [];
+  let totalSpawned = 0;
+
+  if (collectibleSpawns.length > 0) {
+    for (const spawn of collectibleSpawns) {
+      totalSpawned += spawnCollectibleGroupFromDefinition(section, spawn);
+    }
+    if (totalSpawned > 0) section.spawned += totalSpawned;
+    section.pendingEnemies = 0;
+    return true;
+  }
+
+  const enemyPlan = definition.enemies ?? [];
+  if (enemyPlan.length > 0) {
+    const plannedTotal = enemyPlan.reduce(
+      (sum, value) => sum + (typeof value === 'number' ? Math.max(0, value) : 0),
+      0,
+    );
+    section.pendingEnemies = Math.max(0, plannedTotal - section.spawned);
+    return true;
+  }
+
+  return false;
+}
+
 export function preloadSectionCollectibles(sectionIndex: number) {
   if (preloadedSections.has(sectionIndex)) return;
   const section = budgetSections[sectionIndex];
   if (!section) return;
 
+  const definition = getSectionDefinition(sectionIndex);
+  if (definition && spawnCollectiblesFromSectionDefinition(section, definition)) {
+    preloadedSections.add(sectionIndex);
+    return;
+  }
+
+  const sectionHeightFeet = Math.max(0, section.endFeet - section.startFeet);
   const sectionBaseY = groundY - section.startFeet * PIXELS_PER_FOOT;
-  const sectionHeight = 100 * PIXELS_PER_FOOT;
+  const sectionHeight = sectionHeightFeet * PIXELS_PER_FOOT;
   const type: CollectibleType = section.amount > 0 ? 'income' : 'expense';
 
   if (type === 'income') {
@@ -157,6 +279,9 @@ export function preloadSectionCollectibles(sectionIndex: number) {
 }
 
 export function getSectionIndexForY(y: number): number {
+  const managerIndex = getSectionIndexForYFromManager(y);
+  if (managerIndex !== -1) return managerIndex;
+
   if (!budgetSections.length) return -1;
   const feet = Math.max(0, Math.floor((groundY - y) / PIXELS_PER_FOOT));
   for (let i = 0; i < budgetSections.length; i++) {
