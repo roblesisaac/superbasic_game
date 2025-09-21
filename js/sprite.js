@@ -614,6 +614,16 @@ export class Sprite {
       }
     }
 
+    // Detect launch from ride platform
+    if (previousPlatform && 
+        previousPlatform !== newPlatformSurface && 
+        typeof previousPlatform.applyLaunchEffect === 'function' &&
+        (this.vy < 0 || !this.onGround)) {
+      // Sprite is launching off the ride - trigger launch effect
+      const launchVelocity = Math.abs(this.vy);
+      previousPlatform.applyLaunchEffect(launchVelocity);
+    }
+
     this.platformSurface = newPlatformSurface;
 
     // ground

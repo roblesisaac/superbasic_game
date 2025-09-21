@@ -13,7 +13,12 @@ import {
   RIDE_RECOVERY_PHASE_DURATION,
   RIDE_SETTLE_PHASE_DURATION,
   RIDE_RECOVERY_OVERSHOOT,
-  RIDE_VELOCITY_IMPACT_FACTOR
+  RIDE_VELOCITY_IMPACT_FACTOR,
+  RIDE_LAUNCH_LIFT_DURATION,
+  RIDE_LAUNCH_RELEASE_DURATION,
+  RIDE_LAUNCH_SETTLE_DURATION,
+  RIDE_LAUNCH_LIFT_INTENSITY,
+  RIDE_LAUNCH_VELOCITY_FACTOR
 } from './constants.js';
 import { clamp, rectsIntersect } from './utils.js';
 import { asciiArtEnabled } from './settings.js';
@@ -40,6 +45,14 @@ export class Ride {
     this.impactIntensity = 0;
     this.targetDip = 0;
     this.landingVelocity = 0; // Store sprite's landing velocity for impact calculation
+    
+    // Launch effect state
+    this.launchPhase = 'idle'; // 'lift', 'release', 'settle'
+    this.launchPhaseTime = 0;
+    this.launchIntensity = 0;
+    this.targetLift = 0;
+    this.launchVelocity = 0; // Store sprite's launch velocity for effect calculation
+    
     this._applyWeightOffset();
   }
 
@@ -47,6 +60,7 @@ export class Ride {
     if (!this.active) return;
 
     this._updateWeightShift(dt);
+    this._updateLaunchEffect(dt);
 
     if (this.floating) {
       this.floatTime -= dt;
@@ -115,6 +129,21 @@ export class Ride {
     // Start the impact phase
     this.landingPhase = 'impact';
     this.phaseTime = 0;
+    this._applyWeightOffset();
+  }
+
+  applyLaunchEffect(spriteVelocity = 0) {
+    // Calculate launch intensity based on sprite's launch velocity
+    const velocityImpact = Math.abs(spriteVelocity) * RIDE_LAUNCH_VELOCITY_FACTOR;
+    const baseIntensity = RIDE_WEIGHT_SHIFT_MAX * RIDE_LAUNCH_LIFT_INTENSITY;
+    
+    this.launchIntensity = Math.min(RIDE_WEIGHT_SHIFT_MAX, baseIntensity + velocityImpact);
+    this.targetLift = this.launchIntensity;
+    this.launchVelocity = spriteVelocity;
+    
+    // Start the lift phase
+    this.launchPhase = 'lift';
+    this.launchPhaseTime = 0;
     this._applyWeightOffset();
   }
 
@@ -217,7 +246,115 @@ export class Ride {
   }
 
   _applyWeightOffset() {
-    this.y = this.baseY + this.weightOffset;
+    // Combine both landing weight shift and launch effect
+    let totalOffset = this.weightOffset;
+    
+    // Launch effect creates an upward lift (negative offset)
+    if (this.launchPhase !== 'idle') {
+      totalOffset -= this.getLaunchOffset();
+    }
+    
+    this.y = this.baseY + totalOffset;
+  }
+
+  getLaunchOffset() {
+    // Returns the current launch effect offset (positive = upward lift)
+    switch (this.launchPhase) {
+      case 'lift':
+        return this.getLiftOffset();
+      case 'release':
+        return this.getReleaseOffset();
+      case 'settle':
+        return this.getSettleOffset();
+      default:
+        return 0;
+    }
+  }
+
+  _updateLaunchEffect(dt) {
+    if (!Number.isFinite(dt)) {
+      return;
+    }
+
+    if (this.launchPhase === 'idle') {
+      return;
+    }
+
+    this.launchPhaseTime += dt;
+
+    switch (this.launchPhase) {
+      case 'lift':
+        this._updateLiftPhase();
+        break;
+      case 'release':
+        this._updateReleasePhase();
+        break;
+      case 'settle':
+        this._updateLaunchSettlePhase();
+        break;
+    }
+  }
+
+  _updateLiftPhase() {
+    const duration = RIDE_LAUNCH_LIFT_DURATION;
+    const t = clamp(this.launchPhaseTime / duration, 0, 1);
+    
+    if (t >= 1) {
+      this.launchPhase = 'release';
+      this.launchPhaseTime = 0;
+    }
+  }
+
+  _updateReleasePhase() {
+    const duration = RIDE_LAUNCH_RELEASE_DURATION;
+    const t = clamp(this.launchPhaseTime / duration, 0, 1);
+    
+    if (t >= 1) {
+      this.launchPhase = 'settle';
+      this.launchPhaseTime = 0;
+    }
+  }
+
+  _updateLaunchSettlePhase() {
+    const duration = RIDE_LAUNCH_SETTLE_DURATION;
+    const t = clamp(this.launchPhaseTime / duration, 0, 1);
+    
+    if (t >= 1) {
+      this.launchPhase = 'idle';
+      this.launchPhaseTime = 0;
+      this.launchIntensity = 0;
+      this.targetLift = 0;
+    }
+  }
+
+  getLiftOffset() {
+    const duration = RIDE_LAUNCH_LIFT_DURATION;
+    const t = clamp(this.launchPhaseTime / duration, 0, 1);
+    
+    // Quick upward lift with ease-out
+    const eased = 1 - Math.pow(1 - t, 2);
+    return this.targetLift * eased;
+  }
+
+  getReleaseOffset() {
+    const duration = RIDE_LAUNCH_RELEASE_DURATION;
+    const t = clamp(this.launchPhaseTime / duration, 0, 1);
+    
+    // Smooth release back down
+    const eased = 1 - Math.pow(1 - t, 1.5);
+    return this.targetLift * (1 - eased);
+  }
+
+  getSettleOffset() {
+    const duration = RIDE_LAUNCH_SETTLE_DURATION;
+    const t = clamp(this.launchPhaseTime / duration, 0, 1);
+    
+    // Gentle damped oscillation settling to neutral
+    const damping = Math.exp(-3 * t);
+    const oscillation = Math.cos(t * Math.PI * 2) * damping;
+    
+    // Small residual effect that fades out
+    return this.targetLift * 0.1 * oscillation * (1 - t);
   }
 }
 

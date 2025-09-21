@@ -49,6 +49,12 @@ export const RIDE_RECOVERY_PHASE_DURATION = 0.28;   // Bounce back with overshoo
 export const RIDE_SETTLE_PHASE_DURATION = 0.35;     // Final damping to hover
 export const RIDE_RECOVERY_OVERSHOOT = 0.25;        // How much it overshoots upward
 export const RIDE_VELOCITY_IMPACT_FACTOR = 0.006;   // How much landing velocity affects the dip
+// Launch effect constants
+export const RIDE_LAUNCH_LIFT_DURATION = 0.12;      // Quick upward lift when sprite launches
+export const RIDE_LAUNCH_RELEASE_DURATION = 0.22;   // Release back down after lift
+export const RIDE_LAUNCH_SETTLE_DURATION = 0.25;    // Final settling to neutral
+export const RIDE_LAUNCH_LIFT_INTENSITY = 0.4;      // How much the ride lifts up (relative to weight shift max)
+export const RIDE_LAUNCH_VELOCITY_FACTOR = 0.004;   // How much launch velocity affects the lift
 export const MIN_SWIPE_DISTANCE = 24;
 export const MIN_SWIPE_TIME = 80;
 export const VELOCITY_SAMPLE_TIME = 120;
