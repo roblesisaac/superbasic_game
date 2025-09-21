@@ -2,7 +2,7 @@
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'game-cache-v13';
+const CACHE_NAME = 'game-cache-v14';
 
 const CORE_ASSETS: string[] = [
   './',

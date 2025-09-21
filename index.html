@@ -27,7 +27,6 @@
   <!-- Boot the game -->
   <script type="module" src="./dist/game.js"></script>
   <script>
-    console.log("Service Worker is in navigator");
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker
