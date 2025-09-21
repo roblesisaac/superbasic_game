@@ -61,6 +61,10 @@ import {
       this.value = Math.max(0, this.value - 1);
       if (this.value === 0 && typeof onZero === 'function') onZero();
     }
+    gain(amount = 1) {
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      this.value = Math.min(this.max, this.value + amount);
+    }
     draw(ctx) {
       const x0 = 12, y0 = 30, size = 12, pad = 4;
       for (let i = 0; i < this.max; i++) {
