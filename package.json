@@ -4,15 +4,15 @@
   "description": "",
   "main": "dist/game.js",
   "scripts": {
-    "build": "tsc",
-    "postbuild": "cp dist/service-worker.js service-worker.js",
-    "dev": "npm run build && npx http-server -c-1 -p 5173 .",
-    "watch": "tsc --watch",
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vite": "^6.3.6"
   }
 }
