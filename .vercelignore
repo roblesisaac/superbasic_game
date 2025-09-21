@@ -1,0 +1,13 @@
+# Source files (will be built)
+src/
+
+# Development files
+node_modules/
+*.log
+.DS_Store
+
+# TypeScript config (not needed in production)
+tsconfig.json
+
+# Development dependencies
+package-lock.json
