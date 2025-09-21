@@ -1,9 +1,7 @@
-# Development files
-node_modules/
-*.log
+node_modules
+.git
+src
+dist
+*.md
 .DS_Store
-
-# Note: tsconfig.json is needed for Vercel to build TypeScript
-
-# Development dependencies
-package-lock.json
+*.log
