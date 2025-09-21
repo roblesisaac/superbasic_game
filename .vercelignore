@@ -1,7 +1,5 @@
 node_modules
 .git
-src
-dist
-*.md
 .DS_Store
 *.log
+*.md
