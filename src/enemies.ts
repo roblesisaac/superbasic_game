@@ -196,14 +196,14 @@ class Enemy {
 
   draw(ctx: CanvasRenderingContext2D, cameraYValue: number) {
     if (!this.active) return;
-    if (this.stunned && !this.stunVisible) return;
     const screenY = this.y - cameraYValue;
     if (screenY < -50 || screenY > canvasHeight + 120) return;
 
     ctx.save();
     ctx.translate(this.x, screenY);
 
-    ctx.fillStyle = this.stunned ? '#ffa94d' : '#ff4d4d';
+    // While stunned, alternate between yellow and red instead of hiding
+    ctx.fillStyle = this.stunned ? (this.stunVisible ? '#ffa94d' : '#ff4d4d') : '#ff4d4d';
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fill();
