@@ -28,12 +28,10 @@ export let budgetSections: BudgetSection[] = [];
 export let collectibles: Collectible[] = [];
 export let gameStats: GameStats = {};
 export let preloadedSections: Set<number> = new Set();
-export let createdGates: Set<number> = new Set();
 
 export function resetBudgetContainers() {
   collectibles = [];
   preloadedSections = new Set();
-  createdGates = new Set();
 }
 
 type FormationPosition = { x: number; y: number };

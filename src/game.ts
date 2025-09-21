@@ -10,20 +10,18 @@ import {
   setCameraY,
   drawBackgroundGrid
 } from './globals.js';
-import {
-  CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT, GATE_EVERY_FEET, GATE_GAP_WIDTH
-} from './constants.js';
+import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT } from './constants.js';
 import { now } from './utils.js';
 import { updateRides, pruneInactiveRides, drawRides, mergeCollidingRides } from './rides.js';
-import { GateGenerator, updateGates, pruneInactiveGates, drawGates } from './gates.js';
+import { updateGates, pruneInactiveGates, drawGates } from './gates.js';
 import { Sprite } from './sprite.js';
 import { EnergyBar, Hearts } from './hud.js';
 import { InputHandler } from './input.js';
-import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from './settings.js';
+import { showSettings, drawSettingsIcon, drawSettings } from './settings.js';
 import {
   budgetSections, collectibles, gameStats,
   calculateBudgetSections, preloadSectionCollectibles,
-  createdGates, resetBudgetContainers,
+  resetBudgetContainers,
   getSectionIndexForY
 } from './budget.js';
 import {
@@ -33,43 +31,48 @@ import {
   pruneInactiveEnemies,
   spawnEnemiesForGate
 } from './enemies.js';
-
-let currentSection = 0;
-let gateGenerator = null;
+import {
+  initializeSections,
+  ensureSectionsForSprite,
+  getActiveSectionGates,
+  type SectionState
+} from './sections.js';
 
 function ensurePreloadedCollectibles() {
-  const currentFeet = Math.max(0, Math.floor((groundY - game.sprite.y) / PIXELS_PER_FOOT));
-  const currentSectionIndex = Math.floor(currentFeet / 100);
+  if (!game.sprite) return;
+  const currentSectionIndex = getSectionIndexForY(game.sprite.y);
+  if (currentSectionIndex === -1) return;
   for (let i = 0; i < 3; i++) preloadSectionCollectibles(currentSectionIndex + i);
 }
 
-function ensureGatesForCurrentHeight() {
-  if (!gateGenerator || !game.sprite) return;
+function ensureSectionGates() {
+  if (!game.sprite) return;
 
-  gateGenerator.setCanvasWidth(canvasWidth);
-  const newGates = gateGenerator.ensureGates({
-    spriteY: game.sprite.y,
-    groundY
+  ensureSectionsForSprite(game.sprite.y, (section: SectionState, gate, gateIndex) => {
+    const planned = section.enemies[gateIndex];
+    const countOverride = typeof planned === 'number' && planned > 0 ? planned : undefined;
+    preloadSectionCollectibles(section.index);
+    spawnGateEnemies(gate, section.index, countOverride);
   });
 
-  for (const gate of newGates) {
-    game.gates.push(gate);
-    spawnGateEnemies(gate);
-  }
+  game.gates = getActiveSectionGates();
 }
 
-function spawnGateEnemies(gate) {
+function spawnGateEnemies(gate, sectionIndexOverride?: number, countOverride?: number) {
   if (!gate) return;
 
-  const sectionIndex = getSectionIndexForY(gate.y);
+  const sectionIndex =
+    typeof sectionIndexOverride === 'number' ? sectionIndexOverride : getSectionIndexForY(gate.y);
   if (sectionIndex === -1) return;
 
-  preloadSectionCollectibles(sectionIndex);
   const section = budgetSections[sectionIndex];
-  if (!section || section.amount >= 0) return;
+  if (!section) return;
 
-  const pending = section.pendingEnemies || 0;
-  if (pending <= 0) return;
+  const hasOverride = typeof countOverride === 'number' && countOverride > 0;
+  if (!hasOverride && section.amount >= 0) return;
+
+  const pending = hasOverride ? countOverride : section.pendingEnemies || 0;
+  if (!pending || pending <= 0) return;
 
   const spawned = spawnEnemiesForGate(gate, {
     count: pending,
@@ -170,17 +173,12 @@ function triggerGameOver() {
 function startGame() {
   resetBudgetContainers();
   calculateBudgetSections();
+  initializeSections();
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
   game.rides = [];
   game.gates = [];
   resetEnemies();
-  gateGenerator = new GateGenerator({
-    canvasWidth,
-    gapWidth: GATE_GAP_WIDTH,
-    spacingFeet: GATE_EVERY_FEET,
-    createdFeet: createdGates
-  });
 
   const startX = canvasWidth / 2;
   const startY = groundY - 8;
@@ -193,9 +191,7 @@ function startGame() {
   });
 
   setCameraY(0);
-  currentSection = 0;
-
-  ensureGatesForCurrentHeight();
+  ensureSectionGates();
   ensurePreloadedCollectibles();
 
   game.input = new InputHandler(game, resetGame);
@@ -211,16 +207,11 @@ export function resetGame() {
 
   resetBudgetContainers();
   calculateBudgetSections();
+  initializeSections();
 
   game.rides = [];
   game.gates = [];
   resetEnemies();
-  gateGenerator = new GateGenerator({
-    canvasWidth,
-    gapWidth: GATE_GAP_WIDTH,
-    spacingFeet: GATE_EVERY_FEET,
-    createdFeet: createdGates
-  });
 
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
@@ -236,9 +227,7 @@ export function resetGame() {
   });
 
   setCameraY(0);
-  currentSection = 0;
-
-  ensureGatesForCurrentHeight();
+  ensureSectionGates();
   ensurePreloadedCollectibles();
   game.lastTime = now();
   requestAnimationFrame(loop);
@@ -252,7 +241,7 @@ function loop() {
 
   if (!showSettings) {
     game.sprite.update(dt);
-    ensureGatesForCurrentHeight();
+    ensureSectionGates();
     ensurePreloadedCollectibles();
 
     updateRides(game.rides, dt);

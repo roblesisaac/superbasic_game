@@ -7,7 +7,7 @@ import { asciiArtEnabled } from './settings.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
 
-type GateSpecObject = { position?: number; width?: number };
+export type GateSpecObject = { position?: number; width?: number };
 type GateSpecArray = [unknown, unknown?, unknown?];
 type GateSpec = boolean | GateSpecObject | GateSpecArray | null;
 
@@ -81,12 +81,15 @@ interface ControlledGateOptions {
   y: number;
   canvasWidth: number;
   definition: ControlledGateDefinition;
+  xOffset?: number;
 }
 
 export class ControlledGate {
   y: number;
   canvasWidth: number;
   definition: ControlledGateDefinition;
+  xOffset: number;
+  sectionIndex?: number;
   active = true;
   floating = false;
   speed = 0;
@@ -99,12 +102,20 @@ export class ControlledGate {
   gapY = 0;
   gapWidth = GATE_GAP_WIDTH;
 
-  constructor({ y, canvasWidth, definition }: ControlledGateOptions) {
+  constructor({ y, canvasWidth, definition, xOffset = 0 }: ControlledGateOptions) {
     this.y = y;
     this.canvasWidth = canvasWidth;
     this.definition = definition;
+    this.xOffset = xOffset;
 
     this._parseDefinition();
+    this._generateLayout();
+    this._ensureGap();
+  }
+
+  setCanvasWidth(width: number, xOffset = this.xOffset): void {
+    this.canvasWidth = width;
+    this.xOffset = xOffset;
     this._generateLayout();
     this._ensureGap();
   }
@@ -262,7 +273,7 @@ export class ControlledGate {
 
   private _generateLayout(): void {
     this.rects = [];
-    let cursorX = 0;
+    let cursorX = this.xOffset;
     let currentY = this.y;
 
     for (let i = 0; i < this.segments.length; i++) {
