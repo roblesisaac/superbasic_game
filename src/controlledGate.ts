@@ -7,9 +7,9 @@ import { asciiArtEnabled } from './settings.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
 
-type GateSpecObject = { position?: number; width?: number };
+export type GateGapSpec = { position?: number; width?: number };
 type GateSpecArray = [unknown, unknown?, unknown?];
-type GateSpec = boolean | GateSpecObject | GateSpecArray | null;
+export type GateSpec = boolean | GateGapSpec | GateSpecArray | null;
 
 type LegacySegmentTuple = [
   number,
@@ -29,7 +29,7 @@ interface SegmentDefinitionObject {
 
 type SegmentInput = number | LegacySegmentTuple | SegmentDefinitionObject;
 
-type ControlledGateDefinition =
+export type ControlledGateDefinition =
   | number
   | SegmentDefinitionObject
   | SegmentInput[]
@@ -77,10 +77,20 @@ interface GapInfo {
   rect: GateRect;
 }
 
-interface ControlledGateOptions {
+export type SectionEdge = 'top' | 'right' | 'bottom' | 'left';
+
+export interface ControlledGateOptions {
   y: number;
   canvasWidth: number;
   definition: ControlledGateDefinition;
+  id?: string;
+  sectionId?: string;
+  sectionIndex?: number;
+  sectionEdge?: SectionEdge;
+  sectionStartFeet?: number;
+  sectionEndFeet?: number;
+  sectionOffsetFeet?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export class ControlledGate {
@@ -92,6 +102,14 @@ export class ControlledGate {
   speed = 0;
   direction = 0;
   originalSpeed = 0;
+  id?: string;
+  sectionId?: string;
+  sectionIndex?: number;
+  sectionEdge?: SectionEdge;
+  sectionStartFeet?: number;
+  sectionEndFeet?: number;
+  sectionOffsetFeet?: number;
+  metadata?: Record<string, unknown>;
   segments: Segment[] = [];
   rects: GateRect[] = [];
   gapInfo?: GapInfo;
@@ -99,10 +117,30 @@ export class ControlledGate {
   gapY = 0;
   gapWidth = GATE_GAP_WIDTH;
 
-  constructor({ y, canvasWidth, definition }: ControlledGateOptions) {
+  constructor({
+    y,
+    canvasWidth,
+    definition,
+    id,
+    sectionId,
+    sectionIndex,
+    sectionEdge,
+    sectionStartFeet,
+    sectionEndFeet,
+    sectionOffsetFeet,
+    metadata,
+  }: ControlledGateOptions) {
     this.y = y;
     this.canvasWidth = canvasWidth;
     this.definition = definition;
+    this.id = id;
+    this.sectionId = sectionId;
+    this.sectionIndex = sectionIndex;
+    this.sectionEdge = sectionEdge;
+    this.sectionStartFeet = sectionStartFeet;
+    this.sectionEndFeet = sectionEndFeet;
+    this.sectionOffsetFeet = sectionOffsetFeet;
+    this.metadata = metadata ?? undefined;
 
     this._parseDefinition();
     this._generateLayout();
@@ -345,7 +383,7 @@ export class ControlledGate {
         if (typeof posSpec === 'number') gatePosition = posSpec;
         if (typeof widthSpec === 'number') gateWidth = widthSpec;
       } else if (spec && !Array.isArray(spec) && typeof spec === 'object') {
-        const specObject = spec as GateSpecObject;
+        const specObject = spec as GateGapSpec;
         hasGate = true;
         if (typeof specObject.position === 'number') gatePosition = specObject.position;
         if (typeof specObject.width === 'number') gateWidth = specObject.width;

@@ -4,10 +4,16 @@ import {
   GROUP_SPACING,
   ITEM_SPACING,
   PIXELS_PER_FOOT,
-  DEFAULT_BUDGET_DATA
+  DEFAULT_BUDGET_DATA,
+  GATE_EVERY_FEET,
 } from './constants.js';
 import { Collectible, type CollectibleType, type GameStats } from './collectibles.js';
 import { groundY, canvasWidth } from './globals.js';
+import {
+  sectionManager,
+  type SectionDefinition,
+  type SectionGateSpec,
+} from './sections.js';
 
 export type BudgetEntry = [string, number];
 
@@ -28,12 +34,10 @@ export let budgetSections: BudgetSection[] = [];
 export let collectibles: Collectible[] = [];
 export let gameStats: GameStats = {};
 export let preloadedSections: Set<number> = new Set();
-export let createdGates: Set<number> = new Set();
 
 export function resetBudgetContainers() {
   collectibles = [];
   preloadedSections = new Set();
-  createdGates = new Set();
 }
 
 type FormationPosition = { x: number; y: number };
@@ -108,6 +112,8 @@ export function calculateBudgetSections() {
       currentFeet += 100;
     }
   }
+
+  sectionManager.setDefinitions(createSectionDefinitionsFromBudget());
 }
 
 function createFormationGroup(
@@ -164,6 +170,67 @@ export function getSectionIndexForY(y: number): number {
     if (feet >= section.startFeet && feet < section.endFeet) return i;
   }
   return -1;
+}
+
+function createSectionDefinitionsFromBudget(): SectionDefinition[] {
+  const definitions: SectionDefinition[] = [];
+  let patternCursor = 0;
+
+  for (let index = 0; index < budgetSections.length; index++) {
+    const section = budgetSections[index];
+    const heightFeet = Math.max(1, section.endFeet - section.startFeet);
+
+    const gateSpecs: SectionGateSpec[] = [];
+    let offsetFeet = GATE_EVERY_FEET;
+
+    while (offsetFeet < heightFeet) {
+      gateSpecs.push({
+        id: `${section.startFeet + offsetFeet}`,
+        offsetFeet,
+        patternIndex: patternCursor,
+        metadata: {
+          budgetIndex: index,
+          title: section.title,
+        },
+      });
+      patternCursor += 1;
+      offsetFeet += GATE_EVERY_FEET;
+    }
+
+    if (gateSpecs.length === 0) {
+      const fallbackOffset = heightFeet / 2;
+      gateSpecs.push({
+        id: `${section.startFeet + fallbackOffset}`,
+        offsetFeet: fallbackOffset,
+        patternIndex: patternCursor,
+        metadata: {
+          budgetIndex: index,
+          title: section.title,
+        },
+      });
+      patternCursor += 1;
+    }
+
+    definitions.push({
+      id: `${index}`,
+      title: section.title ?? `Section ${index + 1}`,
+      heightFeet,
+      widthPercent: 100,
+      difficulty: section.amount >= 0 ? 'intro' : 'standard',
+      gates: { top: gateSpecs },
+      collectibles: [],
+      enemies: {},
+      metadata: {
+        budgetIndex: index,
+        amount: section.amount,
+        startFeet: section.startFeet,
+        endFeet: section.endFeet,
+        itemCount: section.itemCount,
+      },
+    });
+  }
+
+  return definitions;
 }
 
   
