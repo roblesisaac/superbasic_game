@@ -39,7 +39,7 @@ class Enemy {
     this.stunned = false;
     this.stunTimer = 0;
     this.stunBlinkTimer = 0;
-    this.stunVisible = true;
+    this.stunBlinkYellow = true;
 
     if (orientation === 'horizontal') {
       const minX = rect.x + this.radius;
@@ -151,14 +151,15 @@ class Enemy {
 
   draw(ctx, cameraYValue) {
     if (!this.active) return;
-    if (this.stunned && !this.stunVisible) return;
     const screenY = this.y - cameraYValue;
     if (screenY < -50 || screenY > canvasHeight + 120) return;
 
     ctx.save();
     ctx.translate(this.x, screenY);
 
-    ctx.fillStyle = this.stunned ? '#ffa94d' : '#ff4d4d';
+    ctx.fillStyle = this.stunned
+      ? (this.stunBlinkYellow ? '#ffa94d' : '#ff4d4d')
+      : '#ff4d4d';
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fill();
@@ -181,7 +182,7 @@ class Enemy {
   stun() {
     this.stunned = true;
     this.stunTimer = ENEMY_STUN_DURATION;
-    this.stunVisible = true;
+    this.stunBlinkYellow = true;
     this.stunBlinkTimer = this._getBlinkInterval();
   }
 
@@ -192,13 +193,13 @@ class Enemy {
 
     this.stunBlinkTimer -= dt;
     if (this.stunBlinkTimer <= 0) {
-      this.stunVisible = !this.stunVisible;
+      this.stunBlinkYellow = !this.stunBlinkYellow;
       this.stunBlinkTimer = this._getBlinkInterval();
     }
 
     if (this.stunTimer <= 0) {
       this.stunned = false;
-      this.stunVisible = true;
+      this.stunBlinkYellow = true;
       this.stunBlinkTimer = 0;
     }
   }
