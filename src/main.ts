@@ -1,8 +1,8 @@
 // Import styles
-import '../styles.css';
+import './styles/styles.css';
 
 // Import and start the game
-import './game.ts';
+import './core/game.js';
 
 // Register service worker
 if (import.meta.env.PROD && "serviceWorker" in navigator) {

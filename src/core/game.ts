@@ -12,27 +12,27 @@ import {
 } from './globals.js';
 import {
   CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT, GATE_EVERY_FEET, GATE_GAP_WIDTH
-} from './constants.js';
-import { now } from './utils.js';
-import { updateRides, pruneInactiveRides, drawRides, mergeCollidingRides } from './rides.js';
-import { GateGenerator, updateGates, pruneInactiveGates, drawGates } from './gates.js';
-import { Sprite } from './sprite.js';
-import { EnergyBar, Hearts } from './hud.js';
+} from '../config/constants.js';
+import { now } from '../utils/utils.js';
+import { updateRides, pruneInactiveRides, drawRides, mergeCollidingRides } from '../entities/rides.js';
+import { GateGenerator, updateGates, pruneInactiveGates, drawGates } from '../entities/gates.js';
+import { Sprite } from '../entities/sprite.js';
+import { EnergyBar, Hearts } from '../ui/hud.js';
 import { InputHandler } from './input.js';
-import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from './settings.js';
+import { showSettings, drawSettingsIcon, drawSettings, hideSettings } from '../systems/settings.js';
 import {
   budgetSections, collectibles, gameStats,
   calculateBudgetSections, preloadSectionCollectibles,
   createdGates, resetBudgetContainers,
   getSectionIndexForY
-} from './budget.js';
+} from '../systems/budget.js';
 import {
   resetEnemies,
   updateEnemies,
   drawEnemies,
   pruneInactiveEnemies,
   spawnEnemiesForGate
-} from './enemies.js';
+} from '../entities/enemies.js';
 
 let currentSection = 0;
 let gateGenerator = null;

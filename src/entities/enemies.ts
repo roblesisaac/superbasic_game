@@ -1,5 +1,5 @@
-import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from './constants.js';
-import { canvasHeight, cameraY, type GameState } from './globals.js';
+import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../config/constants.js';
+import { canvasHeight, cameraY, type GameState } from '../core/globals.js';
 import type { GameStats } from './collectibles.js';
 
 type EnemyOrientation = 'horizontal' | 'vertical';

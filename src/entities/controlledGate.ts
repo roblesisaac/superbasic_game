@@ -2,8 +2,8 @@ import {
   GATE_THICKNESS,
   PIXELS_PER_FOOT,
   GATE_GAP_WIDTH,
-} from './constants.js';
-import { asciiArtEnabled } from './settings.js';
+} from '../config/constants.js';
+import { asciiArtEnabled } from '../systems/settings.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
 

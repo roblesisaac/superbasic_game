@@ -1,11 +1,11 @@
-import { GRID_SIZE, CANVAS_MAX_WIDTH } from './constants.js';
+import { GRID_SIZE, CANVAS_MAX_WIDTH } from '../config/constants.js';
 
-type Sprite = import('./sprite.js').Sprite;
-type Ride = import('./rides.js').Ride;
-type Gate = import('./gates.js').Gate | import('./controlledGate.js').ControlledGate;
+type Sprite = import('../entities/sprite.js').Sprite;
+type Ride = import('../entities/rides.js').Ride;
+type Gate = import('../entities/gates.js').Gate | import('../entities/controlledGate.js').ControlledGate;
 type InputHandler = import('./input.js').InputHandler;
-type EnergyBar = import('./hud.js').EnergyBar;
-type Hearts = import('./hud.js').Hearts;
+type EnergyBar = import('../ui/hud.js').EnergyBar;
+type Hearts = import('../ui/hud.js').Hearts;
 
 const canvasElement = document.getElementById('gameCanvas');
 if (!(canvasElement instanceof HTMLCanvasElement)) {

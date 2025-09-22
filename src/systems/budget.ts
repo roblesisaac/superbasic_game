@@ -5,9 +5,9 @@ import {
   ITEM_SPACING,
   PIXELS_PER_FOOT,
   DEFAULT_BUDGET_DATA
-} from './constants.js';
-import { Collectible, type CollectibleType, type GameStats } from './collectibles.js';
-import { groundY, canvasWidth } from './globals.js';
+} from '../config/constants.js';
+import { Collectible, type CollectibleType, type GameStats } from '../entities/collectibles.js';
+import { groundY, canvasWidth } from '../core/globals.js';
 
 export type BudgetEntry = [string, number];
 

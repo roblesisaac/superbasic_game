@@ -1,5 +1,5 @@
-import { ITEM_SIZE, SPRITE_SIZE } from './constants.js';
-import { canvasHeight, cameraY, type GameState } from './globals.js';
+import { ITEM_SIZE, SPRITE_SIZE } from '../config/constants.js';
+import { canvasHeight, cameraY, type GameState } from '../core/globals.js';
 
 export type CollectibleType = 'income' | 'expense';
 

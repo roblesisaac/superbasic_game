@@ -3,10 +3,10 @@ import {
   MIN_SWIPE_TIME,
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
-} from './constants.js';
+} from '../config/constants.js';
 import { canvas, canvasWidth, cameraY, type GameState } from './globals.js';
-import { createRideFromInput, countActiveMovingRides } from './rides.js';
-import { showSettings, toggleSettings, hideSettings } from './settings.js';
+import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
+import { showSettings, toggleSettings, hideSettings } from '../systems/settings.js';
 
 type PointSample = { x: number; y: number; time: number };
 

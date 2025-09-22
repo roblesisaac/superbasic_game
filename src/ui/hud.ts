@@ -1,6 +1,6 @@
-import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from './constants.js';
-import { clamp } from './utils.js';
-import { gameOverDiv } from './globals.js';
+import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../config/constants.js';
+import { clamp } from '../utils/utils.js';
+import { gameOverDiv } from '../core/globals.js';
 
 export class EnergyBar {
   energy: number;

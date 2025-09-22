@@ -4,9 +4,9 @@ import {
   GATE_EVERY_FEET,
   GATE_GAP_WIDTH,
   USE_RANDOM_GATES,
-} from './constants.js';
+} from '../config/constants.js';
 import { ControlledGateGenerator, type CollisionRect } from './controlledGate.js';
-import { asciiArtEnabled } from './settings.js';
+import { asciiArtEnabled } from '../systems/settings.js';
 
 type GateRect = {
   type: 'H' | 'V';

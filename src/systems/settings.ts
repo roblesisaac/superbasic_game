@@ -1,4 +1,4 @@
-import { canvasWidth } from './globals.js';
+import { canvasWidth } from '../core/globals.js';
 import { budgetData } from './budget.js';
 
 export let showSettings = false;
