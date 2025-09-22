@@ -7,7 +7,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    open: true
+    open: true,
+    host: true,
+    hmr: {
+      port: 5173
+    }
   },
   esbuild: {
     target: 'es2020'
