@@ -1,6 +1,5 @@
 import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../config/constants.js';
 import { canvasHeight, cameraY, type GameState } from '../core/globals.js';
-import type { GameStats } from './collectibles.js';
 
 type EnemyOrientation = 'horizontal' | 'vertical';
 
@@ -39,14 +38,10 @@ class Enemy {
   gate: GateLike;
   rect: EnemyRect;
   orientation: EnemyOrientation;
-  title: string;
-  value: number;
-  sectionIndex: number;
   radius: number;
   speed: number;
   direction: number;
   damageCooldown: number;
-  hasRegisteredExpense: boolean;
   active: boolean;
   stunned: boolean;
   stunTimer: number;
@@ -60,26 +55,19 @@ class Enemy {
   x: number;
   y: number;
 
-  constructor({ gate, rect, orientation, title, value, sectionIndex }: {
+  constructor({ gate, rect, orientation }: {
     gate: GateLike;
     rect: EnemyRect;
     orientation: EnemyOrientation;
-    title: string;
-    value: number;
-    sectionIndex: number;
   }) {
     this.gate = gate;
     this.rect = rect;
     this.orientation = orientation;
-    this.title = title;
-    this.value = value;
-    this.sectionIndex = sectionIndex;
 
     this.radius = ENEMY_RADIUS;
     this.speed = randomSpeed();
     this.direction = Math.random() > 0.5 ? 1 : -1;
     this.damageCooldown = 0;
-    this.hasRegisteredExpense = false;
     this.active = true;
     this.stunned = false;
     this.stunTimer = 0;
@@ -108,7 +96,7 @@ class Enemy {
     this.y = orientation === 'horizontal' ? this.baseY : this.position;
   }
 
-  update(dt: number, game: GameState, gameStats: GameStats) {
+  update(dt: number, game: GameState) {
     if (!this.active) return;
 
     if (this.damageCooldown > 0) {
@@ -187,10 +175,6 @@ class Enemy {
     if (this.damageCooldown <= 0) {
       sprite.takeDamage();
       this.damageCooldown = DAMAGE_COOLDOWN;
-      if (!this.hasRegisteredExpense && gameStats && gameStats[this.title]) {
-        gameStats[this.title].collected += Math.abs(this.value);
-        this.hasRegisteredExpense = true;
-      }
     }
   }
 
@@ -287,7 +271,7 @@ function segmentOrientation(rect: EnemyRect): EnemyOrientation {
 
 export function spawnEnemiesForGate(
   gate: GateLike,
-  { count, title, value, sectionIndex }: { count: number; title: string; value: number; sectionIndex: number }
+  { count }: { count: number }
 ): number {
   if (!gate || typeof gate.getRects !== 'function') return 0;
 
@@ -322,10 +306,7 @@ export function spawnEnemiesForGate(
     const enemy = new Enemy({
       gate,
       rect: chosen.rect,
-      orientation: chosen.orientation,
-      title,
-      value,
-      sectionIndex
+      orientation: chosen.orientation
     });
     enemies.push(enemy);
     spawned += 1;
@@ -334,8 +315,8 @@ export function spawnEnemiesForGate(
   return spawned;
 }
 
-export function updateEnemies(game: GameState, dt: number, gameStats: GameStats) {
-  for (const enemy of enemies) enemy.update(dt, game, gameStats);
+export function updateEnemies(game: GameState, dt: number) {
+  for (const enemy of enemies) enemy.update(dt, game);
 }
 
 export function drawEnemies(ctx: CanvasRenderingContext2D, cameraYValue: number) {
