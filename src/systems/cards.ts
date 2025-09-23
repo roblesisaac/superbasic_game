@@ -55,6 +55,7 @@ export interface CardInstance {
   bottomY: number;
   height: number;
   gateTop: GateInstance | null;
+  gateBottom: GateInstance | null;
   enemiesSpawned: boolean;
 }
 
@@ -119,6 +120,27 @@ function findCardForY(y: number): CardInstance | undefined {
   return cardInstances.find(card => y >= card.topY && y <= card.bottomY);
 }
 
+function findNearestCard(y: number): CardInstance | null {
+  if (!cardInstances.length) return null;
+
+  let best: CardInstance | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const card of cardInstances) {
+    let distance = 0;
+    if (y < card.topY) distance = card.topY - y;
+    else if (y > card.bottomY) distance = y - card.bottomY;
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = card;
+    }
+    if (distance === 0) break;
+  }
+
+  return best;
+}
+
 function ensureCard(index: number): CardInstance {
   const existing = getCardByIndex(index);
   if (existing) return existing;
@@ -144,8 +166,13 @@ function ensureCard(index: number): CardInstance {
     bottomY: bottom,
     height: heightPixels,
     gateTop: gate,
+    gateBottom: previous?.gateTop ?? null,
     enemiesSpawned: false
   };
+
+  if (previous && !definition.gates.bottom) {
+    definition.gates.bottom = previous.definition.gates.top ?? null;
+  }
 
   cardInstances.push(card);
   cardInstances.sort((a, b) => a.index - b.index);
@@ -239,11 +266,8 @@ export function updateCardStack(spriteY: number): CardStackFrame {
   ensureCoverageForY(spriteY);
 
   let nextCard = findCardForY(spriteY);
-  if (!nextCard && cardInstances.length) {
-    const first = cardInstances[0];
-    const last = cardInstances[cardInstances.length - 1];
-    if (spriteY < first.topY) nextCard = first;
-    else if (spriteY > last.bottomY) nextCard = last;
+  if (!nextCard) {
+    nextCard = findNearestCard(spriteY) ?? undefined;
   }
 
   currentCard = nextCard ?? currentCard ?? cardInstances[0] ?? null;
@@ -255,9 +279,14 @@ export function updateCardStack(spriteY: number): CardStackFrame {
   trimOldCards(currentIndex);
   refreshVisibleCards(currentIndex);
 
-  const gates = visibleCards
-    .map(card => card.gateTop)
-    .filter((gate): gate is GateInstance => Boolean(gate));
+  const gateSet = new Set<GateInstance>();
+  if (currentCard?.gateBottom) gateSet.add(currentCard.gateBottom);
+
+  for (const card of visibleCards) {
+    if (card.gateTop) gateSet.add(card.gateTop);
+  }
+
+  const gates = Array.from(gateSet);
 
   return {
     currentCard,
