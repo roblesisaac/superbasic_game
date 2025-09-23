@@ -138,7 +138,6 @@ class Enemy {
     this._checkRideCollisions(game?.rides);
 
     if (this.y - this.radius > cameraY + canvasHeight + OFFSCREEN_BUFFER) {
-      this.active = false;
       return;
     }
 
