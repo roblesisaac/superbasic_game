@@ -183,7 +183,7 @@ export class Gate {
     return output;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraY: number) {
+  draw(ctx: CanvasRenderingContext2D, cameraX: number, cameraY: number) {
     if (!this.active) return;
 
     if (asciiArtEnabled) {
@@ -196,11 +196,19 @@ export class Gate {
           if (rect.w > rect.h) {
             const count = Math.max(1, Math.floor(rect.w / 10));
             const ascii = ':'.repeat(count);
-            ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+            ctx.fillText(
+              ascii,
+              rect.x - cameraX + rect.w / 2,
+              rect.y - cameraY + rect.h / 2
+            );
           } else {
             const count = Math.max(1, Math.floor(rect.h / 16));
             for (let i = 0; i < count; i++) {
-              ctx.fillText('::', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+              ctx.fillText(
+                '::',
+                rect.x - cameraX + rect.w / 2,
+                rect.y - cameraY + (i + 0.5) * (rect.h / count)
+              );
             }
           }
         }
@@ -208,18 +216,28 @@ export class Gate {
     } else {
       ctx.fillStyle = '#5aa2ff';
       for (const rect of this.getRects()) {
-        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x - cameraX, rect.y - cameraY, rect.w, rect.h);
       }
 
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       if (this.gapInfo?.type === 'H') {
         const gapY = this.gapY;
-        ctx.fillRect(this.gapX, gapY - cameraY, 1, GATE_THICKNESS);
-        ctx.fillRect(this.gapX + this.gapWidth, gapY - cameraY, 1, GATE_THICKNESS);
+        ctx.fillRect(this.gapX - cameraX, gapY - cameraY, 1, GATE_THICKNESS);
+        ctx.fillRect(
+          this.gapX + this.gapWidth - cameraX,
+          gapY - cameraY,
+          1,
+          GATE_THICKNESS
+        );
       } else if (this.gapInfo?.type === 'V') {
         const gapX = this.gapX;
-        ctx.fillRect(gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-        ctx.fillRect(gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+        ctx.fillRect(gapX - cameraX, this.gapY - cameraY, GATE_THICKNESS, 1);
+        ctx.fillRect(
+          gapX - cameraX,
+          this.gapY + this.gapWidth - cameraY,
+          GATE_THICKNESS,
+          1
+        );
       }
     }
   }
@@ -390,6 +408,6 @@ export function pruneInactiveGates(gates) {
   }
 }
 
-export function drawGates(ctx, gates, cameraY) {
-  for (const gate of gates) gate.draw(ctx, cameraY);
+export function drawGates(ctx, gates, cameraX, cameraY) {
+  for (const gate of gates) gate.draw(ctx, cameraX, cameraY);
 }

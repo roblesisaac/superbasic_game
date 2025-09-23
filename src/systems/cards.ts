@@ -58,6 +58,7 @@ export interface CardInstance {
   topY: number;
   bottomY: number;
   height: number;
+  width: number;
   gateTop: GateInstance | null;
   gateBottom: GateInstance | null;
   enemiesSpawned: boolean;
@@ -157,10 +158,11 @@ function ensureCard(index: number): CardInstance {
     MIN_CARD_HEIGHT,
     (definition.heightPct / 100) * canvasHeight
   );
+  const widthPixels = Math.max(canvasWidth, (definition.widthPct / 100) * canvasWidth);
   const top = bottom - heightPixels;
   const gate = createGateForCardTop({
     y: top,
-    canvasWidth,
+    canvasWidth: widthPixels,
     definition: definition.gates.top ?? null
   });
 
@@ -170,6 +172,7 @@ function ensureCard(index: number): CardInstance {
     topY: top,
     bottomY: bottom,
     height: heightPixels,
+    width: widthPixels,
     gateTop: gate,
     gateBottom: previous?.gateTop ?? null,
     enemiesSpawned: false,

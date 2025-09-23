@@ -33,7 +33,7 @@ export class Ride {
   width: number;
   speed: number;
   direction: number;
-  canvasWidth: number;
+  worldWidth: number;
   active: boolean;
   floating: boolean;
   floatTime: number;
@@ -50,13 +50,13 @@ export class Ride {
   targetLift: number;
   launchVelocity: number;
 
-  constructor({ x, y, width, speed, direction, canvasWidth }: {
+  constructor({ x, y, width, speed, direction, worldWidth }: {
     x: number;
     y: number;
     width: number;
     speed: number;
     direction: number;
-    canvasWidth: number;
+    worldWidth: number;
   }) {
     this.x = x;
     this.baseY = y;
@@ -64,7 +64,7 @@ export class Ride {
     this.width = width;
     this.speed = speed;
     this.direction = direction;
-    this.canvasWidth = canvasWidth;
+    this.worldWidth = worldWidth;
 
     this.active = true;
     this.floating = false;
@@ -103,7 +103,7 @@ export class Ride {
 
     this.x += this.speed * this.direction * dt;
 
-    if (this.direction > 0 && this.x > this.canvasWidth + this.width) this.active = false;
+    if (this.direction > 0 && this.x > this.worldWidth + this.width) this.active = false;
     if (this.direction < 0 && this.x + this.width < 0) this.active = false;
   }
 
@@ -114,7 +114,7 @@ export class Ride {
     this.direction = 0;
   }
 
-  draw(ctx, cameraY) {
+  draw(ctx, cameraX, cameraY) {
     if (!this.active) return;
 
     let color = this.originalSpeed >= RIDE_SPEED_THRESHOLD ? '#ff6b35' : '#4ecdc4';
@@ -127,10 +127,15 @@ export class Ride {
       ctx.textBaseline = 'middle';
       const count = Math.max(1, Math.floor(this.width / 8));
       const ascii = '='.repeat(count);
-      ctx.fillText(ascii, this.x, this.y - cameraY);
+      ctx.fillText(ascii, this.x - cameraX, this.y - cameraY);
     } else {
       ctx.fillStyle = color;
-      ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+      ctx.fillRect(
+        this.x - cameraX,
+        this.y - RIDE_THICKNESS / 2 - cameraY,
+        this.width,
+        RIDE_THICKNESS
+      );
     }
   }
 
@@ -391,7 +396,15 @@ export class Ride {
   }
 }
 
-export function createRideFromInput({ distance, durationMs, screenY, cameraY, canvasWidth }) {
+export function createRideFromInput({
+  distance,
+  durationMs,
+  screenY,
+  cameraY,
+  cameraX,
+  canvasWidth,
+  worldWidth
+}) {
   const normalizedDuration = Math.max(1, durationMs);
   const direction = distance >= 0 ? 1 : -1;
   const distanceMagnitude = Math.abs(distance);
@@ -406,7 +419,10 @@ export function createRideFromInput({ distance, durationMs, screenY, cameraY, ca
   );
 
   const worldY = screenY + cameraY;
-  const startX = direction > 0 ? -width : canvasWidth;
+  const effectiveWorldWidth = Math.max(canvasWidth, worldWidth ?? canvasWidth);
+  const leftSpawn = Math.max(-width, cameraX - width);
+  const rightSpawn = Math.min(effectiveWorldWidth + width, cameraX + canvasWidth);
+  const startX = direction > 0 ? leftSpawn : rightSpawn;
 
   return new Ride({
     x: startX,
@@ -414,7 +430,7 @@ export function createRideFromInput({ distance, durationMs, screenY, cameraY, ca
     width,
     speed,
     direction,
-    canvasWidth
+    worldWidth: effectiveWorldWidth
   });
 }
 
@@ -432,11 +448,11 @@ export function pruneInactiveRides(rides) {
   }
 }
 
-export function drawRides(ctx, rides, cameraY) {
-  for (const ride of rides) ride.draw(ctx, cameraY);
+export function drawRides(ctx, rides, cameraX, cameraY) {
+  for (const ride of rides) ride.draw(ctx, cameraX, cameraY);
 }
 
-export function mergeCollidingRides(rides, canvasWidth) {
+export function mergeCollidingRides(rides, worldWidth) {
   for (let i = 0; i < rides.length; i++) {
     const first = rides[i];
     if (!first || !first.active || first.floating) continue;
@@ -470,7 +486,7 @@ export function mergeCollidingRides(rides, canvasWidth) {
         width: newWidth,
         speed: 0,
         direction: 0,
-        canvasWidth
+        worldWidth: Math.max(worldWidth ?? 0, first.worldWidth, second.worldWidth)
       });
       mergedRide.startFloating();
 

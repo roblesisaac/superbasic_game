@@ -98,6 +98,8 @@ export const DEFAULT_BUDGET_DATA: ReadonlyArray<readonly [string, number]> = [
 // Camera
 export const CAM_TOP = 0.35;
 export const CAM_BOTTOM = 0.65;
+export const CAM_LEFT = 0.35;
+export const CAM_RIGHT = 0.65;
 
 export const MOVEMENT_MIN = 300;
 export const MOVEMENT_MAX = 1000;

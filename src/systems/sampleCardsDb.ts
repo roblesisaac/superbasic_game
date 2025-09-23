@@ -17,6 +17,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
     id: 'card-offset',
     title: 'Offset Hallway',
     heightPct: 110,
+    widthPct: 200,
     gates: {
       top: [
         { width: 55, gate: { position: 45 } },

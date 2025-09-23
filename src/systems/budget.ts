@@ -7,7 +7,7 @@ import {
   DEFAULT_BUDGET_DATA
 } from '../config/constants.js';
 import { Collectible, type CollectibleType, type GameStats } from '../entities/collectibles.js';
-import { groundY, canvasWidth } from '../core/globals.js';
+import { groundY, canvasWidth, worldWidth } from '../core/globals.js';
 
 export type BudgetEntry = [string, number];
 
@@ -142,7 +142,8 @@ export function preloadSectionCollectibles(sectionIndex: number) {
 
     while (itemsToPlace > 0) {
       const groupSize = Math.min(itemsToPlace, Math.floor(Math.random() * 4) + 3);
-      const groupBaseX = Math.random() * Math.max(1, canvasWidth - 100) + 50;
+      const horizontalSpan = Math.max(canvasWidth, worldWidth || canvasWidth);
+      const groupBaseX = Math.random() * Math.max(1, horizontalSpan - 100) + 50;
       const group = createFormationGroup(groupBaseX, currentY, groupSize, section.title, section.amount, type);
       collectibles.push(...group);
       section.spawned += group.length;

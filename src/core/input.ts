@@ -4,7 +4,7 @@ import {
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
 } from '../config/constants.js';
-import { canvas, canvasWidth, cameraY, type GameState } from './globals.js';
+import { canvas, canvasWidth, cameraY, cameraX, worldWidth, type GameState } from './globals.js';
 import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
 import { showSettings, toggleSettings, hideSettings } from '../systems/settings.js';
 
@@ -16,6 +16,8 @@ type RideGesture = {
   screenY: number;
   cameraY: number;
   canvasWidth: number;
+  cameraX: number;
+  worldWidth: number;
 };
 
 export class InputHandler {
@@ -435,6 +437,8 @@ export class InputHandler {
       screenY,
       cameraY,
       canvasWidth,
+      cameraX,
+      worldWidth: worldWidth || canvasWidth,
     };
 
     const ride = createRideFromInput(gesture);
