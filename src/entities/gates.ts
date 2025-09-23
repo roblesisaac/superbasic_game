@@ -5,7 +5,13 @@ import {
   GATE_GAP_WIDTH,
   USE_RANDOM_GATES,
 } from '../config/constants.js';
-import { ControlledGateGenerator, type CollisionRect } from './controlledGate.js';
+import {
+  ControlledGateGenerator,
+  type CollisionRect,
+  CONTROLLED_GATE_PATTERNS,
+  ControlledGate,
+  type ControlledGateDefinition
+} from './controlledGate.js';
 import { asciiArtEnabled } from '../systems/settings.js';
 
 type GateRect = {
@@ -217,6 +223,61 @@ export class Gate {
       }
     }
   }
+}
+
+function deepClone<T>(value: T): T {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    return value.map(item => deepClone(item)) as unknown as T;
+  }
+
+  const output: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    output[key] = deepClone(val);
+  }
+
+  return output as T;
+}
+
+let nextCardGatePatternIndex = 0;
+
+export function resetCardGateFactory() {
+  nextCardGatePatternIndex = 0;
+}
+
+export function createGateForCardTop({
+  y,
+  canvasWidth,
+  definition
+}: {
+  y: number;
+  canvasWidth: number;
+  definition?: ControlledGateDefinition | null;
+}) {
+  if (USE_RANDOM_GATES) {
+    const segmentCount = Math.floor(Math.random() * 3) + 1;
+    return new Gate({
+      y,
+      canvasWidth,
+      gapWidth: GATE_GAP_WIDTH,
+      segmentCount
+    });
+  }
+
+  let gateDefinition: ControlledGateDefinition | undefined;
+  if (definition != null) {
+    gateDefinition = deepClone(definition);
+  } else {
+    const pattern = CONTROLLED_GATE_PATTERNS[nextCardGatePatternIndex % CONTROLLED_GATE_PATTERNS.length];
+    nextCardGatePatternIndex += 1;
+    gateDefinition = deepClone(pattern);
+  }
+
+  return new ControlledGate({
+    y,
+    canvasWidth,
+    definition: gateDefinition ?? { width: 100 }
+  });
 }
 
 export class GateGenerator {
