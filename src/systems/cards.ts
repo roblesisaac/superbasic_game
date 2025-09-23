@@ -219,8 +219,18 @@ function cleanupInactiveCardEnemies() {
 function syncActiveEnemiesWithVisibleCards() {
   cleanupInactiveCardEnemies();
 
+  const activationCards = new Set<CardInstance>(visibleCards);
+
+  if (currentCard) {
+    const previousCard = getCardByIndex(currentCard.index - 1);
+    if (previousCard) {
+      spawnEnemiesForCard(previousCard);
+      activationCards.add(previousCard);
+    }
+  }
+
   const desired = new Set<EnemyActor>();
-  for (const card of visibleCards) {
+  for (const card of activationCards) {
     if (!card.enemyActors.length) continue;
     for (const enemy of card.enemyActors) {
       if (enemy && enemy.active !== false) desired.add(enemy);
