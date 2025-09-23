@@ -171,6 +171,8 @@ class Enemy {
 
     if (this.stunned) return;
 
+    if (sprite.isInvulnerable()) return;
+
     if (this.damageCooldown <= 0) {
       sprite.takeDamage();
       this.damageCooldown = DAMAGE_COOLDOWN;
