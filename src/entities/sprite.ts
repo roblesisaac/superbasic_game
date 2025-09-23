@@ -117,7 +117,7 @@ export class Sprite {
       this.chargeTime = 0; 
       return;
     }
-    if (this.onGround && !this.stunned && this.hooks.energyBar.canUse()) {
+    if (this.onGround && this.hooks.energyBar.canUse()) {
       this.charging = true; 
       this.chargeTime = 0;
     }
@@ -130,7 +130,7 @@ export class Sprite {
       this.movementDirection = { ...direction };
       return;
     }
-    if (!this.stunned && this.hooks.energyBar.canUse()) {
+    if (this.hooks.energyBar.canUse()) {
       this.movementCharging = true;
       this.movementChargeTime = 0;
       this.movementDirection = { ...direction };
@@ -154,7 +154,7 @@ export class Sprite {
       this.chargeTime = 0;
       return;
     }
-    if (this.charging && this.onGround && !this.stunned) {
+    if (this.charging && this.onGround) {
       const r = Math.min(1, this.chargeTime / CHARGE_TIME);
       const vy = JUMP_MIN + (JUMP_MAX - JUMP_MIN) * r;
       this.vy = -vy;
@@ -174,7 +174,7 @@ export class Sprite {
         this.vx += -this.movementDirection.x * force;
         this.vy += -this.movementDirection.y * force;
         this.hooks.energyBar.extendCooldown(0.15);
-      } else if (!this.stunned) {
+      } else {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
         const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
@@ -207,7 +207,7 @@ export class Sprite {
   }
 
   startGliding() {
-    if (!this.onGround && this.vy > 0 && !this.stunned && this.hooks.energyBar.canUse()) {
+    if (!this.onGround && this.vy > 0 && this.hooks.energyBar.canUse()) {
       this.gliding = true;
     }
   }
@@ -508,11 +508,6 @@ export class Sprite {
     if (this.stunned) {
       this.stunTime -= dt;
       if (this.stunTime <= 0) this.stunned = false;
-      if (this.onGround && Math.abs(this.vx) > 0) {
-        const fr = GROUND_FRICTION * dt;
-        if (Math.abs(this.vx) <= fr) this.vx = 0; 
-        else this.vx -= Math.sign(this.vx) * fr;
-      }
     }
 
     const prevX = this.x;
