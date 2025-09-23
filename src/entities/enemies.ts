@@ -265,18 +265,20 @@ class Enemy {
   }
 }
 
+export type EnemyActor = InstanceType<typeof Enemy>;
+
 function segmentOrientation(rect: EnemyRect): EnemyOrientation {
   return rect.w >= rect.h ? 'horizontal' : 'vertical';
 }
 
 export function spawnEnemiesForGate(
   gate: GateLike,
-  { count }: { count: number }
-): number {
-  if (!gate || typeof gate.getRects !== 'function') return 0;
+  { count, register = true }: { count: number; register?: boolean }
+): EnemyActor[] {
+  if (!gate || typeof gate.getRects !== 'function') return [];
 
   const rects = gate.getRects();
-  if (!Array.isArray(rects) || rects.length === 0) return 0;
+  if (!Array.isArray(rects) || rects.length === 0) return [];
 
   const candidates = rects
     .map(rect => ({ rect, orientation: segmentOrientation(rect) }))
@@ -287,13 +289,13 @@ export function spawnEnemiesForGate(
       return rect.h >= ENEMY_SIZE * 1.2;
     });
 
-  if (candidates.length === 0 || !count) return 0;
+  if (candidates.length === 0 || !count) return [];
 
   const maxSpawns = Math.min(count, candidates.length);
-  let spawned = 0;
-  const used = new Set();
+  const spawned: EnemyActor[] = [];
+  const used = new Set<number>();
 
-  while (spawned < maxSpawns) {
+  while (spawned.length < maxSpawns) {
     const pool = candidates.filter((candidate, index) => !used.has(index));
     if (pool.length === 0) break;
 
@@ -308,8 +310,8 @@ export function spawnEnemiesForGate(
       rect: chosen.rect,
       orientation: chosen.orientation
     });
-    enemies.push(enemy);
-    spawned += 1;
+    spawned.push(enemy);
+    if (register) enemies.push(enemy);
   }
 
   return spawned;

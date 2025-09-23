@@ -4,7 +4,11 @@ import {
   createGateForCardTop,
   resetCardGateFactory
 } from '../entities/gates.js';
-import { spawnEnemiesForGate } from '../entities/enemies.js';
+import {
+  spawnEnemiesForGate,
+  enemies as activeEnemies
+} from '../entities/enemies.js';
+import type { EnemyActor } from '../entities/enemies.js';
 import type { ControlledGateDefinition } from '../entities/controlledGate.js';
 import { SAMPLE_CARDS } from './sampleCardsDb.js';
 
@@ -57,6 +61,7 @@ export interface CardInstance {
   gateTop: GateInstance | null;
   gateBottom: GateInstance | null;
   enemiesSpawned: boolean;
+  enemyActors: EnemyActor[];
 }
 
 export interface CardStackFrame {
@@ -167,7 +172,8 @@ function ensureCard(index: number): CardInstance {
     height: heightPixels,
     gateTop: gate,
     gateBottom: previous?.gateTop ?? null,
-    enemiesSpawned: false
+    enemiesSpawned: false,
+    enemyActors: []
   };
 
   if (previous && !definition.gates.bottom) {
@@ -179,18 +185,61 @@ function ensureCard(index: number): CardInstance {
   return card;
 }
 
-function spawnEnemiesForCard(card: CardInstance) {
-  if (!card.gateTop || card.enemiesSpawned) return;
-
-  let spawned = 0;
-  for (const spec of card.definition.enemies) {
-    const count = Math.max(0, Math.min(5, Math.floor(spec.count)));
-    if (count <= 0) continue;
-    spawned += spawnEnemiesForGate(card.gateTop, { count });
+function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
+  if (card.enemiesSpawned) {
+    return card.enemyActors;
   }
 
   card.enemiesSpawned = true;
-  return spawned;
+  card.enemyActors = [];
+
+  if (!card.gateTop) {
+    return card.enemyActors;
+  }
+
+  for (const spec of card.definition.enemies) {
+    const count = Math.max(0, Math.min(5, Math.floor(spec.count)));
+    if (count <= 0) continue;
+    const spawns = spawnEnemiesForGate(card.gateTop, { count, register: false });
+    if (spawns.length) {
+      card.enemyActors.push(...spawns);
+    }
+  }
+
+  return card.enemyActors;
+}
+
+function cleanupInactiveCardEnemies() {
+  for (const card of cardInstances) {
+    if (!card.enemiesSpawned || card.enemyActors.length === 0) continue;
+    card.enemyActors = card.enemyActors.filter(enemy => enemy && enemy.active !== false);
+  }
+}
+
+function syncActiveEnemiesWithVisibleCards() {
+  cleanupInactiveCardEnemies();
+
+  const desired = new Set<EnemyActor>();
+  for (const card of visibleCards) {
+    if (!card.enemyActors.length) continue;
+    for (const enemy of card.enemyActors) {
+      if (enemy && enemy.active !== false) desired.add(enemy);
+    }
+  }
+
+  for (let i = activeEnemies.length - 1; i >= 0; i--) {
+    if (!desired.has(activeEnemies[i])) {
+      activeEnemies.splice(i, 1);
+    }
+  }
+
+  const activeSet = new Set(activeEnemies);
+  for (const enemy of desired) {
+    if (!activeSet.has(enemy)) {
+      activeEnemies.push(enemy);
+      activeSet.add(enemy);
+    }
+  }
 }
 
 function createRandomCard(index: number): CardDefinition {
@@ -215,14 +264,16 @@ function createRandomCard(index: number): CardDefinition {
 }
 
 function refreshVisibleCards(currentIndex: number) {
-  visibleCards = [];
+  const nextVisible: CardInstance[] = [];
   for (let offset = 0; offset < 3; offset++) {
     const card = getCardByIndex(currentIndex + offset);
-    if (card) {
-      visibleCards.push(card);
-      spawnEnemiesForCard(card);
-    }
+    if (!card) continue;
+    nextVisible.push(card);
+    spawnEnemiesForCard(card);
   }
+
+  visibleCards = nextVisible;
+  syncActiveEnemiesWithVisibleCards();
 }
 
 function ensureCoverageForY(y: number) {
