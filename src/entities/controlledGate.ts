@@ -29,7 +29,7 @@ interface SegmentDefinitionObject {
 
 type SegmentInput = number | LegacySegmentTuple | SegmentDefinitionObject;
 
-type ControlledGateDefinition =
+export type ControlledGateDefinition =
   | number
   | SegmentDefinitionObject
   | SegmentInput[]

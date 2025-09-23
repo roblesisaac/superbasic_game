@@ -1,5 +1,4 @@
 import { canvasWidth } from '../core/globals.js';
-import { budgetData } from './budget.js';
 
 export let showSettings = false;
 export function toggleSettings() { showSettings = !showSettings; }
@@ -123,25 +122,12 @@ export function drawSettings() {
 
   list.appendChild(asciiRow);
 
-  // Budget editor
-  const budgetLabel = document.createElement('div');
-  budgetLabel.textContent = 'BUDGET ARRAY (JSON)';
-  budgetLabel.style.fontSize = '12px';
-  budgetLabel.style.opacity = '0.9';
-  budgetLabel.style.marginTop = '4px';
-
-  const textarea = document.createElement('textarea');
-  textarea.style.flex = '1';
-  textarea.style.margin = '6px 0 0 0';
-  textarea.style.minHeight = '160px';
-  textarea.style.background = '#000';
-  textarea.style.color = '#fff';
-  textarea.style.border = '1px solid #fff';
-  textarea.style.padding = '10px';
-  textarea.style.fontFamily = 'monospace';
-  textarea.style.fontSize = '12px';
-  textarea.value = JSON.stringify(budgetData, null, 2);
-  const initialBudgetJSON = JSON.stringify(budgetData);
+  const cardsNote = document.createElement('div');
+  cardsNote.textContent = 'Cards stream in as you climb. Expect procedural gates after the starter deck.';
+  cardsNote.style.fontSize = '11px';
+  cardsNote.style.opacity = '0.75';
+  cardsNote.style.margin = '6px 0 12px 0';
+  cardsNote.style.lineHeight = '1.4';
 
   const resumeButton = document.createElement('button');
   resumeButton.textContent = 'RESUME';
@@ -155,30 +141,12 @@ export function drawSettings() {
   resumeButton.style.cursor = 'pointer';
   resumeButton.style.boxShadow = 'none';
   resumeButton.addEventListener('click', () => {
-    // Try apply edited budget JSON
-    try {
-      const parsed = JSON.parse(textarea.value);
-      if (Array.isArray(parsed)) {
-        const newJSON = JSON.stringify(parsed);
-        const changed = newJSON !== initialBudgetJSON;
-        budgetData.length = 0;
-        budgetData.push(...parsed);
-        if (changed) {
-          try {
-            window.dispatchEvent(new Event('budget-changed'));
-          } catch (_) {}
-        }
-      }
-    } catch (e) {
-      console.error('Invalid budget data', e);
-    }
     hideSettings();
   });
 
   panel.appendChild(title);
   panel.appendChild(list);
-  panel.appendChild(budgetLabel);
-  panel.appendChild(textarea);
+  panel.appendChild(cardsNote);
   panel.appendChild(resumeButton);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);

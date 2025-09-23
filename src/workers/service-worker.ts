@@ -2,7 +2,7 @@
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'game-cache-v14';
+const CACHE_NAME = 'game-cache-v15';
 
 const CORE_ASSETS: string[] = [
   './',
@@ -10,9 +10,8 @@ const CORE_ASSETS: string[] = [
   './styles.css',
   './manifest.webmanifest',
   './dist/game.js',
-  './dist/budget.js',
-  './dist/canvas.js',
-  './dist/collectibles.js',
+  './dist/cards.js',
+  './dist/cardTypes.js',
   './dist/constants.js',
   './dist/controlledGate.js',
   './dist/enemies.js',
@@ -20,6 +19,7 @@ const CORE_ASSETS: string[] = [
   './dist/globals.js',
   './dist/hud.js',
   './dist/input.js',
+  './dist/sampleCardsDb.js',
   './dist/rides.js',
   './dist/settings.js',
   './dist/sprite.js',
