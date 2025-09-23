@@ -4,7 +4,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro',
     title: 'Entry Ledger',
-    heightPct: 100,
+    heightPct: 50,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -16,7 +16,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-offset',
     title: 'Offset Hallway',
-    heightPct: 110,
+    heightPct: 70,
     gates: {
       top: [
         { width: 55, gate: { position: 45 } },
@@ -30,7 +30,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-switchback',
     title: 'Switchback Gallery',
-    heightPct: 95,
+    heightPct: 85,
     gates: {
       top: [
         { width: 40 },
