@@ -1,6 +1,5 @@
 import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../config/constants.js';
 import { canvasHeight, cameraY, type GameState } from '../core/globals.js';
-import type { GameStats } from './collectibles.js';
 
 type EnemyOrientation = 'horizontal' | 'vertical';
 
@@ -39,14 +38,10 @@ class Enemy {
   gate: GateLike;
   rect: EnemyRect;
   orientation: EnemyOrientation;
-  title: string;
-  value: number;
-  sectionIndex: number;
   radius: number;
   speed: number;
   direction: number;
   damageCooldown: number;
-  hasRegisteredExpense: boolean;
   active: boolean;
   stunned: boolean;
   stunTimer: number;
@@ -60,26 +55,19 @@ class Enemy {
   x: number;
   y: number;
 
-  constructor({ gate, rect, orientation, title, value, sectionIndex }: {
+  constructor({ gate, rect, orientation }: {
     gate: GateLike;
     rect: EnemyRect;
     orientation: EnemyOrientation;
-    title: string;
-    value: number;
-    sectionIndex: number;
   }) {
     this.gate = gate;
     this.rect = rect;
     this.orientation = orientation;
-    this.title = title;
-    this.value = value;
-    this.sectionIndex = sectionIndex;
 
     this.radius = ENEMY_RADIUS;
     this.speed = randomSpeed();
     this.direction = Math.random() > 0.5 ? 1 : -1;
     this.damageCooldown = 0;
-    this.hasRegisteredExpense = false;
     this.active = true;
     this.stunned = false;
     this.stunTimer = 0;
@@ -108,7 +96,7 @@ class Enemy {
     this.y = orientation === 'horizontal' ? this.baseY : this.position;
   }
 
-  update(dt: number, game: GameState, gameStats: GameStats) {
+  update(dt: number, game: GameState) {
     if (!this.active) return;
 
     if (this.damageCooldown > 0) {
@@ -150,7 +138,6 @@ class Enemy {
     this._checkRideCollisions(game?.rides);
 
     if (this.y - this.radius > cameraY + canvasHeight + OFFSCREEN_BUFFER) {
-      this.active = false;
       return;
     }
 
@@ -187,10 +174,6 @@ class Enemy {
     if (this.damageCooldown <= 0) {
       sprite.takeDamage();
       this.damageCooldown = DAMAGE_COOLDOWN;
-      if (!this.hasRegisteredExpense && gameStats && gameStats[this.title]) {
-        gameStats[this.title].collected += Math.abs(this.value);
-        this.hasRegisteredExpense = true;
-      }
     }
   }
 
@@ -281,18 +264,20 @@ class Enemy {
   }
 }
 
+export type EnemyActor = InstanceType<typeof Enemy>;
+
 function segmentOrientation(rect: EnemyRect): EnemyOrientation {
   return rect.w >= rect.h ? 'horizontal' : 'vertical';
 }
 
 export function spawnEnemiesForGate(
   gate: GateLike,
-  { count, title, value, sectionIndex }: { count: number; title: string; value: number; sectionIndex: number }
-): number {
-  if (!gate || typeof gate.getRects !== 'function') return 0;
+  { count, register = true }: { count: number; register?: boolean }
+): EnemyActor[] {
+  if (!gate || typeof gate.getRects !== 'function') return [];
 
   const rects = gate.getRects();
-  if (!Array.isArray(rects) || rects.length === 0) return 0;
+  if (!Array.isArray(rects) || rects.length === 0) return [];
 
   const candidates = rects
     .map(rect => ({ rect, orientation: segmentOrientation(rect) }))
@@ -303,13 +288,13 @@ export function spawnEnemiesForGate(
       return rect.h >= ENEMY_SIZE * 1.2;
     });
 
-  if (candidates.length === 0 || !count) return 0;
+  if (candidates.length === 0 || !count) return [];
 
   const maxSpawns = Math.min(count, candidates.length);
-  let spawned = 0;
-  const used = new Set();
+  const spawned: EnemyActor[] = [];
+  const used = new Set<number>();
 
-  while (spawned < maxSpawns) {
+  while (spawned.length < maxSpawns) {
     const pool = candidates.filter((candidate, index) => !used.has(index));
     if (pool.length === 0) break;
 
@@ -322,20 +307,17 @@ export function spawnEnemiesForGate(
     const enemy = new Enemy({
       gate,
       rect: chosen.rect,
-      orientation: chosen.orientation,
-      title,
-      value,
-      sectionIndex
+      orientation: chosen.orientation
     });
-    enemies.push(enemy);
-    spawned += 1;
+    spawned.push(enemy);
+    if (register) enemies.push(enemy);
   }
 
   return spawned;
 }
 
-export function updateEnemies(game: GameState, dt: number, gameStats: GameStats) {
-  for (const enemy of enemies) enemy.update(dt, game, gameStats);
+export function updateEnemies(game: GameState, dt: number) {
+  for (const enemy of enemies) enemy.update(dt, game);
 }
 
 export function drawEnemies(ctx: CanvasRenderingContext2D, cameraYValue: number) {
