@@ -5,7 +5,10 @@ import {
   VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH,
   IMPACT_SQUASH_FACTOR, IMPACT_DECAY_RATE,
   CHARGE_SQUASH_MAX, CHARGE_WIDEN_MAX,
-  SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME, SPRITE_SIZE,
+  SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME,
+  INVULNERABILITY_TIME, INVULNERABILITY_BLINK_INTERVAL_SLOW,
+  INVULNERABILITY_BLINK_INTERVAL_FAST,
+  SPRITE_SIZE,
   MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
   RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
@@ -50,6 +53,9 @@ export class Sprite {
   gliding: boolean;
   stunned: boolean;
   stunTime: number;
+  invulnerableTime: number;
+  invulnerableBlinkTimer: number;
+  invulnerableVisible: boolean;
   fallStartY: number;
   scaleX: number;
   scaleY: number;
@@ -81,6 +87,9 @@ export class Sprite {
 
     this.gliding = false;
     this.stunned = false; this.stunTime = 0;
+    this.invulnerableTime = 0;
+    this.invulnerableBlinkTimer = 0;
+    this.invulnerableVisible = true;
     this.fallStartY = y;
 
     // visuals
@@ -108,7 +117,7 @@ export class Sprite {
       this.chargeTime = 0; 
       return;
     }
-    if (this.onGround && !this.stunned && this.hooks.energyBar.canUse()) {
+    if (this.onGround && this.hooks.energyBar.canUse()) {
       this.charging = true; 
       this.chargeTime = 0;
     }
@@ -121,7 +130,7 @@ export class Sprite {
       this.movementDirection = { ...direction };
       return;
     }
-    if (!this.stunned && this.hooks.energyBar.canUse()) {
+    if (this.hooks.energyBar.canUse()) {
       this.movementCharging = true;
       this.movementChargeTime = 0;
       this.movementDirection = { ...direction };
@@ -145,7 +154,7 @@ export class Sprite {
       this.chargeTime = 0;
       return;
     }
-    if (this.charging && this.onGround && !this.stunned) {
+    if (this.charging && this.onGround) {
       const r = Math.min(1, this.chargeTime / CHARGE_TIME);
       const vy = JUMP_MIN + (JUMP_MAX - JUMP_MIN) * r;
       this.vy = -vy;
@@ -165,7 +174,7 @@ export class Sprite {
         this.vx += -this.movementDirection.x * force;
         this.vy += -this.movementDirection.y * force;
         this.hooks.energyBar.extendCooldown(0.15);
-      } else if (!this.stunned) {
+      } else {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
         const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
@@ -198,7 +207,7 @@ export class Sprite {
   }
 
   startGliding() {
-    if (!this.onGround && this.vy > 0 && !this.stunned && this.hooks.energyBar.canUse()) {
+    if (!this.onGround && this.vy > 0 && this.hooks.energyBar.canUse()) {
       this.gliding = true;
     }
   }
@@ -208,16 +217,48 @@ export class Sprite {
   }
 
   takeDamage() {
+    if (this.isInvulnerable()) return;
     this.hooks.hearts.takeDamage(() => this.hooks.onGameOver());
     this.stunned = true;
     this.stunTime = STUN_TIME;
+    this.invulnerableTime = INVULNERABILITY_TIME;
+    this.invulnerableBlinkTimer = this._getInvulnerabilityBlinkInterval() * 0.5;
+    this.invulnerableVisible = true;
     this.impactSquash = IMPACT_SQUASH_FACTOR * 0.5;
+  }
+
+  isInvulnerable() {
+    return this.invulnerableTime > 0;
   }
 
   _doFollowThroughStretch(direction) {
     this.stretchTimer = STRETCH_TIME;
     if (direction) {
       this.lastMovementDirection = { ...direction };
+    }
+  }
+
+  _getInvulnerabilityBlinkInterval() {
+    if (this.invulnerableTime <= 0) return INVULNERABILITY_BLINK_INTERVAL_FAST;
+    const ratio = clamp(this.invulnerableTime / INVULNERABILITY_TIME, 0, 1);
+    return INVULNERABILITY_BLINK_INTERVAL_FAST +
+      (INVULNERABILITY_BLINK_INTERVAL_SLOW - INVULNERABILITY_BLINK_INTERVAL_FAST) * ratio;
+  }
+
+  _updateInvulnerability(dt: number) {
+    if (this.invulnerableTime <= 0) return;
+
+    this.invulnerableTime = Math.max(0, this.invulnerableTime - dt);
+    this.invulnerableBlinkTimer -= dt;
+
+    if (this.invulnerableBlinkTimer <= 0) {
+      this.invulnerableVisible = !this.invulnerableVisible;
+      this.invulnerableBlinkTimer = this._getInvulnerabilityBlinkInterval();
+    }
+
+    if (this.invulnerableTime <= 0) {
+      this.invulnerableVisible = true;
+      this.invulnerableBlinkTimer = 0;
     }
   }
 
@@ -455,6 +496,7 @@ export class Sprite {
     this._updateVelocityStretch();
     this._updateImpactSquash(dt);
     this._updateFollowThrough(dt);
+    this._updateInvulnerability(dt);
 
     // Track facing direction based on vx
     if (this.vx > 20) {
@@ -466,11 +508,6 @@ export class Sprite {
     if (this.stunned) {
       this.stunTime -= dt;
       if (this.stunTime <= 0) this.stunned = false;
-      if (this.onGround && Math.abs(this.vx) > 0) {
-        const fr = GROUND_FRICTION * dt;
-        if (Math.abs(this.vx) <= fr) this.vx = 0; 
-        else this.vx -= Math.sign(this.vx) * fr;
-      }
     }
 
     const prevX = this.x;
@@ -714,22 +751,25 @@ export class Sprite {
     const size = SPRITE_SIZE;
 
     // --- Draw sprite (with mirroring and scaling) ---
-    ctx.save();
-    ctx.translate(px, py);
+    const shouldRenderSprite = !(this.invulnerableTime > 0 && !this.invulnerableVisible);
+    if (shouldRenderSprite) {
+      ctx.save();
+      ctx.translate(px, py);
 
-    // Combine mirroring and stretch scaling in one scale call.
-    // Negative X when facing left mirrors the sprite about its center.
-    const sx = (this.facingLeft ? -1 : 1) * this.scaleX;
-    const sy = this.scaleY;
-    ctx.scale(sx, sy);
+      // Combine mirroring and stretch scaling in one scale call.
+      // Negative X when facing left mirrors the sprite about its center.
+      const sx = (this.facingLeft ? -1 : 1) * this.scaleX;
+      const sy = this.scaleY;
+      ctx.scale(sx, sy);
 
-    if (spriteLoaded) {
-      ctx.drawImage(spriteImg, -size / 2, -size / 2, size, size);
-    } else {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(-size / 2, -size / 2, size, size);
+      if (spriteLoaded) {
+        ctx.drawImage(spriteImg, -size / 2, -size / 2, size, size);
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-size / 2, -size / 2, size, size);
+      }
+      ctx.restore();
     }
-    ctx.restore();
 
     // --- Draw movement charging arrows (never mirrored, but still stretched) ---
     if (this.movementCharging && this.hooks.energyBar.state === 'active') {

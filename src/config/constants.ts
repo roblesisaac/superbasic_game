@@ -31,6 +31,9 @@ export const COOLDOWN_PENALTY_PER_PRESS = 0.22;
 export const SAFE_FALL_VY = 700;
 export const SAFE_FALL_HEIGHT = 64;
 export const STUN_TIME = 1.0;
+export const INVULNERABILITY_TIME = 1.8;
+export const INVULNERABILITY_BLINK_INTERVAL_SLOW = 0.2;
+export const INVULNERABILITY_BLINK_INTERVAL_FAST = 0.08;
 export const SPRITE_SIZE = 25;
 
 // Rides
