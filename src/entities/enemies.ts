@@ -272,6 +272,62 @@ function segmentOrientation(rect: EnemyRect): EnemyOrientation {
   return rect.w >= rect.h ? 'horizontal' : 'vertical';
 }
 
+/**
+ * Distributes enemies evenly across rectangles based on their capacity.
+ * Uses a round-robin approach to ensure fair distribution.
+ * 
+ * Examples:
+ * - 6 enemies, capacities [5, 5, 5] → [2, 2, 2] (even distribution)
+ * - 5 enemies, capacities [5, 5, 5] → [2, 2, 1] (round-robin remainder)
+ * - 4 enemies, capacities [2, 3, 3] → [2, 1, 1] (respects capacity limits)
+ * - 8 enemies, capacities [2, 2, 2] → [2, 2, 2] (limited by total capacity)
+ * 
+ * @param totalEnemies - Total number of enemies to distribute
+ * @param capacities - Array of maximum capacity for each rectangle
+ * @returns Array of enemy counts for each rectangle
+ */
+function calculateEvenDistribution(totalEnemies: number, capacities: number[]): number[] {
+  if (capacities.length === 0 || totalEnemies === 0) {
+    return [];
+  }
+
+  // Initialize distribution array
+  const distribution = new Array(capacities.length).fill(0);
+  
+  // Filter out rectangles with zero capacity
+  const validIndices = capacities
+    .map((capacity, index) => ({ capacity, index }))
+    .filter(({ capacity }) => capacity > 0)
+    .map(({ index }) => index);
+
+  if (validIndices.length === 0) {
+    return distribution;
+  }
+
+  let remainingEnemies = totalEnemies;
+  
+  // Use round-robin distribution to ensure even spread
+  while (remainingEnemies > 0) {
+    let distributed = false;
+    
+    for (const index of validIndices) {
+      if (remainingEnemies <= 0) break;
+      
+      // Only add an enemy if this rectangle hasn't reached its capacity
+      if (distribution[index] < capacities[index]) {
+        distribution[index]++;
+        remainingEnemies--;
+        distributed = true;
+      }
+    }
+    
+    // If no rectangles can accept more enemies, break to avoid infinite loop
+    if (!distributed) break;
+  }
+
+  return distribution;
+}
+
 export function spawnEnemiesForGate(
   gate: GateLike,
   { count, register = true }: { count: number; register?: boolean }
@@ -292,27 +348,39 @@ export function spawnEnemiesForGate(
 
   if (candidates.length === 0 || !count) return [];
 
-  const maxSpawns = Math.min(count, candidates.length);
   const spawned: EnemyActor[] = [];
-  const used = new Set<number>();
 
-  while (spawned.length < maxSpawns) {
-    const pool = candidates.filter((candidate, index) => !used.has(index));
-    if (pool.length === 0) break;
+  // Calculate how many enemies can fit on each candidate rectangle
+  const candidateCapacities = candidates.map(({ rect, orientation }) => {
+    if (orientation === 'horizontal') {
+      // For horizontal rectangles, calculate how many enemies can fit based on width
+      return Math.floor(rect.w / (ENEMY_SIZE * 1.2));
+    } else {
+      // For vertical rectangles, calculate how many enemies can fit based on height
+      return Math.floor(rect.h / (ENEMY_SIZE * 1.2));
+    }
+  });
 
-    const chosen = pool[Math.floor(Math.random() * pool.length)];
-    if (!chosen) break;
+  const totalCapacity = candidateCapacities.reduce((sum, capacity) => sum + capacity, 0);
+  const maxSpawns = Math.min(count, totalCapacity);
 
-    const index = candidates.indexOf(chosen);
-    if (index !== -1) used.add(index);
+  // Calculate even distribution of enemies across rectangles
+  const distribution = calculateEvenDistribution(maxSpawns, candidateCapacities);
 
+  // Spawn enemies according to the calculated distribution
+  for (let i = 0; i < candidates.length && i < distribution.length; i++) {
+    const candidate = candidates[i];
+    const enemiesToSpawn = distribution[i];
+
+    for (let j = 0; j < enemiesToSpawn; j++) {
     const enemy = new Enemy({
       gate,
-      rect: chosen.rect,
-      orientation: chosen.orientation
+        rect: candidate.rect,
+        orientation: candidate.orientation
     });
     spawned.push(enemy);
     if (register) enemies.push(enemy);
+    }
   }
 
   return spawned;
