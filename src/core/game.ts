@@ -7,10 +7,14 @@ import {
   gameOverPanel,
   game,
   cameraY,
+  cameraX,
   setCameraY,
+  setCameraX,
+  worldWidth,
+  setWorldWidth,
   drawBackgroundGrid
 } from './globals.js';
-import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT } from '../config/constants.js';
+import { CAM_TOP, CAM_BOTTOM, CAM_LEFT, CAM_RIGHT, PIXELS_PER_FOOT } from '../config/constants.js';
 import { now } from '../utils/utils.js';
 import { updateRides, pruneInactiveRides, drawRides, mergeCollidingRides } from '../entities/rides.js';
 import { updateGates, pruneInactiveGates, drawGates } from '../entities/gates.js';
@@ -38,9 +42,13 @@ function syncCardStack() {
   const frame = updateCardSystem(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = frame.gates;
+  const width = currentCard?.width ?? canvasWidth;
+  setWorldWidth(width);
 }
 
 function updateCamera() {
+  if (!game.sprite) return;
+
   const topLine = canvasHeight * CAM_TOP;
   const bottomLine = canvasHeight * CAM_BOTTOM;
   const screenY = game.sprite.y - cameraY;
@@ -48,6 +56,12 @@ function updateCamera() {
   else if (screenY > bottomLine) setCameraY(game.sprite.y - bottomLine);
   // keep from panning below 0
   setCameraY(Math.min(cameraY, 0));
+
+  const leftLine = canvasWidth * CAM_LEFT;
+  const rightLine = canvasWidth * CAM_RIGHT;
+  const screenX = game.sprite.x - cameraX;
+  if (screenX < leftLine) setCameraX(game.sprite.x - leftLine);
+  else if (screenX > rightLine) setCameraX(game.sprite.x - rightLine);
 }
 
 function lightenColor(hex: string, ratio = 0.5) {
@@ -159,10 +173,14 @@ function startGame() {
     getGates: () => game.gates
   });
 
+  setCameraX(0);
   setCameraY(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = [...frame.gates];
+  const width = currentCard?.width ?? canvasWidth;
+  setWorldWidth(width);
+  setCameraX(0);
 
   game.input = new InputHandler(game, resetGame);
   game.lastTime = now();
@@ -194,10 +212,14 @@ export function resetGame() {
     getGates: () => game.gates
   });
 
+  setCameraX(0);
   setCameraY(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = [...frame.gates];
+  const width = currentCard?.width ?? canvasWidth;
+  setWorldWidth(width);
+  setCameraX(0);
   game.lastTime = now();
   requestAnimationFrame(loop);
 }
@@ -224,7 +246,7 @@ function loop() {
     pruneInactiveRides(game.rides);
     pruneInactiveGates(game.gates);
 
-    while (mergeCollidingRides(game.rides, canvasWidth)) {}
+    while (mergeCollidingRides(game.rides, worldWidth || canvasWidth)) {}
 
     game.energyBar.update(dt);
     updateCamera();
@@ -246,13 +268,13 @@ function drawFrame() {
   ctx.lineTo(canvasWidth, groundY - cameraY);
   ctx.stroke();
 
-  drawRides(ctx, game.rides, cameraY);
-  drawGates(ctx, game.gates, cameraY);
-  drawEnemies(ctx, cameraY);
+  drawRides(ctx, game.rides, cameraX, cameraY);
+  drawGates(ctx, game.gates, cameraX, cameraY);
+  drawEnemies(ctx, cameraX, cameraY);
 
-  for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
+  for (const c of collectibles) c.draw(ctx, cameraX, cameraY, canvasHeight);
 
-  if (!showSettings) game.sprite.draw(ctx, cameraY);
+  if (!showSettings) game.sprite.draw(ctx, cameraX, cameraY);
 
   drawHUD();
   drawSettings();

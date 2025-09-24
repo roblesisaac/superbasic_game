@@ -9,7 +9,7 @@ import {
   enemies as activeEnemies
 } from '../entities/enemies.js';
 import type { EnemyActor } from '../entities/enemies.js';
-import type { ControlledGateDefinition } from '../entities/controlledGate.js';
+import { ControlledGate, type ControlledGateDefinition } from '../entities/controlledGate.js';
 import { SAMPLE_CARDS } from './sampleCardsDb.js';
 
 type GateInstance = ReturnType<typeof createGateForCardTop>;
@@ -58,6 +58,7 @@ export interface CardInstance {
   topY: number;
   bottomY: number;
   height: number;
+  width: number;
   gateTop: GateInstance | null;
   gateBottom: GateInstance | null;
   enemiesSpawned: boolean;
@@ -157,10 +158,29 @@ function ensureCard(index: number): CardInstance {
     MIN_CARD_HEIGHT,
     (definition.heightPct / 100) * canvasHeight
   );
+  const widthPixels = Math.max(canvasWidth, (definition.widthPct / 100) * canvasWidth);
   const top = bottom - heightPixels;
+  if (previous && widthPixels > previous.width) {
+    previous.width = widthPixels;
+    if (previous.gateTop instanceof ControlledGate) {
+      previous.gateTop.y = previous.topY;
+      previous.gateTop.setCanvasWidth(widthPixels);
+    } else if (previous.gateTop) {
+      previous.gateTop = createGateForCardTop({
+        y: previous.topY,
+        canvasWidth: widthPixels,
+        definition: previous.definition.gates.top ?? null
+      });
+    }
+
+    previous.enemiesSpawned = false;
+    previous.enemyActors = [];
+  }
+
+  const gateBottom = previous?.gateTop ?? null;
   const gate = createGateForCardTop({
     y: top,
-    canvasWidth,
+    canvasWidth: widthPixels,
     definition: definition.gates.top ?? null
   });
 
@@ -170,8 +190,9 @@ function ensureCard(index: number): CardInstance {
     topY: top,
     bottomY: bottom,
     height: heightPixels,
+    width: widthPixels,
     gateTop: gate,
-    gateBottom: previous?.gateTop ?? null,
+    gateBottom,
     enemiesSpawned: false,
     enemyActors: []
   };

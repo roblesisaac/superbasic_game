@@ -112,6 +112,18 @@ export class ControlledGate {
   update(): void {}
   startFloating(): void {}
 
+  setCanvasWidth(width: number): void {
+    const normalizedWidth = Number(width);
+    if (!Number.isFinite(normalizedWidth) || normalizedWidth <= 0) return;
+    if (Math.abs(normalizedWidth - this.canvasWidth) < 0.01) return;
+
+    this.canvasWidth = normalizedWidth;
+    this.gapInfo = undefined;
+    this._parseDefinition();
+    this._generateLayout();
+    this._ensureGap();
+  }
+
   private _parseDefinition(): void {
     const definition = this.definition;
 
@@ -408,7 +420,7 @@ export class ControlledGate {
     return output;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraY: number): void {
+  draw(ctx: CanvasRenderingContext2D, cameraX: number, cameraY: number): void {
     if (!this.active) return;
 
     const rects = this.getRects();
@@ -422,28 +434,46 @@ export class ControlledGate {
         if (rect.w > rect.h) {
           const count = Math.max(1, Math.floor(rect.w / 10));
           const ascii = ':'.repeat(count);
-          ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+          ctx.fillText(
+            ascii,
+            rect.x - cameraX + rect.w / 2,
+            rect.y - cameraY + rect.h / 2
+          );
         } else {
           const count = Math.max(1, Math.floor(rect.h / 16));
           for (let i = 0; i < count; i++) {
-            ctx.fillText('::', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+            ctx.fillText(
+              '::',
+              rect.x - cameraX + rect.w / 2,
+              rect.y - cameraY + (i + 0.5) * (rect.h / count)
+            );
           }
         }
       }
     } else {
       ctx.fillStyle = '#5aa2ff';
       for (const rect of rects) {
-        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x - cameraX, rect.y - cameraY, rect.w, rect.h);
       }
 
       if (this.gapInfo) {
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
         if (this.gapInfo.type === 'H') {
-          ctx.fillRect(this.gapX, this.gapY - cameraY, 1, GATE_THICKNESS);
-          ctx.fillRect(this.gapX + this.gapWidth, this.gapY - cameraY, 1, GATE_THICKNESS);
+          ctx.fillRect(this.gapX - cameraX, this.gapY - cameraY, 1, GATE_THICKNESS);
+          ctx.fillRect(
+            this.gapX + this.gapWidth - cameraX,
+            this.gapY - cameraY,
+            1,
+            GATE_THICKNESS
+          );
         } else {
-          ctx.fillRect(this.gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-          ctx.fillRect(this.gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+          ctx.fillRect(this.gapX - cameraX, this.gapY - cameraY, GATE_THICKNESS, 1);
+          ctx.fillRect(
+            this.gapX - cameraX,
+            this.gapY + this.gapWidth - cameraY,
+            GATE_THICKNESS,
+            1
+          );
         }
       }
     }
