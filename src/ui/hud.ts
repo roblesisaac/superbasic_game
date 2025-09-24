@@ -33,7 +33,7 @@ export class EnergyBar {
     if (this.state === 'cooldown') this.cooldown += dt;
   }
 
-  update(dt: number) {
+  update(dt: number, canRecharge: boolean) {
     if (this.state === 'cooldown') {
       this.cooldown -= dt;
       if (this.cooldown <= 0) {
@@ -42,7 +42,7 @@ export class EnergyBar {
       } else {
         this.energy = 0;
       }
-    } else {
+    } else if (canRecharge) {
       this.energy = clamp(this.energy + ENERGY_REGEN_RATE * 0.3 * dt, 0, ENERGY_MAX);
     }
   }

@@ -226,7 +226,8 @@ function loop() {
 
     while (mergeCollidingRides(game.rides, canvasWidth)) {}
 
-    game.energyBar.update(dt);
+    const canRecharge = !!(game.sprite && (game.sprite.onGround || game.sprite.onPlatform));
+    game.energyBar.update(dt, canRecharge);
     updateCamera();
   }
 
