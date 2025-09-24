@@ -430,8 +430,8 @@ export class ControlledGate {
       ctx.font = '16px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const horizontalGlyph = this.asciiDamaged ? '_' : ':';
-      const verticalGlyph = this.asciiDamaged ? '__' : '::';
+      const horizontalGlyph = this.asciiDamaged ? '.' : ':';
+      const verticalGlyph = this.asciiDamaged ? ':' : '::';
       for (const rect of rects) {
         if (rect.w <= 0 || rect.h <= 0) continue;
         if (rect.w > rect.h) {
