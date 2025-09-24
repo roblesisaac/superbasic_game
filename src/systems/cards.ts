@@ -1,5 +1,5 @@
 import { GATE_THICKNESS } from '../config/constants.js';
-import { canvasHeight, canvasWidth, groundY } from '../core/globals.js';
+import { canvasHeight, canvasWidth, groundY, game } from '../core/globals.js';
 import {
   createGateForCardTop,
   resetCardGateFactory,
@@ -263,10 +263,13 @@ function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
     return card.enemyActors;
   }
 
+  // Get sprite position to avoid spawning enemies on top of it
+  const avoidPosition = game.sprite ? { x: game.sprite.x, y: game.sprite.y } : undefined;
+
   for (const spec of card.definition.enemies) {
     const count = Math.max(0, Math.min(5, Math.floor(spec.count)));
     if (count <= 0) continue;
-    const spawns = spawnEnemiesForGate(floorSurface, { count, register: false });
+    const spawns = spawnEnemiesForGate(floorSurface, { count, register: false, avoidPosition });
     if (!spawns.length) continue;
 
     const filtered: EnemyActor[] = [];

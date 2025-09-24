@@ -55,10 +55,11 @@ class Enemy {
   x: number;
   y: number;
 
-  constructor({ gate, rect, orientation }: {
+  constructor({ gate, rect, orientation, avoidPosition }: {
     gate: GateLike;
     rect: EnemyRect;
     orientation: EnemyOrientation;
+    avoidPosition?: { x: number; y: number };
   }) {
     this.gate = gate;
     this.rect = rect;
@@ -66,7 +67,6 @@ class Enemy {
 
     this.radius = ENEMY_RADIUS;
     this.speed = randomSpeed();
-    this.direction = Math.random() > 0.5 ? 1 : -1;
     this.damageCooldown = 0;
     this.active = true;
     this.stunned = false;
@@ -79,15 +79,63 @@ class Enemy {
       const maxX = rect.x + rect.w - this.radius;
       this.min = Math.min(minX, maxX);
       this.max = Math.max(minX, maxX);
-      this.position = this.min + Math.random() * (this.max - this.min);
+      
+      // Smart positioning: spawn away from sprite if position is provided
+      if (avoidPosition && avoidPosition.x >= minX && avoidPosition.x <= maxX) {
+        // Sprite is within this patrol range
+        const midPoint = (this.min + this.max) / 2;
+        const safeDistance = (this.max - this.min) * 0.4; // 40% of patrol range
+        
+        if (avoidPosition.x < midPoint) {
+          // Sprite is on the left side, spawn enemy on the right
+          this.position = Math.min(this.max, avoidPosition.x + safeDistance);
+          this.direction = 1; // Start moving right (away from sprite initially)
+        } else {
+          // Sprite is on the right side, spawn enemy on the left
+          this.position = Math.max(this.min, avoidPosition.x - safeDistance);
+          this.direction = -1; // Start moving left (away from sprite initially)
+        }
+      } else {
+        // Sprite is not in this patrol range, spawn at edges moving inward
+        const midPoint = (this.min + this.max) / 2;
+        if (avoidPosition && avoidPosition.x < midPoint) {
+          // Sprite is to the left, spawn at right edge moving left
+          this.position = this.max;
+          this.direction = -1;
+        } else if (avoidPosition && avoidPosition.x > midPoint) {
+          // Sprite is to the right, spawn at left edge moving right
+          this.position = this.min;
+          this.direction = 1;
+        } else {
+          // No sprite position or sprite is centered, use random edge
+          if (Math.random() > 0.5) {
+            this.position = this.max;
+            this.direction = -1;
+          } else {
+            this.position = this.min;
+            this.direction = 1;
+          }
+        }
+      }
+      
       this.baseY = rect.y - this.radius + 4;
       this.baseX = null;
     } else {
+      // Vertical orientation
       const minY = rect.y + this.radius;
       const maxY = rect.y + rect.h - this.radius;
       this.min = Math.min(minY, maxY);
       this.max = Math.max(minY, maxY);
-      this.position = this.min + Math.random() * (this.max - this.min);
+      
+      // For vertical enemies, spawn at edges
+      if (Math.random() > 0.5) {
+        this.position = this.max;
+        this.direction = -1;
+      } else {
+        this.position = this.min;
+        this.direction = 1;
+      }
+      
       this.baseX = rect.x + rect.w / 2;
       this.baseY = null;
     }
@@ -330,7 +378,7 @@ function calculateEvenDistribution(totalEnemies: number, capacities: number[]): 
 
 export function spawnEnemiesForGate(
   gate: GateLike,
-  { count, register = true }: { count: number; register?: boolean }
+  { count, register = true, avoidPosition }: { count: number; register?: boolean; avoidPosition?: { x: number; y: number } }
 ): EnemyActor[] {
   if (!gate || typeof gate.getRects !== 'function') return [];
 
@@ -373,13 +421,14 @@ export function spawnEnemiesForGate(
     const enemiesToSpawn = distribution[i];
 
     for (let j = 0; j < enemiesToSpawn; j++) {
-    const enemy = new Enemy({
-      gate,
+      const enemy = new Enemy({
+        gate,
         rect: candidate.rect,
-        orientation: candidate.orientation
-    });
-    spawned.push(enemy);
-    if (register) enemies.push(enemy);
+        orientation: candidate.orientation,
+        avoidPosition
+      });
+      spawned.push(enemy);
+      if (register) enemies.push(enemy);
     }
   }
 
