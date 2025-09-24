@@ -15,6 +15,7 @@ import {
 } from '../config/constants.js';
 import { clamp } from '../utils/utils.js';
 import { canvasWidth, groundY, cameraY } from '../core/globals.js';
+import { getCurrentCardBounds } from '../systems/cards.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -561,7 +562,17 @@ export class Sprite {
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    this.x = clamp(this.x, hs, canvasWidth - hs);
+
+    const bounds = getCurrentCardBounds();
+    if (bounds) {
+      const leftLimit = bounds.left + hs;
+      const rightLimit = bounds.right - hs;
+      const minLimit = Math.min(leftLimit, rightLimit);
+      const maxLimit = Math.max(leftLimit, rightLimit);
+      this.x = clamp(this.x, minLimit, maxLimit);
+    } else {
+      this.x = clamp(this.x, hs, canvasWidth - hs);
+    }
 
     const prevTop = prevY - hs;
     const prevBottom = prevY + hs;
@@ -752,8 +763,8 @@ export class Sprite {
     this._applyFinalScale();
   }
 
-  draw(ctx, cameraY) {
-    const px = this.x;
+  draw(ctx, cameraXValue, cameraY) {
+    const px = this.x - cameraXValue;
     let platformVisualYOffset = 0;
     if (this.onPlatform && this.platformSurface) {
       const surface = this.platformSurface;

@@ -7,7 +7,9 @@ import {
   gameOverPanel,
   game,
   cameraY,
+  cameraX,
   setCameraY,
+  setCameraX,
   drawBackgroundGrid
 } from './globals.js';
 import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT } from '../config/constants.js';
@@ -27,9 +29,11 @@ import {
 } from '../entities/enemies.js';
 import {
   initializeCardStack,
-  updateCardStack as updateCardSystem
+  updateCardStack as updateCardSystem,
+  getCurrentCardBounds
 } from '../systems/cards.js';
 import type { CardInstance } from '../systems/cards.js';
+import { clamp } from '../utils/utils.js';
 
 let currentCard: CardInstance | null = null;
 
@@ -41,6 +45,7 @@ function syncCardStack() {
 }
 
 function updateCamera() {
+  if (!game.sprite) return;
   const topLine = canvasHeight * CAM_TOP;
   const bottomLine = canvasHeight * CAM_BOTTOM;
   const screenY = game.sprite.y - cameraY;
@@ -48,6 +53,28 @@ function updateCamera() {
   else if (screenY > bottomLine) setCameraY(game.sprite.y - bottomLine);
   // keep from panning below 0
   setCameraY(Math.min(cameraY, 0));
+
+  const bounds = getCurrentCardBounds();
+  if (!bounds) {
+    setCameraX(0);
+    return;
+  }
+
+  const { left, right, width, anchorX, anchorRatio } = bounds;
+  const viewWidth = canvasWidth;
+  const minX = left;
+  const maxX = right - viewWidth;
+
+  if (width <= viewWidth) {
+    const anchorTarget = anchorX - viewWidth * anchorRatio;
+    const clampMin = Math.min(minX, maxX);
+    const clampMax = Math.max(minX, maxX);
+    setCameraX(clamp(anchorTarget, clampMin, clampMax));
+    return;
+  }
+
+  const desired = game.sprite.x - viewWidth / 2;
+  setCameraX(clamp(desired, minX, maxX));
 }
 
 function lightenColor(hex: string, ratio = 0.5) {
@@ -160,6 +187,7 @@ function startGame() {
   });
 
   setCameraY(0);
+  setCameraX(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = [...frame.gates];
@@ -195,6 +223,7 @@ export function resetGame() {
   });
 
   setCameraY(0);
+  setCameraX(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = [...frame.gates];
@@ -247,13 +276,13 @@ function drawFrame() {
   ctx.lineTo(canvasWidth, groundY - cameraY);
   ctx.stroke();
 
-  drawRides(ctx, game.rides, cameraY);
-  drawGates(ctx, game.gates, cameraY);
-  drawEnemies(ctx, cameraY);
+  drawRides(ctx, game.rides, cameraX, cameraY);
+  drawGates(ctx, game.gates, cameraX, cameraY);
+  drawEnemies(ctx, cameraX, cameraY);
 
-  for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
+  for (const c of collectibles) c.draw(ctx, cameraX, cameraY, canvasHeight);
 
-  if (!showSettings) game.sprite.draw(ctx, cameraY);
+  if (!showSettings) game.sprite.draw(ctx, cameraX, cameraY);
 
   drawHUD();
   drawSettings();

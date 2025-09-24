@@ -179,13 +179,13 @@ class Enemy {
     }
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraYValue: number) {
+  draw(ctx: CanvasRenderingContext2D, cameraXValue: number, cameraYValue: number) {
     if (!this.active) return;
     const screenY = this.y - cameraYValue;
     if (screenY < -50 || screenY > canvasHeight + 120) return;
 
     ctx.save();
-    ctx.translate(this.x, screenY);
+    ctx.translate(this.x - cameraXValue, screenY);
 
     // While stunned, alternate between yellow and red instead of hiding
     ctx.fillStyle = this.stunned ? (this.stunVisible ? '#ffa94d' : '#ff4d4d') : '#ff4d4d';
@@ -322,8 +322,8 @@ export function updateEnemies(game: GameState, dt: number) {
   for (const enemy of enemies) enemy.update(dt, game);
 }
 
-export function drawEnemies(ctx: CanvasRenderingContext2D, cameraYValue: number) {
-  for (const enemy of enemies) enemy.draw(ctx, cameraYValue);
+export function drawEnemies(ctx: CanvasRenderingContext2D, cameraXValue: number, cameraYValue: number) {
+  for (const enemy of enemies) enemy.draw(ctx, cameraXValue, cameraYValue);
 }
 
 export function pruneInactiveEnemies() {

@@ -43,6 +43,7 @@ export class Gate {
   gapInfo: GateGapInfo;
   gapX: number;
   gapY: number;
+  offsetX: number;
 
   constructor({ y, canvasWidth, gapWidth, segmentCount }: {
     y: number;
@@ -62,6 +63,7 @@ export class Gate {
     this.originalSpeed = 0;
     this.rewardEnabled = true;
     this.asciiDamaged = false;
+    this.offsetX = 0;
 
     this._generateLayout();
     this._chooseGap();
@@ -118,13 +120,14 @@ export class Gate {
     this.rects = [];
     let cursorX = 0;
     let currentY = this.y;
+    const baseX = this.offsetX;
 
     for (let i = 0; i < segments; i++) {
       const width = this.horizontalSegments[i];
       const horizontalRect: GateRect = {
         type: 'H',
         index: i,
-        x: cursorX,
+        x: baseX + cursorX,
         y: currentY - thickness / 2,
         w: width,
         h: thickness
@@ -137,7 +140,7 @@ export class Gate {
         const verticalRect: GateRect = {
           type: 'V',
           index: i,
-          x: cursorX + width - thickness / 2,
+          x: baseX + cursorX + width - thickness / 2,
           y: top,
           w: thickness,
           h: Math.abs(nextY - currentY) + thickness
@@ -198,7 +201,37 @@ export class Gate {
     return output;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraY: number) {
+  setHorizontalBounds({ left, width }: { left: number; width: number }) {
+    const span = Math.max(1, width);
+    const total = this.horizontalSegments.reduce((sum, value) => sum + value, 0) || span;
+    const scale = span / total;
+    this.canvasWidth = span;
+    this.offsetX = left;
+    this.horizontalSegments = this.horizontalSegments.map(value => value * scale);
+    this._generateLayout();
+    this._chooseGap();
+  }
+
+  getHorizontalBounds(): { left: number; right: number; width: number } {
+    if (!this.rects.length) {
+      return { left: this.offsetX, right: this.offsetX + this.canvasWidth, width: this.canvasWidth };
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    for (const rect of this.rects) {
+      minX = Math.min(minX, rect.x);
+      maxX = Math.max(maxX, rect.x + rect.w);
+    }
+
+    if (!Number.isFinite(minX) || !Number.isFinite(maxX)) {
+      return { left: this.offsetX, right: this.offsetX + this.canvasWidth, width: this.canvasWidth };
+    }
+
+    return { left: minX, right: maxX, width: Math.max(0, maxX - minX) };
+  }
+
+  draw(ctx: CanvasRenderingContext2D, cameraXValue: number, cameraY: number) {
     if (!this.active) return;
 
     if (asciiArtEnabled) {
@@ -213,11 +246,15 @@ export class Gate {
           if (rect.w > rect.h) {
             const count = Math.max(1, Math.floor(rect.w / 10));
             const ascii = horizontalGlyph.repeat(count);
-            ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+            ctx.fillText(ascii, rect.x - cameraXValue + rect.w / 2, rect.y - cameraY + rect.h / 2);
           } else {
             const count = Math.max(1, Math.floor(rect.h / 16));
             for (let i = 0; i < count; i++) {
-              ctx.fillText(verticalGlyph, rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+              ctx.fillText(
+                verticalGlyph,
+                rect.x - cameraXValue + rect.w / 2,
+                rect.y - cameraY + (i + 0.5) * (rect.h / count)
+              );
             }
           }
         }
@@ -225,18 +262,18 @@ export class Gate {
     } else {
       ctx.fillStyle = '#5aa2ff';
       for (const rect of this.getRects()) {
-        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x - cameraXValue, rect.y - cameraY, rect.w, rect.h);
       }
 
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       if (this.gapInfo?.type === 'H') {
         const gapY = this.gapY;
-        ctx.fillRect(this.gapX, gapY - cameraY, 1, GATE_THICKNESS);
-        ctx.fillRect(this.gapX + this.gapWidth, gapY - cameraY, 1, GATE_THICKNESS);
+        ctx.fillRect(this.gapX - cameraXValue, gapY - cameraY, 1, GATE_THICKNESS);
+        ctx.fillRect(this.gapX + this.gapWidth - cameraXValue, gapY - cameraY, 1, GATE_THICKNESS);
       } else if (this.gapInfo?.type === 'V') {
         const gapX = this.gapX;
-        ctx.fillRect(gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-        ctx.fillRect(gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+        ctx.fillRect(gapX - cameraXValue, this.gapY - cameraY, GATE_THICKNESS, 1);
+        ctx.fillRect(gapX - cameraXValue, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
       }
     }
   }
@@ -295,6 +332,25 @@ export function createGateForCardTop({
     canvasWidth,
     definition: gateDefinition ?? { width: 100 }
   });
+}
+
+type GateLike = Gate | ControlledGate;
+
+export function setGateHorizontalBounds(
+  gate: GateLike | null,
+  { left, width }: { left: number; width: number }
+) {
+  if (!gate || typeof (gate as Gate & { setHorizontalBounds?: Function }).setHorizontalBounds !== 'function') return;
+  (gate as Gate & { setHorizontalBounds: Function }).setHorizontalBounds({ left, width });
+}
+
+export function getGateHorizontalBounds(
+  gate: GateLike | null
+): { left: number; right: number; width: number } {
+  if (!gate || typeof (gate as Gate & { getHorizontalBounds?: Function }).getHorizontalBounds !== 'function') {
+    return { left: 0, right: 0, width: 0 };
+  }
+  return (gate as Gate & { getHorizontalBounds: () => { left: number; right: number; width: number } }).getHorizontalBounds();
 }
 
 export class GateGenerator {
@@ -407,6 +463,6 @@ export function pruneInactiveGates(gates) {
   }
 }
 
-export function drawGates(ctx, gates, cameraY) {
-  for (const gate of gates) gate.draw(ctx, cameraY);
+export function drawGates(ctx, gates, cameraXValue, cameraY) {
+  for (const gate of gates) gate.draw(ctx, cameraXValue, cameraY);
 }

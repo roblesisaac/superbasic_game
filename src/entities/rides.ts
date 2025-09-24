@@ -22,6 +22,7 @@ import {
 } from '../config/constants.js';
 import { clamp, rectsIntersect } from '../utils/utils.js';
 import { asciiArtEnabled } from '../systems/settings.js';
+import { cameraX } from '../core/globals.js';
 
 type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
 type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';
@@ -103,8 +104,10 @@ export class Ride {
 
     this.x += this.speed * this.direction * dt;
 
-    if (this.direction > 0 && this.x > this.canvasWidth + this.width) this.active = false;
-    if (this.direction < 0 && this.x + this.width < 0) this.active = false;
+    const viewLeft = cameraX;
+    const viewRight = cameraX + this.canvasWidth;
+    if (this.direction > 0 && this.x > viewRight + this.width) this.active = false;
+    if (this.direction < 0 && this.x + this.width < viewLeft - this.width) this.active = false;
   }
 
   startFloating() {
@@ -114,7 +117,7 @@ export class Ride {
     this.direction = 0;
   }
 
-  draw(ctx, cameraY) {
+  draw(ctx, cameraXValue, cameraY) {
     if (!this.active) return;
 
     let color = this.originalSpeed >= RIDE_SPEED_THRESHOLD ? '#ff6b35' : '#4ecdc4';
@@ -127,10 +130,10 @@ export class Ride {
       ctx.textBaseline = 'middle';
       const count = Math.max(1, Math.floor(this.width / 8));
       const ascii = '='.repeat(count);
-      ctx.fillText(ascii, this.x, this.y - cameraY);
+      ctx.fillText(ascii, this.x - cameraXValue, this.y - cameraY);
     } else {
       ctx.fillStyle = color;
-      ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+      ctx.fillRect(this.x - cameraXValue, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
     }
   }
 
@@ -391,7 +394,7 @@ export class Ride {
   }
 }
 
-export function createRideFromInput({ distance, durationMs, screenY, cameraY, canvasWidth }) {
+export function createRideFromInput({ distance, durationMs, screenY, cameraY, cameraX, canvasWidth }) {
   const normalizedDuration = Math.max(1, durationMs);
   const direction = distance >= 0 ? 1 : -1;
   const distanceMagnitude = Math.abs(distance);
@@ -406,7 +409,9 @@ export function createRideFromInput({ distance, durationMs, screenY, cameraY, ca
   );
 
   const worldY = screenY + cameraY;
-  const startX = direction > 0 ? -width : canvasWidth;
+  const viewLeft = cameraX;
+  const viewRight = cameraX + canvasWidth;
+  const startX = direction > 0 ? viewLeft - width : viewRight;
 
   return new Ride({
     x: startX,
@@ -432,8 +437,8 @@ export function pruneInactiveRides(rides) {
   }
 }
 
-export function drawRides(ctx, rides, cameraY) {
-  for (const ride of rides) ride.draw(ctx, cameraY);
+export function drawRides(ctx, rides, cameraXValue, cameraY) {
+  for (const ride of rides) ride.draw(ctx, cameraXValue, cameraY);
 }
 
 export function mergeCollidingRides(rides, canvasWidth) {

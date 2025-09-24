@@ -51,9 +51,9 @@ export class Collectible {
     if (this.y > cameraY + canvasHeight + 200) this.active = false;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraYValue: number, canvasHeightValue: number) {
+  draw(ctx: CanvasRenderingContext2D, cameraXValue: number, cameraYValue: number, canvasHeightValue: number) {
     if (!this.active) return;
-    const screenX = this.x;
+    const screenX = this.x - cameraXValue;
     const screenY = this.y - cameraYValue;
     if (screenY < -50 || screenY > canvasHeightValue + 50) return;
 

@@ -2,7 +2,9 @@ import { GATE_THICKNESS } from '../config/constants.js';
 import { canvasHeight, canvasWidth, groundY } from '../core/globals.js';
 import {
   createGateForCardTop,
-  resetCardGateFactory
+  resetCardGateFactory,
+  getGateHorizontalBounds,
+  setGateHorizontalBounds
 } from '../entities/gates.js';
 import {
   spawnEnemiesForGate,
@@ -11,6 +13,7 @@ import {
 import type { EnemyActor } from '../entities/enemies.js';
 import type { ControlledGateDefinition } from '../entities/controlledGate.js';
 import { SAMPLE_CARDS } from './sampleCardsDb.js';
+import { clamp } from '../utils/utils.js';
 
 type GateInstance = ReturnType<typeof createGateForCardTop>;
 
@@ -35,6 +38,7 @@ export interface CardBlueprint {
   title?: string;
   heightPct?: number;
   widthPct?: number;
+  anchorPct?: number;
   gates?: CardGates;
   enemies?: CardEnemySpec[];
   difficulty?: number;
@@ -46,6 +50,7 @@ export interface CardDefinition {
   title: string;
   heightPct: number;
   widthPct: number;
+  anchorPct: number;
   gates: CardGates;
   enemies: CardEnemySpec[];
   difficulty?: number;
@@ -62,12 +67,26 @@ export interface CardInstance {
   gateBottom: GateInstance | null;
   enemiesSpawned: boolean;
   enemyActors: EnemyActor[];
+  width: number;
+  anchorPct: number;
+  anchorRatio: number;
+  anchorX: number;
+  leftX: number;
+  rightX: number;
 }
 
 export interface CardStackFrame {
   currentCard: CardInstance | null;
   visibleCards: CardInstance[];
   gates: GateInstance[];
+}
+
+export interface CardHorizontalBounds {
+  left: number;
+  right: number;
+  width: number;
+  anchorX: number;
+  anchorRatio: number;
 }
 
 const CARD_STACK_GAP = GATE_THICKNESS;
@@ -100,6 +119,7 @@ function normalizeCard(input: CardBlueprint, index: number): CardDefinition {
     title: input.title ?? `Card ${index + 1}`,
     heightPct: typeof input.heightPct === 'number' ? input.heightPct : 100,
     widthPct: typeof input.widthPct === 'number' ? input.widthPct : 100,
+    anchorPct: clamp(typeof input.anchorPct === 'number' ? input.anchorPct : 50, 0, 100),
     gates,
     enemies,
     difficulty: input.difficulty,
@@ -153,6 +173,28 @@ function ensureCard(index: number): CardInstance {
   const definition = getCardDefinition(index);
   const previous = index > 0 ? getCardByIndex(index - 1) : undefined;
   const bottom = previous ? previous.topY - CARD_STACK_GAP : groundY;
+  const widthPixels = Math.max(64, (definition.widthPct / 100) * canvasWidth);
+  const anchorRatio = clamp(definition.anchorPct / 100, 0, 1);
+
+  const previousGate = previous?.gateTop ?? null;
+  const referenceBounds = previousGate
+    ? getGateHorizontalBounds(previousGate)
+    : previous
+    ? { left: previous.leftX, right: previous.rightX, width: previous.rightX - previous.leftX }
+    : { left: 0, right: widthPixels, width: widthPixels };
+
+  const referenceWidth = Math.max(1, referenceBounds.width ?? widthPixels);
+  const referenceLeft = Number.isFinite(referenceBounds.left) ? referenceBounds.left : 0;
+  const anchorX = referenceLeft + referenceWidth * anchorRatio;
+
+  if (previousGate) {
+    const targetWidth = Math.max(referenceWidth, widthPixels);
+    const floorLeft = anchorX - targetWidth * anchorRatio;
+    setGateHorizontalBounds(previousGate, { left: floorLeft, width: targetWidth });
+  }
+
+  const cardLeft = anchorX - widthPixels * anchorRatio;
+  const cardRight = cardLeft + widthPixels;
   const heightPixels = Math.max(
     MIN_CARD_HEIGHT,
     (definition.heightPct / 100) * canvasHeight
@@ -160,9 +202,13 @@ function ensureCard(index: number): CardInstance {
   const top = bottom - heightPixels;
   const gate = createGateForCardTop({
     y: top,
-    canvasWidth,
+    canvasWidth: widthPixels,
     definition: definition.gates.top ?? null
   });
+
+  if (gate) {
+    setGateHorizontalBounds(gate, { left: cardLeft, width: widthPixels });
+  }
 
   const card: CardInstance = {
     index,
@@ -171,9 +217,15 @@ function ensureCard(index: number): CardInstance {
     bottomY: bottom,
     height: heightPixels,
     gateTop: gate,
-    gateBottom: previous?.gateTop ?? null,
+    gateBottom: previousGate,
     enemiesSpawned: false,
-    enemyActors: []
+    enemyActors: [],
+    width: widthPixels,
+    anchorPct: definition.anchorPct,
+    anchorRatio,
+    anchorX,
+    leftX: cardLeft,
+    rightX: cardRight
   };
 
   if (previous && !definition.gates.bottom) {
@@ -201,8 +253,40 @@ function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
     const count = Math.max(0, Math.min(5, Math.floor(spec.count)));
     if (count <= 0) continue;
     const spawns = spawnEnemiesForGate(card.gateTop, { count, register: false });
-    if (spawns.length) {
-      card.enemyActors.push(...spawns);
+    if (!spawns.length) continue;
+
+    const filtered: EnemyActor[] = [];
+    for (const enemy of spawns) {
+      if (!enemy) continue;
+
+      if (enemy.orientation === 'horizontal') {
+        const radius = enemy.radius ?? 0;
+        const allowedMin = card.leftX + radius;
+        const allowedMax = card.rightX - radius;
+        enemy.min = clamp(enemy.min ?? allowedMin, allowedMin, allowedMax);
+        enemy.max = clamp(enemy.max ?? allowedMax, allowedMin, allowedMax);
+
+        if (enemy.min > enemy.max) {
+          enemy.active = false;
+          continue;
+        }
+
+        enemy.position = clamp(enemy.position ?? enemy.min, enemy.min, enemy.max);
+        enemy.x = enemy.position;
+      } else if (enemy.orientation === 'vertical') {
+        const radius = enemy.radius ?? 0;
+        const centerX = enemy.baseX ?? enemy.x;
+        if (centerX < card.leftX + radius || centerX > card.rightX - radius) {
+          enemy.active = false;
+          continue;
+        }
+      }
+
+      filtered.push(enemy);
+    }
+
+    if (filtered.length) {
+      card.enemyActors.push(...filtered);
     }
   }
 
@@ -264,6 +348,7 @@ function createRandomCard(index: number): CardDefinition {
       title: `Generated Card ${index + 1}`,
       heightPct,
       widthPct: 100,
+      anchorPct: 50,
       gates: {},
       enemies: [{ difficulty, count: enemyCount }],
       difficulty,
@@ -354,4 +439,15 @@ export function getCurrentCard(): CardInstance | null {
 
 export function getVisibleCards(): CardInstance[] {
   return [...visibleCards];
+}
+
+export function getCurrentCardBounds(): CardHorizontalBounds | null {
+  if (!currentCard) return null;
+  return {
+    left: currentCard.leftX,
+    right: currentCard.rightX,
+    width: currentCard.rightX - currentCard.leftX,
+    anchorX: currentCard.anchorX,
+    anchorRatio: currentCard.anchorRatio
+  };
 }
