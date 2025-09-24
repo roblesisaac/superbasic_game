@@ -7,7 +7,10 @@ import {
   gameOverPanel,
   game,
   cameraY,
+  cameraX,
   setCameraY,
+  setCameraX,
+  playfieldWidth,
   drawBackgroundGrid
 } from './globals.js';
 import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT } from '../config/constants.js';
@@ -41,6 +44,7 @@ function syncCardStack() {
 }
 
 function updateCamera() {
+  if (!game.sprite) return;
   const topLine = canvasHeight * CAM_TOP;
   const bottomLine = canvasHeight * CAM_BOTTOM;
   const screenY = game.sprite.y - cameraY;
@@ -48,6 +52,27 @@ function updateCamera() {
   else if (screenY > bottomLine) setCameraY(game.sprite.y - bottomLine);
   // keep from panning below 0
   setCameraY(Math.min(cameraY, 0));
+
+  const currentWidth = currentCard?.playfieldWidth ?? canvasWidth;
+  if (currentWidth > canvasWidth) {
+    const leftLine = canvasWidth * 0.35;
+    const rightLine = canvasWidth * 0.65;
+    const screenX = game.sprite.x - cameraX;
+    let nextCameraX = cameraX;
+
+    if (screenX < leftLine) {
+      nextCameraX = game.sprite.x - leftLine;
+    } else if (screenX > rightLine) {
+      nextCameraX = game.sprite.x - rightLine;
+    }
+
+    const maxOffset = Math.max(0, currentWidth - canvasWidth);
+    if (nextCameraX < 0) nextCameraX = 0;
+    if (nextCameraX > maxOffset) nextCameraX = maxOffset;
+    setCameraX(nextCameraX);
+  } else {
+    setCameraX(0);
+  }
 }
 
 function lightenColor(hex: string, ratio = 0.5) {
@@ -160,6 +185,7 @@ function startGame() {
   });
 
   setCameraY(0);
+  setCameraX(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = [...frame.gates];
@@ -195,6 +221,7 @@ export function resetGame() {
   });
 
   setCameraY(0);
+  setCameraX(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
   game.gates = [...frame.gates];
@@ -240,10 +267,14 @@ function drawFrame() {
   // drawBackgroundGrid();
 
   // ground line
+  ctx.save();
+  ctx.translate(-cameraX, 0);
+
+  const groundSpan = Math.max(canvasWidth, playfieldWidth, currentCard?.playfieldWidth ?? 0);
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
   ctx.moveTo(0, groundY - cameraY);
-  ctx.lineTo(canvasWidth, groundY - cameraY);
+  ctx.lineTo(groundSpan, groundY - cameraY);
   ctx.stroke();
 
   drawRides(ctx, game.rides, cameraY);
@@ -252,7 +283,9 @@ function drawFrame() {
 
   for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
 
-  if (!showSettings) game.sprite.draw(ctx, cameraY);
+  if (!showSettings && game.sprite) game.sprite.draw(ctx, cameraY);
+
+  ctx.restore();
 
   drawHUD();
   drawSettings();

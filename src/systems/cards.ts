@@ -1,5 +1,5 @@
 import { GATE_THICKNESS } from '../config/constants.js';
-import { canvasHeight, canvasWidth, groundY } from '../core/globals.js';
+import { canvasHeight, canvasWidth, groundY, setPlayfieldWidth } from '../core/globals.js';
 import {
   createGateForCardTop,
   resetCardGateFactory
@@ -11,8 +11,9 @@ import {
 import type { EnemyActor } from '../entities/enemies.js';
 import type { ControlledGateDefinition } from '../entities/controlledGate.js';
 import { SAMPLE_CARDS } from './sampleCardsDb.js';
+import { FillerGate } from '../entities/fillerGate.js';
 
-type GateInstance = ReturnType<typeof createGateForCardTop>;
+type GateInstance = ReturnType<typeof createGateForCardTop> | FillerGate;
 
 export interface CardEnemySpec {
   difficulty: number;
@@ -58,8 +59,11 @@ export interface CardInstance {
   topY: number;
   bottomY: number;
   height: number;
+  playfieldWidth: number;
   gateTop: GateInstance | null;
   gateBottom: GateInstance | null;
+  topFiller: FillerGate | null;
+  groundFiller: FillerGate | null;
   enemiesSpawned: boolean;
   enemyActors: EnemyActor[];
 }
@@ -158,11 +162,31 @@ function ensureCard(index: number): CardInstance {
     (definition.heightPct / 100) * canvasHeight
   );
   const top = bottom - heightPixels;
+  const playfieldWidth = Math.max(32, (definition.widthPct / 100) * canvasWidth);
+  const gateWidth = Math.min(playfieldWidth, canvasWidth);
   const gate = createGateForCardTop({
     y: top,
-    canvasWidth,
+    canvasWidth: gateWidth,
     definition: definition.gates.top ?? null
   });
+
+  const topFiller = playfieldWidth > gateWidth
+    ? new FillerGate({
+        y: top,
+        startX: gateWidth,
+        width: playfieldWidth - gateWidth
+      })
+    : null;
+
+  let groundFiller: FillerGate | null = null;
+  if (previous && playfieldWidth > previous.playfieldWidth) {
+    const previousWidth = previous.playfieldWidth;
+    groundFiller = new FillerGate({
+      y: previous.topY,
+      startX: previousWidth,
+      width: playfieldWidth - previousWidth
+    });
+  }
 
   const card: CardInstance = {
     index,
@@ -170,8 +194,11 @@ function ensureCard(index: number): CardInstance {
     topY: top,
     bottomY: bottom,
     height: heightPixels,
+    playfieldWidth,
     gateTop: gate,
     gateBottom: previous?.gateTop ?? null,
+    topFiller,
+    groundFiller,
     enemiesSpawned: false,
     enemyActors: []
   };
@@ -332,11 +359,20 @@ export function updateCardStack(spriteY: number): CardStackFrame {
 
   refreshVisibleCards(currentIndex);
 
+  setPlayfieldWidth(currentCard ? currentCard.playfieldWidth : canvasWidth);
+
   const gateSet = new Set<GateInstance>();
   if (currentCard?.gateBottom) gateSet.add(currentCard.gateBottom);
+  if (currentCard?.groundFiller) gateSet.add(currentCard.groundFiller);
+
+  if (currentCard) {
+    const previousCard = getCardByIndex(currentCard.index - 1);
+    if (previousCard?.topFiller) gateSet.add(previousCard.topFiller);
+  }
 
   for (const card of visibleCards) {
     if (card.gateTop) gateSet.add(card.gateTop);
+    if (card.topFiller) gateSet.add(card.topFiller);
   }
 
   const gates = Array.from(gateSet);

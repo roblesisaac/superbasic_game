@@ -37,9 +37,20 @@ export let canvasWidth = 0;
 export let canvasHeight = 0;
 export let groundY = 0;
 export let cameraY = 0;
+export let cameraX = 0;
+export let playfieldWidth = 0;
 export let maxHeight = 0;
 
 export function setCameraY(v: number) { cameraY = v; }
+export function setCameraX(v: number) {
+  const maxOffset = Math.max(0, playfieldWidth - canvasWidth);
+  cameraX = Math.max(0, Math.min(v, maxOffset));
+}
+export function setPlayfieldWidth(v: number) {
+  playfieldWidth = Math.max(0, v);
+  const maxOffset = Math.max(0, playfieldWidth - canvasWidth);
+  if (cameraX > maxOffset) cameraX = maxOffset;
+}
 export function addMaxHeight(v: number) { maxHeight = Math.max(maxHeight, v); }
 
 export function resize() {
@@ -50,6 +61,8 @@ export function resize() {
   canvasWidth = canvas.width;
   canvasHeight = canvas.height;
   groundY = canvasHeight - 116;
+  playfieldWidth = Math.max(playfieldWidth, canvasWidth);
+  setCameraX(cameraX);
 }
 window.addEventListener('resize', resize);
 resize();
