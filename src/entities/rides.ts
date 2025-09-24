@@ -114,7 +114,7 @@ export class Ride {
     this.direction = 0;
   }
 
-  draw(ctx, cameraY) {
+  draw(ctx, cameraX, cameraY) {
     if (!this.active) return;
 
     let color = this.originalSpeed >= RIDE_SPEED_THRESHOLD ? '#ff6b35' : '#4ecdc4';
@@ -127,10 +127,15 @@ export class Ride {
       ctx.textBaseline = 'middle';
       const count = Math.max(1, Math.floor(this.width / 8));
       const ascii = '='.repeat(count);
-      ctx.fillText(ascii, this.x, this.y - cameraY);
+      ctx.fillText(ascii, this.x - cameraX, this.y - cameraY);
     } else {
       ctx.fillStyle = color;
-      ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+      ctx.fillRect(
+        this.x - cameraX,
+        this.y - RIDE_THICKNESS / 2 - cameraY,
+        this.width,
+        RIDE_THICKNESS
+      );
     }
   }
 
@@ -391,7 +396,21 @@ export class Ride {
   }
 }
 
-export function createRideFromInput({ distance, durationMs, screenY, cameraY, canvasWidth }) {
+export function createRideFromInput({
+  distance,
+  durationMs,
+  screenY,
+  cameraX,
+  cameraY,
+  canvasWidth,
+}: {
+  distance: number;
+  durationMs: number;
+  screenY: number;
+  cameraX: number;
+  cameraY: number;
+  canvasWidth: number;
+}) {
   const normalizedDuration = Math.max(1, durationMs);
   const direction = distance >= 0 ? 1 : -1;
   const distanceMagnitude = Math.abs(distance);
@@ -406,7 +425,7 @@ export function createRideFromInput({ distance, durationMs, screenY, cameraY, ca
   );
 
   const worldY = screenY + cameraY;
-  const startX = direction > 0 ? -width : canvasWidth;
+  const startX = direction > 0 ? cameraX - width : cameraX + canvasWidth;
 
   return new Ride({
     x: startX,
@@ -432,8 +451,8 @@ export function pruneInactiveRides(rides) {
   }
 }
 
-export function drawRides(ctx, rides, cameraY) {
-  for (const ride of rides) ride.draw(ctx, cameraY);
+export function drawRides(ctx, rides, cameraX, cameraY) {
+  for (const ride of rides) ride.draw(ctx, cameraX, cameraY);
 }
 
 export function mergeCollidingRides(rides, canvasWidth) {

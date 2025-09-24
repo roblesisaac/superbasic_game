@@ -36,10 +36,12 @@ export const gameOverPanel: HTMLDivElement = gameOverPanelElement;
 export let canvasWidth = 0;
 export let canvasHeight = 0;
 export let groundY = 0;
+export let cameraX = 0;
 export let cameraY = 0;
 export let maxHeight = 0;
 
 export function setCameraY(v: number) { cameraY = v; }
+export function setCameraX(v: number) { cameraX = v; }
 export function addMaxHeight(v: number) { maxHeight = Math.max(maxHeight, v); }
 
 export function resize() {
@@ -85,15 +87,21 @@ export function drawBackgroundGrid() {
 
   const worldTop = cameraY;
   const worldBottom = cameraY + canvasHeight;
+  const worldLeft = cameraX;
+  const worldRight = cameraX + canvasWidth;
 
   let firstY = Math.floor(worldTop / GRID_SIZE) * GRID_SIZE;
   if (firstY > worldTop) firstY -= GRID_SIZE;
 
+  let firstX = Math.floor(worldLeft / GRID_SIZE) * GRID_SIZE;
+  if (firstX > worldLeft) firstX -= GRID_SIZE;
+
   for (let y = firstY; y <= worldBottom; y += GRID_SIZE) {
     const sy = y - cameraY;
-    for (let x = 0; x <= canvasWidth; x += GRID_SIZE) {
+    for (let x = firstX; x <= worldRight; x += GRID_SIZE) {
+      const sx = x - cameraX;
       ctx.beginPath();
-      ctx.arc(x, sy, 1.2, 0, Math.PI * 2); // radius ~1–2px looks nice
+      ctx.arc(sx, sy, 1.2, 0, Math.PI * 2); // radius ~1–2px looks nice
       ctx.fill();
     }
   }

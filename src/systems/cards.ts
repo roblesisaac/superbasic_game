@@ -2,7 +2,8 @@ import { GATE_THICKNESS } from '../config/constants.js';
 import { canvasHeight, canvasWidth, groundY } from '../core/globals.js';
 import {
   createGateForCardTop,
-  resetCardGateFactory
+  resetCardGateFactory,
+  getGateSeamSurfaceY
 } from '../entities/gates.js';
 import {
   spawnEnemiesForGate,
@@ -11,8 +12,10 @@ import {
 import type { EnemyActor } from '../entities/enemies.js';
 import type { ControlledGateDefinition } from '../entities/controlledGate.js';
 import { SAMPLE_CARDS } from './sampleCardsDb.js';
+import { SeamFloor } from '../entities/seamFloor.js';
+import { clamp } from '../utils/utils.js';
 
-type GateInstance = ReturnType<typeof createGateForCardTop>;
+type GateInstance = ReturnType<typeof createGateForCardTop> | SeamFloor;
 
 export interface CardEnemySpec {
   difficulty: number;
@@ -58,8 +61,13 @@ export interface CardInstance {
   topY: number;
   bottomY: number;
   height: number;
+  leftX: number;
+  rightX: number;
+  width: number;
   gateTop: GateInstance | null;
   gateBottom: GateInstance | null;
+  seamFloor: SeamFloor | null;
+  entryFloorY: number | null;
   enemiesSpawned: boolean;
   enemyActors: EnemyActor[];
 }
@@ -158,11 +166,28 @@ function ensureCard(index: number): CardInstance {
     (definition.heightPct / 100) * canvasHeight
   );
   const top = bottom - heightPixels;
+  const widthPixels = Math.max(canvasWidth, (definition.widthPct / 100) * canvasWidth);
+  const leftX = previous ? previous.leftX + (previous.width - widthPixels) / 2 : 0;
+  const rightX = leftX + widthPixels;
+
   const gate = createGateForCardTop({
     y: top,
-    canvasWidth,
+    width: widthPixels,
+    originX: leftX,
     definition: definition.gates.top ?? null
   });
+
+  let seamFloor: SeamFloor | null = null;
+  let entryFloorY: number | null = null;
+
+  const previousGate = previous?.gateTop;
+  if (previousGate && !(previousGate instanceof SeamFloor)) {
+    const seamY = getGateSeamSurfaceY(previousGate);
+    seamFloor = new SeamFloor({ x: leftX, width: widthPixels, topY: seamY });
+    entryFloorY = seamFloor.getTopY();
+  } else {
+    entryFloorY = top - GATE_THICKNESS / 2;
+  }
 
   const card: CardInstance = {
     index,
@@ -170,8 +195,13 @@ function ensureCard(index: number): CardInstance {
     topY: top,
     bottomY: bottom,
     height: heightPixels,
+    leftX,
+    rightX,
+    width: widthPixels,
     gateTop: gate,
     gateBottom: previous?.gateTop ?? null,
+    seamFloor,
+    entryFloorY,
     enemiesSpawned: false,
     enemyActors: []
   };
@@ -334,9 +364,11 @@ export function updateCardStack(spriteY: number): CardStackFrame {
 
   const gateSet = new Set<GateInstance>();
   if (currentCard?.gateBottom) gateSet.add(currentCard.gateBottom);
+  if (currentCard?.seamFloor) gateSet.add(currentCard.seamFloor);
 
   for (const card of visibleCards) {
     if (card.gateTop) gateSet.add(card.gateTop);
+    if (card.seamFloor) gateSet.add(card.seamFloor);
   }
 
   const gates = Array.from(gateSet);
@@ -354,4 +386,32 @@ export function getCurrentCard(): CardInstance | null {
 
 export function getVisibleCards(): CardInstance[] {
   return [...visibleCards];
+}
+
+export function mapCardEntryX(
+  x: number,
+  fromCard: CardInstance,
+  toCard: CardInstance
+): number {
+  if (!fromCard || !toCard) return x;
+  const u = clamp((x - fromCard.leftX) / Math.max(1, fromCard.width), 0, 1);
+  return toCard.leftX + u * toCard.width;
+}
+
+export function clampXToCard(
+  x: number,
+  card: CardInstance,
+  halfWidth = 0
+): number {
+  if (!card) return x;
+  const min = card.leftX + halfWidth;
+  const max = card.rightX - halfWidth;
+  if (min > max) return card.leftX + card.width / 2;
+  return clamp(x, min, max);
+}
+
+export function getCardEntryFloorY(card: CardInstance): number {
+  if (!card) return 0;
+  if (typeof card.entryFloorY === 'number') return card.entryFloorY;
+  return card.topY - GATE_THICKNESS / 2;
 }

@@ -14,7 +14,8 @@ import {
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
 } from '../config/constants.js';
 import { clamp } from '../utils/utils.js';
-import { canvasWidth, groundY, cameraY } from '../core/globals.js';
+import { canvasWidth, groundY, cameraY, cameraX } from '../core/globals.js';
+import { clampXToCard, getCurrentCard } from '../systems/cards.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -561,7 +562,12 @@ export class Sprite {
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    this.x = clamp(this.x, hs, canvasWidth - hs);
+    const card = getCurrentCard();
+    if (card) {
+      this.x = clampXToCard(this.x, card, hs);
+    } else {
+      this.x = clamp(this.x, hs, canvasWidth - hs);
+    }
 
     const prevTop = prevY - hs;
     const prevBottom = prevY + hs;
@@ -752,8 +758,8 @@ export class Sprite {
     this._applyFinalScale();
   }
 
-  draw(ctx, cameraY) {
-    const px = this.x;
+  draw(ctx, cameraXValue, cameraYValue) {
+    const px = this.x - cameraXValue;
     let platformVisualYOffset = 0;
     if (this.onPlatform && this.platformSurface) {
       const surface = this.platformSurface;
@@ -763,7 +769,7 @@ export class Sprite {
         platformVisualYOffset = surface.y - surface.baseY;
       }
     }
-    const py = this.y - cameraY + platformVisualYOffset;
+    const py = this.y - cameraYValue + platformVisualYOffset;
     const size = SPRITE_SIZE;
 
     // --- Draw sprite (with mirroring and scaling) ---

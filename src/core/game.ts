@@ -6,12 +6,14 @@ import {
   gameOverDiv,
   gameOverPanel,
   game,
+  cameraX,
   cameraY,
   setCameraY,
+  setCameraX,
   drawBackgroundGrid
 } from './globals.js';
-import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT } from '../config/constants.js';
-import { now } from '../utils/utils.js';
+import { CAM_TOP, CAM_BOTTOM, PIXELS_PER_FOOT, SPRITE_SIZE } from '../config/constants.js';
+import { clamp, lerp, now } from '../utils/utils.js';
 import { updateRides, pruneInactiveRides, drawRides, mergeCollidingRides } from '../entities/rides.js';
 import { updateGates, pruneInactiveGates, drawGates } from '../entities/gates.js';
 import { Sprite } from '../entities/sprite.js';
@@ -27,20 +29,53 @@ import {
 } from '../entities/enemies.js';
 import {
   initializeCardStack,
-  updateCardStack as updateCardSystem
+  updateCardStack as updateCardSystem,
+  mapCardEntryX,
+  getCardEntryFloorY,
+  clampXToCard
 } from '../systems/cards.js';
 import type { CardInstance } from '../systems/cards.js';
 
 let currentCard: CardInstance | null = null;
 
+function handleCardTransition(from: CardInstance, to: CardInstance) {
+  if (!game.sprite) return;
+
+  const movingUpward = to.index > from.index;
+  const halfSprite = SPRITE_SIZE / 2;
+  const mappedX = clampXToCard(mapCardEntryX(game.sprite.x, from, to), to, halfSprite);
+
+  game.sprite.x = mappedX;
+
+  if (movingUpward) {
+    const floorTop = getCardEntryFloorY(to);
+    game.sprite.y = floorTop - halfSprite;
+    game.sprite.vy = 0;
+    game.sprite.onGround = true;
+    game.sprite.onPlatform = Boolean(to.seamFloor);
+    game.sprite.platformSurface = to.seamFloor ?? null;
+  }
+
+  game.sprite.fallStartY = game.sprite.y;
+}
+
 function syncCardStack() {
   if (!game.sprite) return;
+  const previousCard = currentCard;
   const frame = updateCardSystem(game.sprite.y);
-  currentCard = frame.currentCard;
+  const nextCard = frame.currentCard;
+
+  if (previousCard && nextCard && previousCard !== nextCard) {
+    handleCardTransition(previousCard, nextCard);
+  }
+
+  currentCard = nextCard;
   game.gates = frame.gates;
 }
 
 function updateCamera() {
+  if (!game.sprite) return;
+
   const topLine = canvasHeight * CAM_TOP;
   const bottomLine = canvasHeight * CAM_BOTTOM;
   const screenY = game.sprite.y - cameraY;
@@ -48,6 +83,22 @@ function updateCamera() {
   else if (screenY > bottomLine) setCameraY(game.sprite.y - bottomLine);
   // keep from panning below 0
   setCameraY(Math.min(cameraY, 0));
+
+  if (currentCard) {
+    const halfScreen = canvasWidth * 0.5;
+    let minX = currentCard.leftX;
+    let maxX = currentCard.rightX - canvasWidth;
+
+    if (currentCard.width <= canvasWidth) {
+      const center = (currentCard.leftX + currentCard.rightX) / 2;
+      minX = center - canvasWidth / 2;
+      maxX = minX;
+    }
+
+    const desiredX = clamp(game.sprite.x - halfScreen, minX, maxX);
+    const smoothedX = lerp(cameraX, desiredX, 0.18);
+    setCameraX(smoothedX);
+  }
 }
 
 function lightenColor(hex: string, ratio = 0.5) {
@@ -159,6 +210,7 @@ function startGame() {
     getGates: () => game.gates
   });
 
+  setCameraX(0);
   setCameraY(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
@@ -194,6 +246,7 @@ export function resetGame() {
     getGates: () => game.gates
   });
 
+  setCameraX(0);
   setCameraY(0);
   const frame = initializeCardStack(game.sprite.y);
   currentCard = frame.currentCard;
@@ -247,13 +300,13 @@ function drawFrame() {
   ctx.lineTo(canvasWidth, groundY - cameraY);
   ctx.stroke();
 
-  drawRides(ctx, game.rides, cameraY);
-  drawGates(ctx, game.gates, cameraY);
-  drawEnemies(ctx, cameraY);
+  drawRides(ctx, game.rides, cameraX, cameraY);
+  drawGates(ctx, game.gates, cameraX, cameraY);
+  drawEnemies(ctx, cameraX, cameraY);
 
-  for (const c of collectibles) c.draw(ctx, cameraY, canvasHeight);
+  for (const c of collectibles) c.draw(ctx, cameraX, cameraY, canvasHeight);
 
-  if (!showSettings) game.sprite.draw(ctx, cameraY);
+  if (!showSettings) game.sprite.draw(ctx, cameraX, cameraY);
 
   drawHUD();
   drawSettings();

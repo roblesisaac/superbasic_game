@@ -81,6 +81,7 @@ interface ControlledGateOptions {
   y: number;
   canvasWidth: number;
   definition: ControlledGateDefinition;
+  originX?: number;
 }
 
 export class ControlledGate {
@@ -94,6 +95,7 @@ export class ControlledGate {
   originalSpeed = 0;
   rewardEnabled = true;
   asciiDamaged = false;
+  originX: number;
   segments: Segment[] = [];
   rects: GateRect[] = [];
   gapInfo?: GapInfo;
@@ -101,10 +103,11 @@ export class ControlledGate {
   gapY = 0;
   gapWidth = GATE_GAP_WIDTH;
 
-  constructor({ y, canvasWidth, definition }: ControlledGateOptions) {
+  constructor({ y, canvasWidth, definition, originX = 0 }: ControlledGateOptions) {
     this.y = y;
     this.canvasWidth = canvasWidth;
     this.definition = definition;
+    this.originX = originX;
 
     this._parseDefinition();
     this._generateLayout();
@@ -304,7 +307,7 @@ export class ControlledGate {
         const connectorRect: GateRect = {
           type: 'V',
           index: `${i - 1}-to-${i}-connector`,
-          x: cursorX - GATE_THICKNESS / 2,
+          x: this.originX + cursorX - GATE_THICKNESS / 2,
           y: Math.min(currentY, targetY) - GATE_THICKNESS / 2,
           w: GATE_THICKNESS,
           h: Math.abs(targetY - currentY) + GATE_THICKNESS,
@@ -314,10 +317,11 @@ export class ControlledGate {
       }
 
       const xPosition = cursorX + segment.xOffset;
+      const worldX = this.originX + xPosition;
       const rect: GateRect = {
         type: 'H',
         index: i,
-        x: xPosition,
+        x: worldX,
         y: targetY - GATE_THICKNESS / 2,
         w: segmentWidth,
         h: GATE_THICKNESS,
@@ -421,7 +425,7 @@ export class ControlledGate {
     return output;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraY: number): void {
+  draw(ctx: CanvasRenderingContext2D, cameraX: number, cameraY: number): void {
     if (!this.active) return;
 
     const rects = this.getRects();
@@ -437,31 +441,66 @@ export class ControlledGate {
         if (rect.w > rect.h) {
           const count = Math.max(1, Math.floor(rect.w / 10));
           const ascii = horizontalGlyph.repeat(count);
-          ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
+          ctx.fillText(ascii, rect.x - cameraX + rect.w / 2, rect.y - cameraY + rect.h / 2);
         } else {
           const count = Math.max(1, Math.floor(rect.h / 16));
           for (let i = 0; i < count; i++) {
-            ctx.fillText(verticalGlyph, rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+            ctx.fillText(
+              verticalGlyph,
+              rect.x - cameraX + rect.w / 2,
+              rect.y - cameraY + (i + 0.5) * (rect.h / count)
+            );
           }
         }
       }
     } else {
       ctx.fillStyle = '#5aa2ff';
       for (const rect of rects) {
-        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+        if (rect.w > 0 && rect.h > 0) {
+          ctx.fillRect(rect.x - cameraX, rect.y - cameraY, rect.w, rect.h);
+        }
       }
 
       if (this.gapInfo) {
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
         if (this.gapInfo.type === 'H') {
-          ctx.fillRect(this.gapX, this.gapY - cameraY, 1, GATE_THICKNESS);
-          ctx.fillRect(this.gapX + this.gapWidth, this.gapY - cameraY, 1, GATE_THICKNESS);
+          ctx.fillRect(this.gapX - cameraX, this.gapY - cameraY, 1, GATE_THICKNESS);
+          ctx.fillRect(
+            this.gapX + this.gapWidth - cameraX,
+            this.gapY - cameraY,
+            1,
+            GATE_THICKNESS
+          );
         } else {
-          ctx.fillRect(this.gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-          ctx.fillRect(this.gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
+          ctx.fillRect(this.gapX - cameraX, this.gapY - cameraY, GATE_THICKNESS, 1);
+          ctx.fillRect(
+            this.gapX - cameraX,
+            this.gapY + this.gapWidth - cameraY,
+            GATE_THICKNESS,
+            1
+          );
         }
       }
     }
+  }
+
+  getGapSurfaceY(): number {
+    if (this.gapInfo?.rect) {
+      if (this.gapInfo.type === 'H') {
+        return this.gapInfo.rect.y;
+      }
+
+      const connector = this.gapInfo.rect;
+      const candidates = this.rects
+        .filter((rect) => rect.type === 'H')
+        .sort((a, b) => Math.abs(a.x - connector.x) - Math.abs(b.x - connector.x));
+      if (candidates.length) return candidates[0].y;
+    }
+
+    const firstHorizontal = this.rects.find((rect) => rect.type === 'H');
+    if (firstHorizontal) return firstHorizontal.y;
+
+    return this.y - GATE_THICKNESS / 2;
   }
 }
 
