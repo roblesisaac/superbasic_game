@@ -81,8 +81,7 @@ export const game: GameState = {
 export function drawBackgroundGrid() {
   ctx.save();
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  ctx.lineWidth = 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; // slightly brighter than 0.04 so dots are visible
 
   const worldTop = cameraY;
   const worldBottom = cameraY + canvasHeight;
@@ -92,18 +91,11 @@ export function drawBackgroundGrid() {
 
   for (let y = firstY; y <= worldBottom; y += GRID_SIZE) {
     const sy = y - cameraY;
-    ctx.beginPath();
-    ctx.moveTo(0, sy);
-    ctx.lineTo(canvasWidth, sy);
-    ctx.stroke();
-  }
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  for (let x = 0; x <= canvasWidth; x += GRID_SIZE) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvasHeight);
-    ctx.stroke();
+    for (let x = 0; x <= canvasWidth; x += GRID_SIZE) {
+      ctx.beginPath();
+      ctx.arc(x, sy, 1.2, 0, Math.PI * 2); // radius ~1–2px looks nice
+      ctx.fill();
+    }
   }
 
   ctx.restore();
