@@ -17,6 +17,7 @@ export class SeamFloor {
   epsilon: number;
   active = true;
   floating = false;
+  oneWay = true;
 
   constructor({ x, width, topY, thickness = GATE_THICKNESS, epsilon = 1 }: SeamFloorOptions) {
     this.baseX = x;

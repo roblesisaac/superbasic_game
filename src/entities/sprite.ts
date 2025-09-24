@@ -609,6 +609,7 @@ export class Sprite {
           const surfaceRight = rect.x + rect.w;
           const surfaceTop = rect.y;
           const surfaceBottom = rect.y + rect.h;
+          const isOneWaySurface = surface && surface.oneWay === true;
 
           const hOverlap = (currRight >= surfaceLeft) && (currLeft <= surfaceRight);
           const vOverlap = (currBottom >= surfaceTop) && (currTop <= surfaceBottom);
@@ -624,7 +625,7 @@ export class Sprite {
             }
           }
 
-          if (hOverlap && this.vy < 0 && prevTop >= surfaceBottom - epsilon && currTop <= surfaceBottom) {
+          if (!isOneWaySurface && hOverlap && this.vy < 0 && prevTop >= surfaceBottom - epsilon && currTop <= surfaceBottom) {
             if (!ceilingCandidate || surfaceBottom > ceilingCandidate.bottom) {
               ceilingCandidate = { surface, bottom: surfaceBottom };
             }
