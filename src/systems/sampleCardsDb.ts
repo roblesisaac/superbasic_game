@@ -32,6 +32,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
     id: 'card-switchback',
     title: 'Switchback Gallery',
     heightPct: 75,
+    widthPct: 100,
     gates: {
       top: [
         { width: 40 },
