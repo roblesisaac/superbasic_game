@@ -237,7 +237,7 @@ function loop() {
 function drawFrame() {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // drawBackgroundGrid();
+  drawBackgroundGrid();
 
   // ground line
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';

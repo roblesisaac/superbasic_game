@@ -4,12 +4,12 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro',
     title: 'Entry Ledger',
-    heightPct: 100,
+    heightPct: 50,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
     },
-    enemies: [{ difficulty: 10, count: 2 }],
+    enemies: [{ difficulty: 10, count: 4 }],
     difficulty: 8,
     theme: { bgColor: '#12263a' }
   },

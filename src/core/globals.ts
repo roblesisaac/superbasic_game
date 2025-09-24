@@ -81,7 +81,7 @@ export const game: GameState = {
 export function drawBackgroundGrid() {
   ctx.save();
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.01)';
   ctx.lineWidth = 1;
 
   const worldTop = cameraY;
@@ -98,7 +98,7 @@ export function drawBackgroundGrid() {
     ctx.stroke();
   }
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.01)';
   for (let x = 0; x <= canvasWidth; x += GRID_SIZE) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
