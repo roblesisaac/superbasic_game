@@ -245,14 +245,28 @@ function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
   card.enemiesSpawned = true;
   card.enemyActors = [];
 
-  if (!card.gateTop) {
+  type GateSurface = GateInstance | { getRects: () => { x: number; y: number; w: number; h: number }[] };
+
+  let floorSurface: GateSurface | null = card.gateBottom;
+  if (!floorSurface) {
+    floorSurface = {
+      getRects: () => [{
+        x: card.leftX,
+        y: Math.min(card.bottomY, groundY),
+        w: card.width,
+        h: GATE_THICKNESS
+      }]
+    };
+  }
+
+  if (!floorSurface) {
     return card.enemyActors;
   }
 
   for (const spec of card.definition.enemies) {
     const count = Math.max(0, Math.min(5, Math.floor(spec.count)));
     if (count <= 0) continue;
-    const spawns = spawnEnemiesForGate(card.gateTop, { count, register: false });
+    const spawns = spawnEnemiesForGate(floorSurface, { count, register: false });
     if (!spawns.length) continue;
 
     const filtered: EnemyActor[] = [];
