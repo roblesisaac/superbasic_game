@@ -284,6 +284,14 @@ export class Sprite {
     state.pendingCollision = true;
   }
 
+  _markGateBottomCollision(surface) {
+    if (!this._isGateSurface(surface)) return;
+    if (typeof surface.handleBottomCollision === 'function') {
+      surface.handleBottomCollision();
+    }
+    this._markGateCollision(surface);
+  }
+
   _getGateGapRect(gate) {
     if (!this._isGateSurface(gate) || !gate.gapInfo) return null;
     const type = gate.gapInfo.type;
@@ -369,7 +377,7 @@ export class Sprite {
         }
         if (!currInside) {
           const passed = this._isOppositeSide(state.entrySide, currSide, orientation);
-          if (passed && !state.touched) this._handleGateClear();
+          if (passed && !state.touched) this._handleGateClear(gate);
 
           state.started = false;
           state.entrySide = null;
@@ -391,9 +399,17 @@ export class Sprite {
     }
   }
 
-  _handleGateClear() {
+  _handleGateClear(gate) {
+    if (!this._isGateRewardEnabled(gate)) return;
     if (!this.hooks || !this.hooks.hearts || typeof this.hooks.hearts.gain !== 'function') return;
     this.hooks.hearts.gain(1);
+  }
+
+  _isGateRewardEnabled(gate) {
+    if (!this._isGateSurface(gate)) return true;
+    if (typeof gate.isRewardEnabled === 'function') return gate.isRewardEnabled();
+    if ('rewardEnabled' in gate) return Boolean(gate.rewardEnabled);
+    return true;
   }
 
   _updateVelocityStretch() {
@@ -659,7 +675,7 @@ export class Sprite {
       if (this.vy < 0) this.vy = 0;
       this.gliding = false;
       this.impactSquash = 1.8 * 0.3;
-      this._markGateCollision(ceilingCandidate.surface);
+      this._markGateBottomCollision(ceilingCandidate.surface);
     }
 
     if (landingCandidate) {

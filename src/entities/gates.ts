@@ -35,6 +35,8 @@ export class Gate {
   speed: number;
   direction: number;
   originalSpeed: number;
+  rewardEnabled: boolean;
+  asciiDamaged: boolean;
   horizontalSegments: number[];
   verticalOffsets: number[];
   rects: GateRect[];
@@ -58,6 +60,8 @@ export class Gate {
     this.speed = 0;
     this.direction = 0;
     this.originalSpeed = 0;
+    this.rewardEnabled = true;
+    this.asciiDamaged = false;
 
     this._generateLayout();
     this._chooseGap();
@@ -66,6 +70,17 @@ export class Gate {
   update() {}
 
   startFloating() {}
+
+  handleBottomCollision() {
+    if (!this.asciiDamaged) {
+      this.asciiDamaged = true;
+    }
+    this.rewardEnabled = false;
+  }
+
+  isRewardEnabled() {
+    return this.rewardEnabled;
+  }
 
   _generateLayout() {
     const thickness = GATE_THICKNESS;
@@ -191,16 +206,18 @@ export class Gate {
       ctx.font = '16px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      const horizontalGlyph = this.asciiDamaged ? '_' : ':';
+      const verticalGlyph = this.asciiDamaged ? '__' : '::';
       for (const rect of this.getRects()) {
         if (rect.w > 0 && rect.h > 0) {
           if (rect.w > rect.h) {
             const count = Math.max(1, Math.floor(rect.w / 10));
-            const ascii = ':'.repeat(count);
+            const ascii = horizontalGlyph.repeat(count);
             ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
           } else {
             const count = Math.max(1, Math.floor(rect.h / 16));
             for (let i = 0; i < count; i++) {
-              ctx.fillText('::', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+              ctx.fillText(verticalGlyph, rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
             }
           }
         }

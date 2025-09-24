@@ -31,7 +31,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-switchback',
     title: 'Switchback Gallery',
-    heightPct: 95,
+    heightPct: 75,
     gates: {
       top: [
         { width: 40 },
@@ -46,7 +46,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-vertical',
     title: 'Column Vault',
-    heightPct: 120,
+    heightPct: 90,
     gates: {
       top: [
         { width: 32 },
@@ -61,7 +61,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-crossover',
     title: 'Crossover Array',
-    heightPct: 105,
+    heightPct: 75,
     gates: {
       top: [
         { width: 30, gate: { position: 70 } },

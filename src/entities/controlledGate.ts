@@ -92,6 +92,8 @@ export class ControlledGate {
   speed = 0;
   direction = 0;
   originalSpeed = 0;
+  rewardEnabled = true;
+  asciiDamaged = false;
   segments: Segment[] = [];
   rects: GateRect[] = [];
   gapInfo?: GapInfo;
@@ -111,6 +113,17 @@ export class ControlledGate {
 
   update(): void {}
   startFloating(): void {}
+
+  handleBottomCollision(): void {
+    if (!this.asciiDamaged) {
+      this.asciiDamaged = true;
+    }
+    this.rewardEnabled = false;
+  }
+
+  isRewardEnabled(): boolean {
+    return this.rewardEnabled;
+  }
 
   private _parseDefinition(): void {
     const definition = this.definition;
@@ -417,16 +430,18 @@ export class ControlledGate {
       ctx.font = '16px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      const horizontalGlyph = this.asciiDamaged ? '_' : ':';
+      const verticalGlyph = this.asciiDamaged ? '__' : '::';
       for (const rect of rects) {
         if (rect.w <= 0 || rect.h <= 0) continue;
         if (rect.w > rect.h) {
           const count = Math.max(1, Math.floor(rect.w / 10));
-          const ascii = ':'.repeat(count);
+          const ascii = horizontalGlyph.repeat(count);
           ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
         } else {
           const count = Math.max(1, Math.floor(rect.h / 16));
           for (let i = 0; i < count; i++) {
-            ctx.fillText('::', rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+            ctx.fillText(verticalGlyph, rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
           }
         }
       }
