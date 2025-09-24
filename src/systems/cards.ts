@@ -160,23 +160,6 @@ function ensureCard(index: number): CardInstance {
   );
   const widthPixels = Math.max(canvasWidth, (definition.widthPct / 100) * canvasWidth);
   const top = bottom - heightPixels;
-  if (previous && widthPixels > previous.width) {
-    previous.width = widthPixels;
-    if (previous.gateTop instanceof ControlledGate) {
-      previous.gateTop.y = previous.topY;
-      previous.gateTop.setCanvasWidth(widthPixels);
-    } else if (previous.gateTop) {
-      previous.gateTop = createGateForCardTop({
-        y: previous.topY,
-        canvasWidth: widthPixels,
-        definition: previous.definition.gates.top ?? null
-      });
-    }
-
-    previous.enemiesSpawned = false;
-    previous.enemyActors = [];
-  }
-
   const gateBottom = previous?.gateTop ?? null;
   const gate = createGateForCardTop({
     y: top,
@@ -204,6 +187,50 @@ function ensureCard(index: number): CardInstance {
   cardInstances.push(card);
   cardInstances.sort((a, b) => a.index - b.index);
   return card;
+}
+
+function getGateWidth(gate: GateInstance | null): number {
+  if (!gate) return 0;
+  const width = (gate as { canvasWidth?: number }).canvasWidth;
+  return typeof width === 'number' ? width : 0;
+}
+
+function maybeStretchSupportingGround(card: CardInstance) {
+  if (!card || card.index <= 0) return;
+
+  const supportingCard = getCardByIndex(card.index - 1);
+  if (!supportingCard || !supportingCard.gateTop) return;
+
+  const targetWidth = card.width;
+  if (!Number.isFinite(targetWidth) || targetWidth <= 0) return;
+
+  const gate = supportingCard.gateTop;
+  const gateWidth = getGateWidth(gate);
+  const alreadyWide =
+    gateWidth >= targetWidth - 0.5 && supportingCard.width >= targetWidth - 0.5;
+  if (alreadyWide) {
+    card.gateBottom = supportingCard.gateTop;
+    return;
+  }
+
+  supportingCard.width = Math.max(supportingCard.width, targetWidth);
+
+  if (gate instanceof ControlledGate) {
+    gate.y = supportingCard.topY;
+    gate.setCanvasWidth(targetWidth);
+  } else {
+    const replacementGate = createGateForCardTop({
+      y: supportingCard.topY,
+      canvasWidth: targetWidth,
+      definition: supportingCard.definition.gates.top ?? null
+    });
+    supportingCard.gateTop = replacementGate;
+  }
+
+  card.gateBottom = supportingCard.gateTop;
+
+  supportingCard.enemiesSpawned = false;
+  supportingCard.enemyActors = [];
 }
 
 function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
@@ -340,12 +367,18 @@ export function initializeCardStack(startY: number): CardStackFrame {
 export function updateCardStack(spriteY: number): CardStackFrame {
   ensureCoverageForY(spriteY);
 
+  const previousCard = currentCard;
   let nextCard = findCardForY(spriteY);
   if (!nextCard) {
     nextCard = findNearestCard(spriteY) ?? undefined;
   }
 
   currentCard = nextCard ?? currentCard ?? cardInstances[0] ?? null;
+
+  if (currentCard && currentCard !== previousCard) {
+    maybeStretchSupportingGround(currentCard);
+  }
+
   const currentIndex = currentCard ? currentCard.index : 0;
 
   ensureCard(currentIndex + 1);
