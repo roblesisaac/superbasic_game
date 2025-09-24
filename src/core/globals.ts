@@ -2,7 +2,10 @@ import { GRID_SIZE, CANVAS_MAX_WIDTH } from '../config/constants.js';
 
 type Sprite = import('../entities/sprite.js').Sprite;
 type Ride = import('../entities/rides.js').Ride;
-type Gate = import('../entities/gates.js').Gate | import('../entities/controlledGate.js').ControlledGate;
+type Gate =
+  | import('../entities/gates.js').Gate
+  | import('../entities/controlledGate.js').ControlledGate
+  | import('../entities/seamFloor.js').SeamFloor;
 type InputHandler = import('./input.js').InputHandler;
 type EnergyBar = import('../ui/hud.js').EnergyBar;
 type Hearts = import('../ui/hud.js').Hearts;

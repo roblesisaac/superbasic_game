@@ -22,6 +22,7 @@ import {
 } from '../config/constants.js';
 import { clamp, rectsIntersect } from '../utils/utils.js';
 import { asciiArtEnabled } from '../systems/settings.js';
+import { canvasWidth as viewportWidth, cameraX } from '../core/globals.js';
 
 type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
 type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';
@@ -103,8 +104,13 @@ export class Ride {
 
     this.x += this.speed * this.direction * dt;
 
-    if (this.direction > 0 && this.x > this.canvasWidth + this.width) this.active = false;
-    if (this.direction < 0 && this.x + this.width < 0) this.active = false;
+    if (this.direction !== 0) {
+      const margin = Math.max(120, this.width);
+      const viewLeft = cameraX - margin;
+      const viewRight = cameraX + viewportWidth + margin;
+      if (this.direction > 0 && this.x > viewRight) this.active = false;
+      if (this.direction < 0 && this.x + this.width < viewLeft) this.active = false;
+    }
   }
 
   startFloating() {

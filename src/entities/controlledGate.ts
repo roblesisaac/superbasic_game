@@ -286,10 +286,12 @@ export class ControlledGate {
 
       if (segment.type === 'vertical') {
         const height = segment.heightPixels ?? DEFAULT_VERTICAL_HEIGHT;
+        const xPosition = cursorX + segment.xOffset;
+        const worldX = this.originX + xPosition;
         const rect: GateRect = {
           type: 'V',
           index: i,
-          x: cursorX - GATE_THICKNESS / 2,
+          x: worldX - GATE_THICKNESS / 2,
           y: currentY - GATE_THICKNESS / 2,
           w: GATE_THICKNESS,
           h: height,
@@ -297,6 +299,7 @@ export class ControlledGate {
         };
         this.rects.push(rect);
         currentY += height;
+        cursorX = xPosition;
         continue;
       }
 
