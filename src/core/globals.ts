@@ -6,6 +6,7 @@ type Gate = import('../entities/gates.js').Gate | import('../entities/controlled
 type InputHandler = import('./input.js').InputHandler;
 type EnergyBar = import('../ui/hud.js').EnergyBar;
 type Hearts = import('../ui/hud.js').Hearts;
+type SwipeEffect = import('../entities/swipeEffects.js').SwipeEffect;
 
 const canvasElement = document.getElementById('gameCanvas');
 if (!(canvasElement instanceof HTMLCanvasElement)) {
@@ -60,6 +61,7 @@ export interface GameState {
   sprite: Sprite | null;
   rides: Ride[];
   gates: Gate[];
+  swipeEffects: SwipeEffect[];
   input: InputHandler | null;
   energyBar: EnergyBar | null;
   hearts: Hearts | null;
@@ -72,6 +74,7 @@ export const game: GameState = {
   sprite: null,
   rides: [],
   gates: [],
+  swipeEffects: [],
   input: null,
   energyBar: null,
   hearts: null,

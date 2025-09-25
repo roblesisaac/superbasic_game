@@ -6,6 +6,7 @@ import {
 } from '../config/constants.js';
 import { canvas, canvasWidth, cameraY, cameraX, type GameState } from './globals.js';
 import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
+import { createSwipeEffect } from '../entities/swipeEffects.js';
 import { showSettings, toggleSettings, hideSettings } from '../systems/settings.js';
 
 type PointSample = { x: number; y: number; time: number };
@@ -39,6 +40,7 @@ export class InputHandler {
   trackpadGestureActive: boolean;
   trackpadStartX: number;
   trackpadStartTime: number;
+  trackpadStartPoint: PointSample | null;
   lastArrowTime: number;
   arrowCooldownMs: number;
 
@@ -67,11 +69,31 @@ export class InputHandler {
     this.trackpadGestureActive = false;
     this.trackpadStartX = 0;
     this.trackpadStartTime = 0;
+    this.trackpadStartPoint = null;
 
     this.lastArrowTime = 0;
     this.arrowCooldownMs = 140;
 
     this.bind();
+  }
+
+  emitSwipeEffect(samples: PointSample[], fallbackStart: PointSample | null) {
+    const points: { x: number; y: number }[] = [];
+    if (fallbackStart) points.push({ x: fallbackStart.x, y: fallbackStart.y });
+
+    const maxSamples = 40;
+    const sliceStart = Math.max(0, samples.length - maxSamples);
+    for (let i = sliceStart; i < samples.length; i++) {
+      const sample = samples[i];
+      const last = points[points.length - 1];
+      if (!last || last.x !== sample.x || last.y !== sample.y) {
+        points.push({ x: sample.x, y: sample.y });
+      }
+    }
+
+    if (points.length < 2) return;
+    const effect = createSwipeEffect(points);
+    if (effect) this.game.swipeEffects.push(effect);
   }
 
   calculateDirection(startX: number, startY: number, currentX: number, currentY: number) {
@@ -191,6 +213,7 @@ export class InputHandler {
         const total = Math.max(1, endTime - this.touchStart.time);
 
         if (this.touchSwipe && this.game.sprite && !this.game.sprite.onGround) {
+          this.emitSwipeEffect(this.touchSamples, this.touchStart);
           this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
@@ -295,6 +318,7 @@ export class InputHandler {
       const total = Math.max(1, endTime - this.mouseStart.time);
 
       if (this.mouseSwipe && this.game.sprite && !this.game.sprite.onGround) {
+        this.emitSwipeEffect(this.mouseSamples, this.mouseStart);
         this.spawnRideFromGesture(dx, total, last.y);
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
@@ -317,11 +341,15 @@ export class InputHandler {
 
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
           e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
 
           if (!this.trackpadGestureActive) {
             this.trackpadGestureActive = true;
             this.trackpadStartX = e.deltaX;
             this.trackpadStartTime = Date.now();
+            this.trackpadStartPoint = { x: mouseX, y: mouseY, time: this.trackpadStartTime };
             return;
           }
 
@@ -335,13 +363,21 @@ export class InputHandler {
             this.game.sprite &&
             !this.game.sprite.onGround
           ) {
-            const rect = canvas.getBoundingClientRect();
-            const mouseY = e.clientY - rect.top;
+            const endPoint: PointSample = { x: mouseX, y: mouseY, time: currentTime };
+            const startPoint =
+              this.trackpadStartPoint ?? {
+                x: mouseX - totalDeltaX,
+                y: mouseY,
+                time: currentTime - totalTime,
+              };
+            this.emitSwipeEffect([startPoint, endPoint], null);
             this.spawnRideFromGesture(totalDeltaX, totalTime, mouseY);
             this.trackpadGestureActive = false;
+            this.trackpadStartPoint = null;
           }
         } else {
           this.trackpadGestureActive = false;
+          this.trackpadStartPoint = null;
         }
       },
       { passive: false }
@@ -349,6 +385,7 @@ export class InputHandler {
 
     canvas.addEventListener('mouseleave', () => {
       this.trackpadGestureActive = false;
+      this.trackpadStartPoint = null;
     });
 
     document.addEventListener('keydown', (e) => {

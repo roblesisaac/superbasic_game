@@ -35,6 +35,11 @@ import {
 } from '../systems/cards.js';
 import type { CardInstance } from '../systems/cards.js';
 import { clamp } from '../utils/utils.js';
+import {
+  updateSwipeEffects,
+  pruneSwipeEffects,
+  drawSwipeEffects
+} from '../entities/swipeEffects.js';
 
 let currentCard: CardInstance | null = null;
 
@@ -221,6 +226,7 @@ function startGame() {
   game.hearts = new Hearts();
   game.rides = [];
   game.gates = [];
+  game.swipeEffects = [];
   resetEnemies();
 
   const startX = canvasWidth / 2;
@@ -255,6 +261,7 @@ export function resetGame() {
 
   game.rides = [];
   game.gates = [];
+  game.swipeEffects = [];
   resetEnemies();
 
   game.energyBar = new EnergyBar();
@@ -309,6 +316,9 @@ function loop() {
     updateCamera(dt);
   }
 
+  updateSwipeEffects(game.swipeEffects, dt);
+  pruneSwipeEffects(game.swipeEffects);
+
   drawFrame();
   if (game.running) requestAnimationFrame(loop);
 }
@@ -332,6 +342,8 @@ function drawFrame() {
   for (const c of collectibles) c.draw(ctx, cameraX, cameraY, canvasHeight);
 
   if (!showSettings) game.sprite.draw(ctx, cameraX, cameraY);
+
+  drawSwipeEffects(ctx, game.swipeEffects);
 
   drawHUD();
   drawSettings();
