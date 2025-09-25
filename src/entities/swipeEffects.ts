@@ -17,7 +17,11 @@ export interface SwipeEffect {
   lifetime: number;
   age: number;
   sparkles: SwipeEffectSparkle[];
+  dynamic: boolean;
 }
+
+const BASE_LIFETIME = 0.55;
+const RANDOM_LIFETIME = 0.35;
 
 function simplifyPoints(points: SwipeEffectPoint[], minDistance = 4) {
   if (points.length <= 2) return points.slice();
@@ -67,10 +71,67 @@ export function createSwipeEffect(points: SwipeEffectPoint[]): SwipeEffect | nul
 
   return {
     points: simplified,
-    lifetime: 0.5 + Math.random() * 0.3,
+    lifetime: BASE_LIFETIME + Math.random() * RANDOM_LIFETIME,
     age: 0,
     sparkles: buildSparkles(simplified),
+    dynamic: false,
   };
+}
+
+export function createSwipeEffectSeed(point: SwipeEffectPoint): SwipeEffect {
+  return {
+    points: [{ ...point }],
+    lifetime: BASE_LIFETIME + Math.random() * RANDOM_LIFETIME,
+    age: 0,
+    sparkles: [],
+    dynamic: true,
+  };
+}
+
+function appendSparkle(effect: SwipeEffect, base: SwipeEffectPoint) {
+  if (effect.sparkles.length > 48) return;
+  effect.sparkles.push({
+    x: base.x + (Math.random() - 0.5) * 10,
+    y: base.y + (Math.random() - 0.5) * 10,
+    radius: 1 + Math.random() * 2,
+    delay: 0,
+    duration: 0.15 + Math.random() * 0.2,
+    age: 0,
+  });
+}
+
+export function appendSwipeEffectPoint(
+  effect: SwipeEffect,
+  point: SwipeEffectPoint,
+  minDistance = 3
+) {
+  const last = effect.points[effect.points.length - 1];
+  if (!last) {
+    effect.points.push({ ...point });
+    appendSparkle(effect, point);
+    return;
+  }
+
+  const dx = point.x - last.x;
+  const dy = point.y - last.y;
+  if (dx * dx + dy * dy < minDistance * minDistance) return;
+
+  effect.points.push({ ...point });
+  effect.dynamic = true;
+  if (Math.random() < 0.7) appendSparkle(effect, point);
+}
+
+export function finalizeSwipeEffectPath(
+  effect: SwipeEffect,
+  points: SwipeEffectPoint[]
+) {
+  if (points.length === 0) return;
+  const simplified = simplifyPoints(points);
+  effect.points = simplified.length > 0 ? simplified : [points[0]];
+  effect.sparkles = buildSparkles(effect.points);
+  effect.lifetime = Math.max(effect.lifetime, BASE_LIFETIME + Math.random() * RANDOM_LIFETIME);
+  effect.age = Math.min(effect.age, effect.lifetime * 0.2);
+  effect.dynamic = false;
 }
 
 export function updateSwipeEffects(effects: SwipeEffect[], dt: number) {
@@ -96,10 +157,25 @@ export function drawSwipeEffects(
     const remaining = Math.max(0, 1 - effect.age / effect.lifetime);
     if (remaining <= 0) continue;
     const pts = effect.points;
-    if (pts.length < 2) continue;
-
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    if (pts.length < 2) {
+      const p = pts[0];
+      const radius = 10 * remaining + 6;
+      const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${0.75 * remaining})`);
+      gradient.addColorStop(0.4, `rgba(189, 128, 255, ${0.45 * remaining})`);
+      gradient.addColorStop(1, 'rgba(189, 128, 255, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(3, radius), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      continue;
+    }
 
     const start = pts[0];
     const end = pts[pts.length - 1];

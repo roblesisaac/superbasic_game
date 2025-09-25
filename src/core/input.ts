@@ -6,7 +6,12 @@ import {
 } from '../config/constants.js';
 import { canvas, canvasWidth, cameraY, cameraX, type GameState } from './globals.js';
 import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
-import { createSwipeEffect } from '../entities/swipeEffects.js';
+import {
+  createSwipeEffectSeed,
+  appendSwipeEffectPoint,
+  finalizeSwipeEffectPath,
+} from '../entities/swipeEffects.js';
+import type { SwipeEffect } from '../entities/swipeEffects.js';
 import { showSettings, toggleSettings, hideSettings } from '../systems/settings.js';
 
 type PointSample = { x: number; y: number; time: number };
@@ -43,6 +48,9 @@ export class InputHandler {
   trackpadStartPoint: PointSample | null;
   lastArrowTime: number;
   arrowCooldownMs: number;
+  activeTouchTrail: SwipeEffect | null;
+  activeMouseTrail: SwipeEffect | null;
+  activeTrackpadTrail: SwipeEffect | null;
 
   constructor(game: GameState, ensureReset: () => void) {
     this.game = game;
@@ -74,10 +82,14 @@ export class InputHandler {
     this.lastArrowTime = 0;
     this.arrowCooldownMs = 140;
 
+    this.activeTouchTrail = null;
+    this.activeMouseTrail = null;
+    this.activeTrackpadTrail = null;
+
     this.bind();
   }
 
-  emitSwipeEffect(samples: PointSample[], fallbackStart: PointSample | null) {
+  collectSwipePoints(samples: PointSample[], fallbackStart: PointSample | null) {
     const points: { x: number; y: number }[] = [];
     if (fallbackStart) points.push({ x: fallbackStart.x, y: fallbackStart.y });
 
@@ -91,9 +103,45 @@ export class InputHandler {
       }
     }
 
-    if (points.length < 2) return;
-    const effect = createSwipeEffect(points);
-    if (effect) this.game.swipeEffects.push(effect);
+    return points;
+  }
+
+  getTrailRef(kind: 'touch' | 'mouse' | 'trackpad') {
+    if (kind === 'touch') return this.activeTouchTrail;
+    if (kind === 'mouse') return this.activeMouseTrail;
+    return this.activeTrackpadTrail;
+  }
+
+  setTrailRef(kind: 'touch' | 'mouse' | 'trackpad', value: SwipeEffect | null) {
+    if (kind === 'touch') this.activeTouchTrail = value;
+    else if (kind === 'mouse') this.activeMouseTrail = value;
+    else this.activeTrackpadTrail = value;
+  }
+
+  startSwipeTrail(kind: 'touch' | 'mouse' | 'trackpad', point: PointSample) {
+    if (!this.game.sprite || this.game.sprite.onGround) return;
+    const effect = createSwipeEffectSeed({ x: point.x, y: point.y });
+    this.game.swipeEffects.push(effect);
+    this.setTrailRef(kind, effect);
+  }
+
+  extendSwipeTrail(kind: 'touch' | 'mouse' | 'trackpad', sample: PointSample) {
+    const effect = this.getTrailRef(kind);
+    if (!effect) return;
+    appendSwipeEffectPoint(effect, { x: sample.x, y: sample.y });
+  }
+
+  finalizeSwipeTrail(kind: 'touch' | 'mouse' | 'trackpad', samples: PointSample[], fallbackStart: PointSample | null) {
+    const effect = this.getTrailRef(kind);
+    if (!effect) return;
+    const points = this.collectSwipePoints(samples, fallbackStart);
+    if (points.length === 0 && fallbackStart) points.push({ x: fallbackStart.x, y: fallbackStart.y });
+    if (points.length === 0) {
+      this.setTrailRef(kind, null);
+      return;
+    }
+    finalizeSwipeEffectPath(effect, points);
+    this.setTrailRef(kind, null);
   }
 
   calculateDirection(startX: number, startY: number, currentX: number, currentY: number) {
@@ -136,6 +184,8 @@ export class InputHandler {
         this.touchSwipe = false;
         this.isJoystickMode = false;
 
+        this.startSwipeTrail('touch', this.touchStart);
+
         this.game.sprite?.startCharging();
         if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
           this.game.sprite.startGliding();
@@ -160,6 +210,8 @@ export class InputHandler {
         this.touchSamples.push(sample);
         const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
         this.touchSamples = this.touchSamples.filter((q) => q.time >= cutoff);
+
+        this.extendSwipeTrail('touch', sample);
 
         const direction = this.calculateDirection(
           this.touchStart.x,
@@ -213,7 +265,7 @@ export class InputHandler {
         const total = Math.max(1, endTime - this.touchStart.time);
 
         if (this.touchSwipe && this.game.sprite && !this.game.sprite.onGround) {
-          this.emitSwipeEffect(this.touchSamples, this.touchStart);
+          this.finalizeSwipeTrail('touch', this.touchSamples, this.touchStart);
           this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
@@ -222,6 +274,7 @@ export class InputHandler {
         }
 
         this.game.sprite?.stopGliding();
+        this.finalizeSwipeTrail('touch', this.touchSamples, this.touchStart);
         this.touchStart = null;
         this.touchSamples = [];
         this.touchSwipe = false;
@@ -252,6 +305,8 @@ export class InputHandler {
       this.mouseSwipe = false;
       this.isMouseJoystickMode = false;
 
+      this.startSwipeTrail('mouse', this.mouseStart);
+
       this.game.sprite?.startCharging();
       if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
         this.game.sprite.startGliding();
@@ -270,6 +325,8 @@ export class InputHandler {
       this.mouseSamples.push(sample);
       const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
       this.mouseSamples = this.mouseSamples.filter((q) => q.time >= cutoff);
+
+      this.extendSwipeTrail('mouse', sample);
 
       const direction = this.calculateDirection(
         this.mouseStart.x,
@@ -318,7 +375,7 @@ export class InputHandler {
       const total = Math.max(1, endTime - this.mouseStart.time);
 
       if (this.mouseSwipe && this.game.sprite && !this.game.sprite.onGround) {
-        this.emitSwipeEffect(this.mouseSamples, this.mouseStart);
+        this.finalizeSwipeTrail('mouse', this.mouseSamples, this.mouseStart);
         this.spawnRideFromGesture(dx, total, last.y);
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
@@ -328,6 +385,7 @@ export class InputHandler {
 
       this.game.sprite?.stopGliding();
       this.isMouseDragging = false;
+      this.finalizeSwipeTrail('mouse', this.mouseSamples, this.mouseStart);
       this.mouseStart = null;
       this.mouseSamples = [];
       this.mouseSwipe = false;
@@ -350,12 +408,15 @@ export class InputHandler {
             this.trackpadStartX = e.deltaX;
             this.trackpadStartTime = Date.now();
             this.trackpadStartPoint = { x: mouseX, y: mouseY, time: this.trackpadStartTime };
+            this.startSwipeTrail('trackpad', this.trackpadStartPoint);
             return;
           }
 
           const currentTime = Date.now();
           const totalDeltaX = e.deltaX - this.trackpadStartX;
           const totalTime = currentTime - this.trackpadStartTime;
+
+          this.extendSwipeTrail('trackpad', { x: mouseX, y: mouseY, time: currentTime });
 
           if (
             Math.abs(totalDeltaX) > 50 &&
@@ -370,7 +431,7 @@ export class InputHandler {
                 y: mouseY,
                 time: currentTime - totalTime,
               };
-            this.emitSwipeEffect([startPoint, endPoint], null);
+            this.finalizeSwipeTrail('trackpad', [startPoint, endPoint], null);
             this.spawnRideFromGesture(totalDeltaX, totalTime, mouseY);
             this.trackpadGestureActive = false;
             this.trackpadStartPoint = null;
@@ -378,6 +439,7 @@ export class InputHandler {
         } else {
           this.trackpadGestureActive = false;
           this.trackpadStartPoint = null;
+          this.finalizeSwipeTrail('trackpad', [], null);
         }
       },
       { passive: false }
@@ -386,6 +448,7 @@ export class InputHandler {
     canvas.addEventListener('mouseleave', () => {
       this.trackpadGestureActive = false;
       this.trackpadStartPoint = null;
+      this.finalizeSwipeTrail('trackpad', [], null);
     });
 
     document.addEventListener('keydown', (e) => {
