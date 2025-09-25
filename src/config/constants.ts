@@ -1,6 +1,10 @@
 // Tunables & constants
-// Limit the game's canvas width so it fits most mobile screens
-export const CANVAS_MAX_WIDTH = 1920;
+// Canvas virtual resolution (render space); adjust to scale on different targets
+export const CANVAS_VIRTUAL_WIDTH = 1280;
+export const CANVAS_VIRTUAL_HEIGHT = 720;
+export const CANVAS_ASPECT_RATIO = CANVAS_VIRTUAL_WIDTH / CANVAS_VIRTUAL_HEIGHT;
+// Maximum back-buffer width (matches virtual width by default)
+export const CANVAS_MAX_WIDTH = CANVAS_VIRTUAL_WIDTH;
 
 export const GRAVITY = 2000;
 export const GLIDE_GRAVITY_FACTOR = 0.16;

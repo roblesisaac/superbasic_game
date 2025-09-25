@@ -89,6 +89,18 @@ export class InputHandler {
     this.bind();
   }
 
+  private toVirtualPoint(clientX: number, clientY: number, rect?: DOMRect): { x: number; y: number } {
+    const bounds = rect ?? canvas.getBoundingClientRect();
+    const width = bounds.width || 1;
+    const height = bounds.height || 1;
+    const scaleX = canvasWidth / width;
+    const scaleY = canvasHeight / height;
+    return {
+      x: (clientX - bounds.left) * scaleX,
+      y: (clientY - bounds.top) * scaleY,
+    };
+  }
+
   collectSwipePoints(samples: PointSample[], fallbackStart: PointSample | null) {
     const points: { x: number; y: number }[] = [];
     if (fallbackStart) points.push({ x: fallbackStart.x, y: fallbackStart.y });
@@ -165,8 +177,7 @@ export class InputHandler {
         e.preventDefault();
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
+        const { x, y } = this.toVirtualPoint(touch.clientX, touch.clientY, rect);
 
         if (x > canvasWidth - 50 && y < 50) {
           toggleSettings();
@@ -202,9 +213,10 @@ export class InputHandler {
 
         const t = e.touches[0];
         const r = canvas.getBoundingClientRect();
+        const point = this.toVirtualPoint(t.clientX, t.clientY, r);
         const sample: PointSample = {
-          x: t.clientX - r.left,
-          y: t.clientY - r.top,
+          x: point.x,
+          y: point.y,
           time: Date.now(),
         };
         this.touchSamples.push(sample);
@@ -285,8 +297,7 @@ export class InputHandler {
 
     canvas.addEventListener('mousedown', (e) => {
       const r = canvas.getBoundingClientRect();
-      const x = e.clientX - r.left;
-      const y = e.clientY - r.top;
+      const { x, y } = this.toVirtualPoint(e.clientX, e.clientY, r);
 
       if (x > canvasWidth - 50 && y < 50) {
         toggleSettings();
@@ -317,9 +328,10 @@ export class InputHandler {
       if (!this.isMouseDragging || showSettings || !this.mouseStart) return;
 
       const r = canvas.getBoundingClientRect();
+      const point = this.toVirtualPoint(e.clientX, e.clientY, r);
       const sample: PointSample = {
-        x: e.clientX - r.left,
-        y: e.clientY - r.top,
+        x: point.x,
+        y: point.y,
         time: Date.now(),
       };
       this.mouseSamples.push(sample);
@@ -400,8 +412,10 @@ export class InputHandler {
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
           e.preventDefault();
           const rect = canvas.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
+          const point = this.toVirtualPoint(e.clientX, e.clientY, rect);
+          const scaleX = rect.width ? canvasWidth / rect.width : 1;
+          const mouseX = point.x;
+          const mouseY = point.y;
 
           if (!this.trackpadGestureActive) {
             this.trackpadGestureActive = true;
@@ -413,7 +427,7 @@ export class InputHandler {
           }
 
           const currentTime = Date.now();
-          const totalDeltaX = e.deltaX - this.trackpadStartX;
+          const totalDeltaX = (e.deltaX - this.trackpadStartX) * scaleX;
           const totalTime = currentTime - this.trackpadStartTime;
 
           this.extendSwipeTrail('trackpad', { x: mouseX, y: mouseY, time: currentTime });

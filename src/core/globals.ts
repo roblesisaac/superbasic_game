@@ -1,4 +1,9 @@
-import { GRID_SIZE, CANVAS_MAX_WIDTH } from '../config/constants.js';
+import {
+  GRID_SIZE,
+  CANVAS_VIRTUAL_WIDTH,
+  CANVAS_VIRTUAL_HEIGHT,
+  CANVAS_ASPECT_RATIO
+} from '../config/constants.js';
 
 type Sprite = import('../entities/sprite.js').Sprite;
 type Ride = import('../entities/rides.js').Ride;
@@ -46,25 +51,17 @@ export function setCameraX(v: number) { cameraX = v; }
 export function addMaxHeight(v: number) { maxHeight = Math.max(maxHeight, v); }
 
 export function resize() {
-  const aspectRatio = 16 / 9;
-  let height = window.innerHeight;
-  let width = height * aspectRatio;
-
-  if (width > CANVAS_MAX_WIDTH) {
-    width = CANVAS_MAX_WIDTH;
-    height = width / aspectRatio;
-  }
-
-  width = Math.max(1, Math.round(width));
-  height = Math.max(1, Math.round(height));
-
-  canvas.width = width;
-  canvas.style.width = `${width}px`;
-  canvas.height = height;
-  canvas.style.height = `${height}px`;
+  canvas.width = CANVAS_VIRTUAL_WIDTH;
+  canvas.height = CANVAS_VIRTUAL_HEIGHT;
   canvasWidth = canvas.width;
   canvasHeight = canvas.height;
   groundY = canvasHeight - 116;
+
+  const displayHeight = Math.max(1, window.innerHeight);
+  const displayWidth = displayHeight * CANVAS_ASPECT_RATIO;
+
+  canvas.style.height = `${displayHeight}px`;
+  canvas.style.width = `${displayWidth}px`;
 }
 window.addEventListener('resize', resize);
 resize();
