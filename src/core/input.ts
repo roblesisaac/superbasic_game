@@ -5,6 +5,7 @@ import {
   MAX_RIDES,
 } from '../config/constants.js';
 import { canvas, canvasWidth, cameraY, cameraX, type GameState } from './globals.js';
+import { requestLandscapeLock } from './orientation.js';
 import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
 import {
   createSwipeEffectSeed,
@@ -175,6 +176,7 @@ export class InputHandler {
       'touchstart',
       (e) => {
         e.preventDefault();
+        requestLandscapeLock();
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
         const { x, y } = this.toVirtualPoint(touch.clientX, touch.clientY, rect);
@@ -296,6 +298,7 @@ export class InputHandler {
     );
 
     canvas.addEventListener('mousedown', (e) => {
+      requestLandscapeLock();
       const r = canvas.getBoundingClientRect();
       const { x, y } = this.toVirtualPoint(e.clientX, e.clientY, r);
 

@@ -34,3 +34,26 @@ canvas {
   image-rendering: crisp-edges;
 }
 .hud { margin-top: 8px; opacity: .9; }
+
+body.orientation-lock-active {
+  overflow: hidden;
+}
+
+#orientationOverlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(0, 0, 0, 0.96);
+  color: var(--ink);
+  text-align: center;
+  z-index: 1000;
+}
+
+#orientationOverlay .orientation-message {
+  font-family: 'Arial', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
