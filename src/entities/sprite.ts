@@ -29,6 +29,15 @@ type SpriteHooks = {
   onGameOver: () => void;
   getRides: () => any[];
   getGates: () => any[];
+  onGateTransition?: (
+    gate: any,
+    info: {
+      orientation: 'H' | 'V';
+      entrySide: string | null;
+      exitSide: string;
+      touched: boolean;
+    }
+  ) => void;
 };
 
 interface GatePassageState {
@@ -378,7 +387,15 @@ export class Sprite {
         }
         if (!currInside) {
           const passed = this._isOppositeSide(state.entrySide, currSide, orientation);
-          if (passed && !state.touched) this._handleGateClear(gate);
+          if (passed) {
+            this._notifyGateTransition(gate, {
+              orientation,
+              entrySide: state.entrySide,
+              exitSide: currSide,
+              touched: state.touched
+            });
+            if (!state.touched) this._handleGateClear(gate);
+          }
 
           state.started = false;
           state.entrySide = null;
@@ -404,6 +421,18 @@ export class Sprite {
     if (!this._isGateRewardEnabled(gate)) return;
     if (!this.hooks || !this.hooks.hearts || typeof this.hooks.hearts.gain !== 'function') return;
     this.hooks.hearts.gain(1);
+  }
+
+  _notifyGateTransition(gate, info) {
+    if (!this.hooks || typeof this.hooks.onGateTransition !== 'function') return;
+    console.log('[sprite] gate pass', {
+      gateType: gate?.constructor?.name ?? 'unknown',
+      orientation: info?.orientation,
+      entrySide: info?.entrySide,
+      exitSide: info?.exitSide,
+      touched: info?.touched
+    });
+    this.hooks.onGateTransition(gate, info);
   }
 
   _isGateRewardEnabled(gate) {
@@ -748,6 +777,16 @@ export class Sprite {
       this.onGround = true;
       this.vy = 0;
       this.gliding = false;
+    }
+
+    if (bounds) {
+      const finalLeftLimit = bounds.left + hs;
+      const finalRightLimit = bounds.right - hs;
+      const finalMin = Math.min(finalLeftLimit, finalRightLimit);
+      const finalMax = Math.max(finalLeftLimit, finalRightLimit);
+      this.x = clamp(this.x, finalMin, finalMax);
+    } else {
+      this.x = clamp(this.x, hs, canvasWidth - hs);
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };

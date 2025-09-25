@@ -30,12 +30,22 @@ import {
 import {
   initializeCardStack,
   updateCardStack as updateCardSystem,
-  getCurrentCardBounds
+  getCurrentCardBounds,
+  handleGateTransitionEvent
 } from '../systems/cards.js';
 import type { CardInstance } from '../systems/cards.js';
 import { clamp } from '../utils/utils.js';
 
 let currentCard: CardInstance | null = null;
+
+const CAMERA_SNAP_DURATION = 0.28;
+let cameraSnapTimer = 0;
+let cameraSnapStartX = 0;
+let cameraSnapEndX = 0;
+let cameraSnapPrevMin = 0;
+let cameraSnapPrevMax = 0;
+let lastCameraCardIndex = -1;
+let previousCameraRange = { min: 0, max: 0 };
 
 function syncCardStack() {
   if (!game.sprite) return;
@@ -44,37 +54,74 @@ function syncCardStack() {
   game.gates = frame.gates;
 }
 
-function updateCamera() {
+function updateCamera(dt: number) {
   if (!game.sprite) return;
   const topLine = canvasHeight * CAM_TOP;
   const bottomLine = canvasHeight * CAM_BOTTOM;
   const screenY = game.sprite.y - cameraY;
   if (screenY < topLine) setCameraY(game.sprite.y - topLine);
   else if (screenY > bottomLine) setCameraY(game.sprite.y - bottomLine);
-  // keep from panning below 0
   setCameraY(Math.min(cameraY, 0));
 
   const bounds = getCurrentCardBounds();
   if (!bounds) {
     setCameraX(0);
+    previousCameraRange = { min: 0, max: 0 };
+    cameraSnapTimer = 0;
+    lastCameraCardIndex = -1;
     return;
   }
 
   const { left, right, width, anchorX, anchorRatio } = bounds;
   const viewWidth = canvasWidth;
-  const minX = left;
-  const maxX = right - viewWidth;
+  const rawMin = left;
+  const rawMax = right - viewWidth;
+  const rangeMin = Math.min(rawMin, rawMax);
+  const rangeMax = Math.max(rawMin, rawMax);
+  const limited = width <= viewWidth;
+  const anchorTarget = anchorX - viewWidth * anchorRatio;
+  const target = limited
+    ? clamp(anchorTarget, rangeMin, rangeMax)
+    : clamp(game.sprite.x - viewWidth / 2, rangeMin, rangeMax);
 
-  if (width <= viewWidth) {
-    const anchorTarget = anchorX - viewWidth * anchorRatio;
-    const clampMin = Math.min(minX, maxX);
-    const clampMax = Math.max(minX, maxX);
-    setCameraX(clamp(anchorTarget, clampMin, clampMax));
-    return;
+  const cardIndex = currentCard ? currentCard.index : -1;
+  const previousIndex = lastCameraCardIndex;
+
+  if (previousIndex === -1 && cardIndex !== -1) {
+    lastCameraCardIndex = cardIndex;
+  } else if (cardIndex !== -1 && previousIndex !== -1 && cardIndex !== previousIndex) {
+    if (limited) {
+      cameraSnapTimer = CAMERA_SNAP_DURATION;
+      cameraSnapStartX = cameraX;
+      cameraSnapEndX = target;
+      cameraSnapPrevMin = previousCameraRange.min;
+      cameraSnapPrevMax = previousCameraRange.max;
+    } else {
+      cameraSnapTimer = 0;
+    }
+    lastCameraCardIndex = cardIndex;
   }
 
-  const desired = game.sprite.x - viewWidth / 2;
-  setCameraX(clamp(desired, minX, maxX));
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+  if (cameraSnapTimer > 0 && CAMERA_SNAP_DURATION > 0) {
+    cameraSnapEndX = target;
+    cameraSnapTimer = Math.max(0, cameraSnapTimer - dt);
+    const progress = 1 - cameraSnapTimer / CAMERA_SNAP_DURATION;
+    const eased = progress * progress * (3 - 2 * progress);
+    const blendedMin = lerp(cameraSnapPrevMin, rangeMin, eased);
+    const blendedMax = lerp(cameraSnapPrevMax, rangeMax, eased);
+    const minClamp = Math.min(blendedMin, blendedMax);
+    const maxClamp = Math.max(blendedMin, blendedMax);
+    const candidate = cameraSnapStartX + (cameraSnapEndX - cameraSnapStartX) * eased;
+    setCameraX(clamp(candidate, minClamp, maxClamp));
+  } else if (limited) {
+    setCameraX(target);
+  } else {
+    setCameraX(target);
+  }
+
+  previousCameraRange = { min: rangeMin, max: rangeMax };
 }
 
 function lightenColor(hex: string, ratio = 0.5) {
@@ -183,7 +230,8 @@ function startGame() {
     hearts: game.hearts,
     onGameOver: triggerGameOver,
     getRides: () => game.rides,
-    getGates: () => game.gates
+    getGates: () => game.gates,
+    onGateTransition: handleGateTransitionEvent
   });
 
   setCameraY(0);
@@ -219,7 +267,8 @@ export function resetGame() {
     hearts: game.hearts,
     onGameOver: triggerGameOver,
     getRides: () => game.rides,
-    getGates: () => game.gates
+    getGates: () => game.gates,
+    onGateTransition: handleGateTransitionEvent
   });
 
   setCameraY(0);
@@ -257,7 +306,7 @@ function loop() {
 
     const canRecharge = !!(game.sprite && (game.sprite.onGround || game.sprite.onPlatform));
     game.energyBar.update(dt, canRecharge);
-    updateCamera();
+    updateCamera(dt);
   }
 
   drawFrame();

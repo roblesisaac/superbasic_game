@@ -89,6 +89,13 @@ export interface CardHorizontalBounds {
   anchorRatio: number;
 }
 
+export interface GateTransitionInfo {
+  orientation: 'H' | 'V';
+  entrySide: string | null;
+  exitSide: string;
+  touched: boolean;
+}
+
 const CARD_STACK_GAP = GATE_THICKNESS;
 const MIN_CARD_HEIGHT = 64;
 
@@ -96,6 +103,13 @@ let cardDefinitions: CardDefinition[] = [];
 let cardInstances: CardInstance[] = [];
 let currentCard: CardInstance | null = null;
 let visibleCards: CardInstance[] = [];
+let visibleCardsDirty = false;
+
+function setActiveCard(card: CardInstance | null) {
+  if (card === currentCard) return;
+  currentCard = card;
+  visibleCardsDirty = true;
+}
 
 const FALLBACK_THEMES = ['#12304a', '#1c3d5a', '#243b4a', '#20314f', '#1a2b3f'];
 
@@ -386,6 +400,66 @@ function refreshVisibleCards(currentIndex: number) {
 
   visibleCards = nextVisible;
   syncActiveEnemiesWithVisibleCards();
+  visibleCardsDirty = false;
+}
+
+export function handleGateTransitionEvent(
+  gate: GateInstance | null,
+  info: GateTransitionInfo
+): void {
+  if (!gate || info.orientation !== 'H') return;
+  const { entrySide, exitSide } = info;
+  const movingUp = entrySide === 'below' && exitSide === 'above';
+  const movingDown = entrySide === 'above' && exitSide === 'below';
+  if (!movingUp && !movingDown) return;
+
+  const bottomMatch = cardInstances.find(card => card.gateBottom === gate) ?? null;
+  const topMatch = cardInstances.find(card => card.gateTop === gate) ?? null;
+  let nextCard: CardInstance | null = null;
+
+  if (movingUp) {
+    if (topMatch) {
+      nextCard = topMatch;
+    } else if (bottomMatch) {
+      const targetIndex = bottomMatch.index - 1;
+      if (targetIndex >= 0) {
+        ensureCard(targetIndex);
+        nextCard = getCardByIndex(targetIndex) ?? null;
+      }
+    }
+  } else if (movingDown) {
+    if (bottomMatch) {
+      nextCard = bottomMatch;
+    } else if (topMatch) {
+      const targetIndex = topMatch.index + 1;
+      ensureCard(targetIndex);
+      nextCard = getCardByIndex(targetIndex) ?? null;
+    }
+  }
+
+  const gateLabel = (() => {
+    if (!gate) return null;
+    const anyGate = gate as unknown as Record<string, unknown>;
+    if (typeof anyGate.id === 'string' || typeof anyGate.id === 'number') return anyGate.id;
+    if (typeof anyGate.name === 'string') return anyGate.name;
+    return gate.constructor?.name ?? null;
+  })();
+
+  console.log('[cards] gate transition', {
+    gate: gateLabel,
+    entrySide,
+    exitSide,
+    moving: movingUp ? 'up' : movingDown ? 'down' : 'unknown',
+    touched: info.touched,
+    from: currentCard?.definition.title,
+    to: nextCard?.definition.title ?? null,
+    bottomMatch: bottomMatch?.definition.title ?? null,
+    topMatch: topMatch?.definition.title ?? null
+  });
+
+  if (!nextCard) return;
+
+  setActiveCard(nextCard);
 }
 
 function ensureCoverageForY(y: number) {
@@ -408,6 +482,7 @@ export function initializeCardStack(startY: number): CardStackFrame {
   cardInstances = [];
   currentCard = null;
   visibleCards = [];
+  visibleCardsDirty = false;
 
   resetCardGateFactory();
 
@@ -421,13 +496,13 @@ export function initializeCardStack(startY: number): CardStackFrame {
 export function updateCardStack(spriteY: number): CardStackFrame {
   ensureCoverageForY(spriteY);
 
-  let nextCard = findCardForY(spriteY);
-  if (!nextCard) {
-    nextCard = findNearestCard(spriteY) ?? undefined;
+  if (!currentCard) {
+    const fallback = findCardForY(spriteY) ?? findNearestCard(spriteY) ?? cardInstances[0] ?? null;
+    setActiveCard(fallback);
   }
 
-  currentCard = nextCard ?? currentCard ?? cardInstances[0] ?? null;
-  const currentIndex = currentCard ? currentCard.index : 0;
+  const activeCard = currentCard ?? cardInstances[0] ?? null;
+  const currentIndex = activeCard ? activeCard.index : 0;
 
   ensureCard(currentIndex + 1);
   ensureCard(currentIndex + 2);
@@ -435,7 +510,7 @@ export function updateCardStack(spriteY: number): CardStackFrame {
   refreshVisibleCards(currentIndex);
 
   const gateSet = new Set<GateInstance>();
-  if (currentCard?.gateBottom) gateSet.add(currentCard.gateBottom);
+  if (activeCard?.gateBottom) gateSet.add(activeCard.gateBottom);
 
   for (const card of visibleCards) {
     if (card.gateTop) gateSet.add(card.gateTop);
@@ -444,7 +519,7 @@ export function updateCardStack(spriteY: number): CardStackFrame {
   const gates = Array.from(gateSet);
 
   return {
-    currentCard,
+    currentCard: activeCard,
     visibleCards: [...visibleCards],
     gates
   };
