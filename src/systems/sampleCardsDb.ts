@@ -2,15 +2,111 @@ import type { CardBlueprint } from './cards.js';
 
 export const SAMPLE_CARDS: CardBlueprint[] = [
   {
-    id: 'card-intro',
-    title: 'Entry Ledger',
+    id: 'card-intro1',
+    title: 'Entry Ledger 1',
     heightPct: 50,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
     },
-    enemies: [{ difficulty: 10, count: 4 }],
-    difficulty: 8,
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro2',
+    title: 'Entry Ledger 2',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro3',
+    title: 'Entry Ledger 3',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro4',
+    title: 'Entry Ledger 4',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro5',
+    title: 'Entry Ledger 5',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro6',
+    title: 'Entry Ledger 6',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro7',
+    title: 'Entry Ledger 7',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro8',
+    title: 'Entry Ledger 8',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
+    theme: { bgColor: '#12263a' }
+  },
+  {
+    id: 'card-intro9',
+    title: 'Entry Ledger 9',
+    heightPct: 50,
+    widthPct: 100,
+    gates: {
+      top: { width: 100, gate: true }
+    },
+    enemies: [{ difficulty: 1, count: 1 }],
+    difficulty: 1,
     theme: { bgColor: '#12263a' }
   },
   {
