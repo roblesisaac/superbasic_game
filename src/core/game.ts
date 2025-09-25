@@ -35,6 +35,7 @@ import {
 } from '../systems/cards.js';
 import type { CardInstance } from '../systems/cards.js';
 import { clamp } from '../utils/utils.js';
+import { updateEffects, drawEffects, clearEffects } from '../systems/effects.js';
 
 let currentCard: CardInstance | null = null;
 
@@ -222,6 +223,7 @@ function startGame() {
   game.rides = [];
   game.gates = [];
   resetEnemies();
+  clearEffects();
 
   const startX = canvasWidth / 2;
   const startY = groundY - 8;
@@ -256,6 +258,7 @@ export function resetGame() {
   game.rides = [];
   game.gates = [];
   resetEnemies();
+  clearEffects();
 
   game.energyBar = new EnergyBar();
   game.hearts = new Hearts();
@@ -293,6 +296,7 @@ function loop() {
     updateRides(game.rides, dt);
     updateGates(game.gates, dt);
     updateEnemies(game, dt);
+    updateEffects(dt);
     for (const c of collectibles) c.update(dt, game, gameStats);
 
     for (let i = collectibles.length - 1; i >= 0; i--) {
@@ -332,6 +336,9 @@ function drawFrame() {
   for (const c of collectibles) c.draw(ctx, cameraX, cameraY, canvasHeight);
 
   if (!showSettings) game.sprite.draw(ctx, cameraX, cameraY);
+  
+  // Draw effects after the sprite so they appear on top
+  drawEffects(ctx, cameraX, cameraY);
 
   drawHUD();
   drawSettings();

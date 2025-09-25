@@ -7,6 +7,7 @@ import {
 import { canvas, canvasWidth, cameraY, cameraX, type GameState } from './globals.js';
 import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
 import { showSettings, toggleSettings, hideSettings } from '../systems/settings.js';
+import { createSwipeEffect } from '../systems/effects.js';
 
 type PointSample = { x: number; y: number; time: number };
 
@@ -191,6 +192,13 @@ export class InputHandler {
         const total = Math.max(1, endTime - this.touchStart.time);
 
         if (this.touchSwipe && this.game.sprite && !this.game.sprite.onGround) {
+          // Create visual effect for the swipe
+          createSwipeEffect(
+            this.touchStart.x + cameraX,
+            this.touchStart.y + cameraY,
+            last.x + cameraX,
+            last.y + cameraY
+          );
           this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
@@ -295,6 +303,13 @@ export class InputHandler {
       const total = Math.max(1, endTime - this.mouseStart.time);
 
       if (this.mouseSwipe && this.game.sprite && !this.game.sprite.onGround) {
+        // Create visual effect for the swipe
+        createSwipeEffect(
+          this.mouseStart.x + cameraX,
+          this.mouseStart.y + cameraY,
+          last.x + cameraX,
+          last.y + cameraY
+        );
         this.spawnRideFromGesture(dx, total, last.y);
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
@@ -337,6 +352,16 @@ export class InputHandler {
           ) {
             const rect = canvas.getBoundingClientRect();
             const mouseY = e.clientY - rect.top;
+            const mouseX = e.clientX - rect.left;
+            
+            // Create visual effect for trackpad swipe
+            createSwipeEffect(
+              mouseX - totalDeltaX/2 + cameraX,
+              mouseY + cameraY,
+              mouseX + totalDeltaX/2 + cameraX,
+              mouseY + cameraY
+            );
+            
             this.spawnRideFromGesture(totalDeltaX, totalTime, mouseY);
             this.trackpadGestureActive = false;
           }
