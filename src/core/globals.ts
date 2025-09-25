@@ -46,10 +46,16 @@ export function setCameraX(v: number) { cameraX = v; }
 export function addMaxHeight(v: number) { maxHeight = Math.max(maxHeight, v); }
 
 export function resize() {
-  const desiredWidth = Math.min(window.innerWidth, CANVAS_MAX_WIDTH);
-  canvas.width = desiredWidth;
-  canvas.style.width = `${desiredWidth}px`;
-  canvas.height = window.innerHeight;
+  const aspectRatio = 16 / 9;
+  const maxWidthByHeight = window.innerHeight * aspectRatio;
+  const targetWidth = Math.min(window.innerWidth, CANVAS_MAX_WIDTH, maxWidthByHeight);
+  const width = Math.max(1, Math.floor(targetWidth));
+  const height = Math.max(1, Math.floor(width / aspectRatio));
+
+  canvas.width = width;
+  canvas.style.width = `${width}px`;
+  canvas.height = height;
+  canvas.style.height = `${height}px`;
   canvasWidth = canvas.width;
   canvasHeight = canvas.height;
   groundY = canvasHeight - 116;

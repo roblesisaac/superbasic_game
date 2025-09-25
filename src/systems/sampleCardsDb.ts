@@ -4,7 +4,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro1',
     title: 'Entry Ledger 1',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -16,7 +16,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro2',
     title: 'Entry Ledger 2',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -28,7 +28,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro3',
     title: 'Entry Ledger 3',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -40,7 +40,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro4',
     title: 'Entry Ledger 4',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -52,7 +52,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro5',
     title: 'Entry Ledger 5',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -64,7 +64,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro6',
     title: 'Entry Ledger 6',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
@@ -76,7 +76,7 @@ export const SAMPLE_CARDS: CardBlueprint[] = [
   {
     id: 'card-intro7',
     title: 'Entry Ledger 7',
-    heightPct: 50,
+    heightPct: 100,
     widthPct: 100,
     gates: {
       top: { width: 100, gate: true }
