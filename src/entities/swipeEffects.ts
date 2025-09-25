@@ -163,9 +163,9 @@ export function drawSwipeEffects(
       const p = pts[0];
       const radius = 10 * remaining + 6;
       const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
-      gradient.addColorStop(0, `rgba(255, 255, 255, ${0.75 * remaining})`);
-      gradient.addColorStop(0.4, `rgba(189, 128, 255, ${0.45 * remaining})`);
-      gradient.addColorStop(1, 'rgba(189, 128, 255, 0)');
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${0.8 * remaining})`);
+      gradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.4 * remaining})`);
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -177,30 +177,44 @@ export function drawSwipeEffects(
       continue;
     }
 
-    const start = pts[0];
-    const end = pts[pts.length - 1];
-    const gradient = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
-    gradient.addColorStop(0, `rgba(255, 245, 180, ${0.2 * remaining})`);
-    gradient.addColorStop(0.5, `rgba(185, 120, 255, ${0.55 * remaining})`);
-    gradient.addColorStop(1, `rgba(120, 230, 255, ${0.25 * remaining})`);
+    const baseRadius = 16 * remaining + 6;
+    const dustAlpha = 0.32 * remaining + 0.16;
 
-    ctx.lineWidth = 12 * remaining + 4;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = gradient;
-    ctx.shadowColor = `rgba(255, 255, 255, ${0.65 * remaining})`;
-    ctx.shadowBlur = 18 * remaining;
+    const drawDust = (x: number, y: number, strength: number) => {
+      const radius = Math.max(2.5, baseRadius * strength);
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, `rgba(255, 255, 255, ${dustAlpha})`);
+      gradient.addColorStop(0.6, `rgba(255, 255, 255, ${dustAlpha * 0.55})`);
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    };
 
-    ctx.beginPath();
-    ctx.moveTo(start.x, start.y);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
+    const len = pts.length;
+    for (let i = 0; i < len; i++) {
+      const p = pts[i];
+      const progression = len > 1 ? i / (len - 1) : 0;
+      drawDust(p.x, p.y, 0.75 + 0.25 * (1 - progression));
+
+      if (i === 0) continue;
+      const prev = pts[i - 1];
+      const dx = p.x - prev.x;
+      const dy = p.y - prev.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const steps = Math.max(1, Math.floor(dist / 12));
+      for (let s = 1; s < steps; s++) {
+        const t = s / steps;
+        const x = prev.x + dx * t;
+        const y = prev.y + dy * t;
+        drawDust(x, y, 0.6 + 0.25 * (1 - t));
+      }
     }
-    ctx.stroke();
 
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * remaining})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.85 * remaining})`;
 
     for (const sparkle of effect.sparkles) {
       const localLife = sparkle.age - sparkle.delay;
