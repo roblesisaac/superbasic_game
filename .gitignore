@@ -1,3 +1,4 @@
 node_modules/
 dist/
 service-worker.js
+!public/service-worker.js

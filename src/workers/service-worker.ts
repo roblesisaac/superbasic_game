@@ -1,29 +1,13 @@
 /// <reference lib="webworker" />
 
-const sw = self as unknown as ServiceWorkerGlobalScope;
+const sw = self as ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'game-cache-v14';
+const CACHE_NAME = 'game-cache-v15';
 
 const CORE_ASSETS: string[] = [
   './',
   './index.html',
-  './styles.css',
   './manifest.webmanifest',
-  './dist/game.js',
-  './dist/budget.js',
-  './dist/canvas.js',
-  './dist/collectibles.js',
-  './dist/constants.js',
-  './dist/controlledGate.js',
-  './dist/enemies.js',
-  './dist/gates.js',
-  './dist/globals.js',
-  './dist/hud.js',
-  './dist/input.js',
-  './dist/rides.js',
-  './dist/settings.js',
-  './dist/sprite.js',
-  './dist/utils.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
