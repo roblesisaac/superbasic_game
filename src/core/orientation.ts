@@ -6,6 +6,24 @@ const TARGET_ORIENTATION = 'landscape';
 let overlay: HTMLDivElement | null = null;
 let lastKnownPortrait = false;
 
+function ignorePromiseRejection(result: unknown) {
+  if (result && typeof (result as PromiseLike<unknown>).catch === 'function') {
+    (result as PromiseLike<unknown>).catch(() => {});
+  }
+}
+
+function tryLock(call: () => unknown) {
+  try {
+    const result = call();
+    ignorePromiseRejection(result);
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      // Surface orientation lock issues during development for easier diagnosis.
+      console.debug('Orientation lock attempt skipped:', err);
+    }
+  }
+}
+
 function isLandscape(): boolean {
   if (window.matchMedia && window.matchMedia(LANDSCAPE_QUERY).matches) {
     return true;
@@ -53,15 +71,14 @@ function attemptLock() {
   const screenWithLock = window.screen as ScreenWithOrientation;
   const screenOrientation = screenWithLock.orientation;
   if (screenOrientation && typeof screenOrientation.lock === 'function') {
-    screenOrientation.lock(TARGET_ORIENTATION as OrientationLockType).catch(() => {});
+    tryLock(() => screenOrientation.lock(TARGET_ORIENTATION as OrientationLockType));
     return;
   }
 
   const legacyLock =
     screenWithLock.lockOrientation || screenWithLock.mozLockOrientation || screenWithLock.msLockOrientation;
   if (typeof legacyLock === 'function') {
-    const result = legacyLock.call(screenWithLock, TARGET_ORIENTATION);
-    if (result instanceof Promise) result.catch(() => {});
+    tryLock(() => legacyLock.call(screenWithLock, TARGET_ORIENTATION));
   }
 }
 
@@ -77,5 +94,11 @@ export function initOrientationHandling() {
 }
 
 export function requestLandscapeLock() {
-  attemptLock();
+  try {
+    attemptLock();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.debug('Orientation lock request failed:', err);
+    }
+  }
 }

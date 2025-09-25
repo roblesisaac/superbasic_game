@@ -4,7 +4,7 @@ import {
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
 } from '../config/constants.js';
-import { canvas, canvasWidth, cameraY, cameraX, type GameState } from './globals.js';
+import { canvas, canvasWidth, canvasHeight, cameraY, cameraX, type GameState } from './globals.js';
 import { requestLandscapeLock } from './orientation.js';
 import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
 import {
