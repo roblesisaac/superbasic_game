@@ -1,6 +1,6 @@
 // Tunables & constants
 // Limit the game's canvas width so it fits most mobile screens
-export const CANVAS_MAX_WIDTH = 480;
+export const CANVAS_MAX_WIDTH = 1920;
 
 export const GRAVITY = 2000;
 export const GLIDE_GRAVITY_FACTOR = 0.16;

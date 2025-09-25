@@ -15,11 +15,12 @@ html, body {
 }
 canvas {
   display: block;
-  width: 100%;
-  max-width: 480px;
   margin: 0 auto;
-  height: auto;
+  height: 100vh;
+  width: auto;
+  max-width: none;
   background-color: var(--bg);
+  border: 4px solid var(--ink);
   /* background-image:
     radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,.035), transparent 65%),
     radial-gradient(800px 400px at 80% 10%, rgba(255,255,255,.025), transparent 60%),
