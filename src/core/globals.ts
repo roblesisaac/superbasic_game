@@ -50,18 +50,35 @@ export function setCameraY(v: number) { cameraY = v; }
 export function setCameraX(v: number) { cameraX = v; }
 export function addMaxHeight(v: number) { maxHeight = Math.max(maxHeight, v); }
 
+function resolveVirtualSize() {
+  const minScreenEdge = Math.min(window.innerWidth, window.innerHeight);
+
+  if (minScreenEdge <= 600) {
+    const targetHeight = 540;
+    const targetWidth = Math.round(targetHeight * CANVAS_ASPECT_RATIO);
+    return { width: targetWidth, height: targetHeight };
+  }
+
+  return { width: CANVAS_VIRTUAL_WIDTH, height: CANVAS_VIRTUAL_HEIGHT };
+}
+
 export function resize() {
-  canvas.width = CANVAS_VIRTUAL_WIDTH;
-  canvas.height = CANVAS_VIRTUAL_HEIGHT;
+  const { width: virtualWidth, height: virtualHeight } = resolveVirtualSize();
+
+  canvas.width = virtualWidth;
+  canvas.height = virtualHeight;
   canvasWidth = canvas.width;
   canvasHeight = canvas.height;
   groundY = canvasHeight - 116;
 
-  const displayHeight = Math.max(1, window.innerHeight);
-  const displayWidth = displayHeight * CANVAS_ASPECT_RATIO;
+  const maxDisplayWidth = Math.max(1, window.innerWidth);
+  const maxDisplayHeight = Math.max(1, window.innerHeight);
+  const scale = Math.min(maxDisplayWidth / canvasWidth, maxDisplayHeight / canvasHeight);
+  const displayWidth = Math.max(1, Math.round(canvasWidth * scale));
+  const displayHeight = Math.max(1, Math.round(canvasHeight * scale));
 
-  canvas.style.height = `${displayHeight}px`;
   canvas.style.width = `${displayWidth}px`;
+  canvas.style.height = `${displayHeight}px`;
 }
 window.addEventListener('resize', resize);
 resize();
