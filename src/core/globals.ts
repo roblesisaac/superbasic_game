@@ -79,15 +79,6 @@ export const game: GameState = {
 
 // Background grid drawing (used in main draw)
 export function drawBackgroundGrid() {
-  ctx.save();
-
-  const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-  gradient.addColorStop(0, 'rgba(18, 16, 46, 0.45)');
-  gradient.addColorStop(0.55, 'rgba(7, 7, 17, 0.15)');
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-  ctx.restore();
+  // Intentionally left blank so the animated starfield background can show
+  // through the transparent gameplay canvas.
 }
