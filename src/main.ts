@@ -2,7 +2,7 @@
 import './styles/styles.css';
 
 // Starfield background
-import './ui/starfield.js';
+import './ui/starfield';
 
 // Import and start the game
 import './core/game.js';
