@@ -1,4 +1,4 @@
-import { GRID_SIZE, CANVAS_MAX_WIDTH } from '../config/constants.js';
+import { CANVAS_MAX_WIDTH } from '../config/constants.js';
 
 type Sprite = import('../entities/sprite.js').Sprite;
 type Ride = import('../entities/rides.js').Ride;
@@ -81,22 +81,13 @@ export const game: GameState = {
 export function drawBackgroundGrid() {
   ctx.save();
 
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; // slightly brighter than 0.04 so dots are visible
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+  gradient.addColorStop(0, 'rgba(18, 16, 46, 0.45)');
+  gradient.addColorStop(0.55, 'rgba(7, 7, 17, 0.15)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-  const worldTop = cameraY;
-  const worldBottom = cameraY + canvasHeight;
-
-  let firstY = Math.floor(worldTop / GRID_SIZE) * GRID_SIZE;
-  if (firstY > worldTop) firstY -= GRID_SIZE;
-
-  for (let y = firstY; y <= worldBottom; y += GRID_SIZE) {
-    const sy = y - cameraY;
-    for (let x = 0; x <= canvasWidth; x += GRID_SIZE) {
-      ctx.beginPath();
-      ctx.arc(x, sy, 1.2, 0, Math.PI * 2); // radius ~1–2px looks nice
-      ctx.fill();
-    }
-  }
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   ctx.restore();
 }
