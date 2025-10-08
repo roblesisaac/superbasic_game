@@ -446,9 +446,21 @@ export class ControlledGate {
         }
       }
     } else {
-      ctx.fillStyle = '#5aa2ff';
+      const visualThickness = Math.max(1, Math.round(GATE_THICKNESS / 5));
+      ctx.fillStyle = '#fff';
       for (const rect of rects) {
-        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
+        if (rect.w <= 0 || rect.h <= 0) continue;
+
+        const isHorizontal = rect.w >= rect.h;
+        if (isHorizontal) {
+          const height = Math.min(visualThickness, rect.h);
+          const offsetY = (rect.h - height) / 2;
+          ctx.fillRect(rect.x, rect.y - cameraY + offsetY, rect.w, height);
+        } else {
+          const width = Math.min(visualThickness, rect.w);
+          const offsetX = (rect.w - width) / 2;
+          ctx.fillRect(rect.x + offsetX, rect.y - cameraY, width, rect.h);
+        }
       }
 
       if (this.gapInfo) {
