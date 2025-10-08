@@ -5,6 +5,9 @@ export interface GateVisualRect {
   y: number;
   w: number;
   h: number;
+  visualExtendVertical?: boolean;
+  visualPadTop?: number;
+  visualPadBottom?: number;
 }
 
 export interface GateVisualGapInfo {
@@ -41,7 +44,15 @@ export function drawGateVisuals({
     } else {
       const width = Math.min(visualThickness, rect.w);
       const offsetX = (rect.w - width) / 2;
-      ctx.fillRect(rect.x + offsetX, rect.y - cameraY, width, rect.h);
+      const padTop = rect.visualExtendVertical ? rect.visualPadTop ?? 0 : 0;
+      const padBottom = rect.visualExtendVertical ? rect.visualPadBottom ?? 0 : 0;
+      const visualHeight = rect.h + padTop + padBottom;
+      ctx.fillRect(
+        rect.x + offsetX,
+        rect.y - cameraY - padTop,
+        width,
+        visualHeight
+      );
     }
   }
 

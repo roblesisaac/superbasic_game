@@ -62,6 +62,9 @@ interface GateRect {
   w: number;
   h: number;
   segment: Segment | null;
+  visualExtendVertical?: boolean;
+  visualPadTop?: number;
+  visualPadBottom?: number;
 }
 
 export interface CollisionRect {
@@ -69,6 +72,9 @@ export interface CollisionRect {
   y: number;
   w: number;
   h: number;
+  visualExtendVertical?: boolean;
+  visualPadTop?: number;
+  visualPadBottom?: number;
 }
 
 interface GapInfo {
@@ -287,6 +293,8 @@ export class ControlledGate {
           w: GATE_THICKNESS,
           h: height,
           segment,
+          visualExtendVertical: true,
+          visualPadBottom: GATE_THICKNESS / 2,
         };
         this.rects.push(rect);
         currentY += height;
@@ -380,7 +388,18 @@ export class ControlledGate {
   }
 
   getRects(): CollisionRect[] {
-    if (!this.gapInfo) return this.rects.map(({ x, y, w, h }) => ({ x, y, w, h }));
+    if (!this.gapInfo)
+      return this.rects.map(
+        ({ x, y, w, h, visualExtendVertical, visualPadTop, visualPadBottom }) => ({
+          x,
+          y,
+          w,
+          h,
+          visualExtendVertical,
+          visualPadTop,
+          visualPadBottom,
+        })
+      );
 
     const output: CollisionRect[] = [];
     for (const rect of this.rects) {
@@ -388,30 +407,62 @@ export class ControlledGate {
         if (rect.type === 'H') {
           const leftWidth = Math.max(0, this.gapX - rect.x);
           const rightWidth = Math.max(0, rect.x + rect.w - (this.gapX + this.gapWidth));
-          if (leftWidth > 0) output.push({ x: rect.x, y: rect.y, w: leftWidth, h: rect.h });
+          if (leftWidth > 0)
+            output.push({
+              x: rect.x,
+              y: rect.y,
+              w: leftWidth,
+              h: rect.h,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom,
+            });
           if (rightWidth > 0) {
             output.push({
               x: this.gapX + this.gapWidth,
               y: rect.y,
               w: rightWidth,
               h: rect.h,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom,
             });
           }
         } else {
           const topHeight = Math.max(0, this.gapY - rect.y);
           const bottomHeight = Math.max(0, rect.y + rect.h - (this.gapY + this.gapWidth));
-          if (topHeight > 0) output.push({ x: rect.x, y: rect.y, w: rect.w, h: topHeight });
+          if (topHeight > 0)
+            output.push({
+              x: rect.x,
+              y: rect.y,
+              w: rect.w,
+              h: topHeight,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom,
+            });
           if (bottomHeight > 0) {
             output.push({
               x: rect.x,
               y: this.gapY + this.gapWidth,
               w: rect.w,
               h: bottomHeight,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom,
             });
           }
         }
       } else {
-        output.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+        output.push({
+          x: rect.x,
+          y: rect.y,
+          w: rect.w,
+          h: rect.h,
+          visualExtendVertical: rect.visualExtendVertical,
+          visualPadTop: rect.visualPadTop,
+          visualPadBottom: rect.visualPadBottom,
+        });
       }
     }
     return output;

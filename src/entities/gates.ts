@@ -21,6 +21,9 @@ type GateRect = {
   y: number;
   w: number;
   h: number;
+  visualExtendVertical?: boolean;
+  visualPadTop?: number;
+  visualPadBottom?: number;
 };
 
 type GateGapInfo = { type: 'H' | 'V'; index: number | string } | null;
@@ -177,16 +180,60 @@ export class Gate {
         if (rect.type === 'H') {
           const leftWidth = Math.max(0, this.gapX - rect.x);
           const rightWidth = Math.max(0, rect.x + rect.w - (this.gapX + this.gapWidth));
-          if (leftWidth > 0) output.push({ x: rect.x, y: rect.y, w: leftWidth, h: rect.h });
-          if (rightWidth > 0) output.push({ x: this.gapX + this.gapWidth, y: rect.y, w: rightWidth, h: rect.h });
+          if (leftWidth > 0)
+            output.push({
+              x: rect.x,
+              y: rect.y,
+              w: leftWidth,
+              h: rect.h,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom
+            });
+          if (rightWidth > 0)
+            output.push({
+              x: this.gapX + this.gapWidth,
+              y: rect.y,
+              w: rightWidth,
+              h: rect.h,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom
+            });
         } else {
           const topHeight = Math.max(0, this.gapY - rect.y);
           const bottomHeight = Math.max(0, rect.y + rect.h - (this.gapY + this.gapWidth));
-          if (topHeight > 0) output.push({ x: rect.x, y: rect.y, w: rect.w, h: topHeight });
-          if (bottomHeight > 0) output.push({ x: rect.x, y: this.gapY + this.gapWidth, w: rect.w, h: bottomHeight });
+          if (topHeight > 0)
+            output.push({
+              x: rect.x,
+              y: rect.y,
+              w: rect.w,
+              h: topHeight,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom
+            });
+          if (bottomHeight > 0)
+            output.push({
+              x: rect.x,
+              y: this.gapY + this.gapWidth,
+              w: rect.w,
+              h: bottomHeight,
+              visualExtendVertical: rect.visualExtendVertical,
+              visualPadTop: rect.visualPadTop,
+              visualPadBottom: rect.visualPadBottom
+            });
         }
       } else {
-        output.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+        output.push({
+          x: rect.x,
+          y: rect.y,
+          w: rect.w,
+          h: rect.h,
+          visualExtendVertical: rect.visualExtendVertical,
+          visualPadTop: rect.visualPadTop,
+          visualPadBottom: rect.visualPadBottom
+        });
       }
     }
 
