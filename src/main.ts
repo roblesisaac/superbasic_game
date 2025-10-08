@@ -1,6 +1,9 @@
 // Import styles
 import './styles/styles.css';
 
+// Starfield background
+import './ui/starfield.js';
+
 // Import and start the game
 import './core/game.js';
 

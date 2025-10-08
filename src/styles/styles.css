@@ -7,13 +7,20 @@ html, body {
   color: var(--ink);
   font: 14px/1.2 "Courier New", ui-monospace, monospace;
 }
+#starfieldCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  pointer-events: none;
+}
 #wrap {
   max-width: 960px;
   margin: 0 auto;
   padding: 12px;
   text-align: center;
 }
-canvas {
+#gameCanvas {
   display: block;
   width: 100%;
   max-width: 480px;
