@@ -10,11 +10,20 @@ interface Star {
   currentAlpha?: number;
 }
 
-const baseConfig = {
+interface SceneConfig {
+  numSmallStars: number;
+  numBrightStars: number;
+  baseWidth: number;
+  baseHeight: number;
+  baseMoonRadius: number;
+}
+
+const baseConfig: SceneConfig = {
   numSmallStars: 100,
   numBrightStars: 20,
   baseWidth: 1024,
-  baseHeight: 768
+  baseHeight: 768,
+  baseMoonRadius: 60
 };
 
 let canvas: HTMLCanvasElement | null = null;
@@ -36,6 +45,10 @@ function ensureCanvas(): void {
   }
 
   ctx = canvas.getContext('2d', { alpha: false });
+
+  if (ctx) {
+    ctx.imageSmoothingEnabled = false;
+  }
 }
 
 function resizeCanvas(): void {
@@ -78,6 +91,29 @@ function computeStarCounts(): { small: number; bright: number } {
   return { small, bright };
 }
 
+function getSceneDimensions(): {
+  width: number;
+  height: number;
+  moonX: number;
+  moonY: number;
+  moonRadius: number;
+  pixelSize: number;
+} {
+  const { width, height } = getCanvasDimensions();
+  const moonRadius = (Math.min(width, height) / baseConfig.baseHeight) * baseConfig.baseMoonRadius;
+  const scaledRadius = Math.max(20, moonRadius);
+  const pixelSize = Math.max(2, Math.round(scaledRadius / 20));
+
+  return {
+    width,
+    height,
+    moonX: width * 0.65,
+    moonY: height * 0.22,
+    moonRadius: scaledRadius,
+    pixelSize
+  };
+}
+
 function initStars(): void {
   stars = [];
   const { small, bright } = computeStarCounts();
@@ -100,7 +136,7 @@ function initStars(): void {
       y: Math.random() * height,
       type: 'bright',
       baseAlpha: 0.7 + Math.random() * 0.3,
-      twinkleSpeed: 0.5 + Math.random(),
+      twinkleSpeed: 0.5 + Math.random() * 1,
       offset: Math.random() * Math.PI * 2
     });
   }
@@ -109,9 +145,91 @@ function initStars(): void {
 function update(dt: number): void {
   for (const star of stars) {
     star.offset += dt * star.twinkleSpeed;
-    const alpha = star.baseAlpha + Math.sin(star.offset) * 0.3;
-    star.currentAlpha = Math.max(0.3, Math.min(1, alpha));
+    const alpha = star.baseAlpha + Math.sin(star.offset) * 0.5;
+    star.currentAlpha = Math.max(0.2, Math.min(1, alpha));
   }
+}
+
+function drawPixelatedCrater(
+  cx: number,
+  cy: number,
+  radius: number,
+  pixelSize: number,
+  dithered: boolean
+): void {
+  if (!ctx) return;
+
+  ctx.fillStyle = '#000';
+
+  for (let px = cx - radius; px <= cx + radius; px += pixelSize) {
+    for (let py = cy - radius; py <= cy + radius; py += pixelSize) {
+      const dx = px - cx;
+      const dy = py - cy;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= radius) {
+        if (!dithered || (Math.floor(px / pixelSize) + Math.floor(py / pixelSize)) % 2 === 0) {
+          ctx.fillRect(px, py, pixelSize, pixelSize);
+        }
+      }
+    }
+  }
+}
+
+function drawPixelatedArc(cx: number, cy: number, radius: number, pixelSize: number): void {
+  if (!ctx) return;
+
+  ctx.fillStyle = '#000';
+
+  for (let angle = 0; angle < Math.PI; angle += 0.2) {
+    const px = Math.floor(cx + Math.cos(angle) * radius);
+    const py = Math.floor(cy + Math.sin(angle) * radius);
+    ctx.fillRect(px, py, pixelSize, pixelSize);
+  }
+}
+
+function drawMoon(): void {
+  if (!ctx) return;
+
+  const { moonX, moonY, moonRadius, pixelSize } = getSceneDimensions();
+  const x = Math.floor(moonX);
+  const y = Math.floor(moonY);
+  const r = moonRadius;
+
+  ctx.fillStyle = '#fff';
+
+  for (let px = x - r; px <= x + r; px += pixelSize) {
+    for (let py = y - r; py <= y + r; py += pixelSize) {
+      const dx = px - x;
+      const dy = py - y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= r) {
+        ctx.fillRect(px, py, pixelSize, pixelSize);
+      }
+    }
+  }
+
+  ctx.fillStyle = '#000';
+  const shadowOffsetX = r * 0.42;
+  const shadowOffsetY = -r * 0.08;
+
+  for (let px = x - r; px <= x + r; px += pixelSize) {
+    for (let py = y - r; py <= y + r; py += pixelSize) {
+      const dx = px - (x + shadowOffsetX);
+      const dy = py - (y + shadowOffsetY);
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= r) {
+        ctx.fillRect(px, py, pixelSize, pixelSize);
+      }
+    }
+  }
+
+  const craterRadius = r * 0.3;
+  drawPixelatedCrater(x - r * 0.3, y - r * 0.1, craterRadius, pixelSize, true);
+  drawPixelatedCrater(x + r * 0.15, y + r * 0.2, craterRadius * 0.7, pixelSize, false);
+  drawPixelatedArc(x + r * 0.25, y - r * 0.35, craterRadius * 0.8, pixelSize);
 }
 
 function draw(): void {
@@ -121,6 +239,8 @@ function draw(): void {
 
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, width, height);
+
+  drawMoon();
 
   for (const star of stars) {
     const alpha = star.currentAlpha ?? star.baseAlpha;
