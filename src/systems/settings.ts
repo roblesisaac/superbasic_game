@@ -5,10 +5,6 @@ export let showSettings = false;
 export function toggleSettings() { showSettings = !showSettings; }
 export function hideSettings() { showSettings = false; }
 
-// ASCII art rendering setting (default: on)
-export let asciiArtEnabled = true;
-export function setAsciiArtEnabled(v) { asciiArtEnabled = !!v; }
-
 let overlay = null;
 
 export function drawSettingsIcon(ctx) {
@@ -87,42 +83,6 @@ export function drawSettings() {
   list.style.flexDirection = 'column';
   list.style.gap = '12px';
   list.style.margin = '8px 0 12px 0';
-
-  // ASCII Art toggle row
-  const asciiRow = document.createElement('div');
-  asciiRow.style.display = 'flex';
-  asciiRow.style.alignItems = 'center';
-  asciiRow.style.justifyContent = 'space-between';
-  asciiRow.style.border = '1px solid #fff';
-  asciiRow.style.padding = '10px 12px';
-  asciiRow.style.background = 'rgba(255,255,255,0.05)';
-
-  const asciiLabel = document.createElement('div');
-  asciiLabel.textContent = 'ASCII ART';
-  asciiLabel.style.fontSize = '12px';
-
-  const asciiToggle = document.createElement('button');
-  asciiToggle.style.fontFamily = 'LocalPressStart, monospace';
-  asciiToggle.style.fontSize = '12px';
-  asciiToggle.style.color = '#fff';
-  asciiToggle.style.background = 'transparent';
-  asciiToggle.style.border = '2px solid #fff';
-  asciiToggle.style.padding = '6px 10px';
-  asciiToggle.style.cursor = 'pointer';
-  asciiToggle.style.boxShadow = 'none';
-  function updateAsciiButton() {
-    asciiToggle.textContent = asciiArtEnabled ? 'ON' : 'OFF';
-    asciiToggle.style.opacity = asciiArtEnabled ? '1' : '0.7';
-  }
-  updateAsciiButton();
-  asciiToggle.addEventListener('click', () => {
-    setAsciiArtEnabled(!asciiArtEnabled);
-    updateAsciiButton();
-  });
-  asciiRow.appendChild(asciiLabel);
-  asciiRow.appendChild(asciiToggle);
-
-  list.appendChild(asciiRow);
 
   // Budget editor
   const budgetLabel = document.createElement('div');

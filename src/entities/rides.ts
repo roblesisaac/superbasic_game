@@ -21,7 +21,6 @@ import {
   RIDE_LAUNCH_VELOCITY_FACTOR,
 } from '../config/constants.js';
 import { clamp, rectsIntersect } from '../utils/utils.js';
-import { asciiArtEnabled } from '../systems/settings.js';
 
 type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
 type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';
@@ -120,20 +119,10 @@ export class Ride {
     let color = this.originalSpeed >= RIDE_SPEED_THRESHOLD ? '#ff6b35' : '#4ecdc4';
     if (this.floating) color = '#9b59b6';
 
-    if (asciiArtEnabled) {
-      ctx.fillStyle = color;
-      ctx.font = '16px monospace';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const count = Math.max(1, Math.floor(this.width / 8));
-      const ascii = '='.repeat(count);
-      ctx.fillText(ascii, this.x, this.y - cameraY);
-    } else {
-      const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
-      const offsetY = this.y - cameraY - visualThickness / 2;
-      ctx.fillStyle = color;
-      ctx.fillRect(this.x, offsetY, this.width, visualThickness);
-    }
+    const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
+    const offsetY = this.y - cameraY - visualThickness / 2;
+    ctx.fillStyle = color;
+    ctx.fillRect(this.x, offsetY, this.width, visualThickness);
   }
 
   getRect() {

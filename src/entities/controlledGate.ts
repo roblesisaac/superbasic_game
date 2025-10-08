@@ -3,7 +3,6 @@ import {
   PIXELS_PER_FOOT,
   GATE_GAP_WIDTH,
 } from '../config/constants.js';
-import { asciiArtEnabled } from '../systems/settings.js';
 import { drawGateVisuals } from './gateRenderer.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
@@ -94,7 +93,6 @@ export class ControlledGate {
   direction = 0;
   originalSpeed = 0;
   rewardEnabled = true;
-  asciiDamaged = false;
   segments: Segment[] = [];
   rects: GateRect[] = [];
   gapInfo?: GapInfo;
@@ -116,9 +114,6 @@ export class ControlledGate {
   startFloating(): void {}
 
   handleBottomCollision(): void {
-    if (!this.asciiDamaged) {
-      this.asciiDamaged = true;
-    }
     this.rewardEnabled = false;
   }
 
@@ -430,8 +425,6 @@ export class ControlledGate {
       ctx,
       rects,
       cameraY,
-      asciiEnabled: asciiArtEnabled,
-      asciiDamaged: this.asciiDamaged,
       gapInfo: this.gapInfo
         ? {
             type: this.gapInfo.type,

@@ -12,7 +12,6 @@ import {
   ControlledGate,
   type ControlledGateDefinition
 } from './controlledGate.js';
-import { asciiArtEnabled } from '../systems/settings.js';
 import { drawGateVisuals } from './gateRenderer.js';
 
 type GateRect = {
@@ -37,7 +36,6 @@ export class Gate {
   direction: number;
   originalSpeed: number;
   rewardEnabled: boolean;
-  asciiDamaged: boolean;
   horizontalSegments: number[];
   verticalOffsets: number[];
   rects: GateRect[];
@@ -62,7 +60,6 @@ export class Gate {
     this.direction = 0;
     this.originalSpeed = 0;
     this.rewardEnabled = true;
-    this.asciiDamaged = false;
 
     this._generateLayout();
     this._chooseGap();
@@ -73,9 +70,6 @@ export class Gate {
   startFloating() {}
 
   handleBottomCollision() {
-    if (!this.asciiDamaged) {
-      this.asciiDamaged = true;
-    }
     this.rewardEnabled = false;
   }
 
@@ -207,8 +201,6 @@ export class Gate {
       ctx,
       rects,
       cameraY,
-      asciiEnabled: asciiArtEnabled,
-      asciiDamaged: this.asciiDamaged,
       gapInfo: this.gapInfo
         ? {
             type: this.gapInfo.type,
