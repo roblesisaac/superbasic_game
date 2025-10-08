@@ -4,6 +4,7 @@ import {
   GATE_GAP_WIDTH,
 } from '../config/constants.js';
 import { asciiArtEnabled } from '../systems/settings.js';
+import { drawGateVisuals } from './gateRenderer.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
 
@@ -425,43 +426,21 @@ export class ControlledGate {
     if (!this.active) return;
 
     const rects = this.getRects();
-    if (asciiArtEnabled) {
-      ctx.fillStyle = '#fff';
-      ctx.font = '16px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const horizontalGlyph = this.asciiDamaged ? '.' : ':';
-      const verticalGlyph = this.asciiDamaged ? ':' : '::';
-      for (const rect of rects) {
-        if (rect.w <= 0 || rect.h <= 0) continue;
-        if (rect.w > rect.h) {
-          const count = Math.max(1, Math.floor(rect.w / 10));
-          const ascii = horizontalGlyph.repeat(count);
-          ctx.fillText(ascii, rect.x + rect.w / 2, rect.y - cameraY + rect.h / 2);
-        } else {
-          const count = Math.max(1, Math.floor(rect.h / 16));
-          for (let i = 0; i < count; i++) {
-            ctx.fillText(verticalGlyph, rect.x + rect.w / 2, rect.y - cameraY + (i + 0.5) * (rect.h / count));
+    drawGateVisuals({
+      ctx,
+      rects,
+      cameraY,
+      asciiEnabled: asciiArtEnabled,
+      asciiDamaged: this.asciiDamaged,
+      gapInfo: this.gapInfo
+        ? {
+            type: this.gapInfo.type,
+            gapX: this.gapX,
+            gapY: this.gapY,
+            gapWidth: this.gapWidth,
           }
-        }
-      }
-    } else {
-      ctx.fillStyle = '#5aa2ff';
-      for (const rect of rects) {
-        if (rect.w > 0 && rect.h > 0) ctx.fillRect(rect.x, rect.y - cameraY, rect.w, rect.h);
-      }
-
-      if (this.gapInfo) {
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        if (this.gapInfo.type === 'H') {
-          ctx.fillRect(this.gapX, this.gapY - cameraY, 1, GATE_THICKNESS);
-          ctx.fillRect(this.gapX + this.gapWidth, this.gapY - cameraY, 1, GATE_THICKNESS);
-        } else {
-          ctx.fillRect(this.gapX, this.gapY - cameraY, GATE_THICKNESS, 1);
-          ctx.fillRect(this.gapX, this.gapY + this.gapWidth - cameraY, GATE_THICKNESS, 1);
-        }
-      }
-    }
+        : undefined,
+    });
   }
 }
 
