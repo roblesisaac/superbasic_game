@@ -35,7 +35,7 @@ export interface ScriptContext<State> {
 
 export interface DefoldScript<State = Record<string, unknown>> {
   createState(): State;
-  init(context: ScriptContext<State>): void;
+  init?(context: ScriptContext<State>): void;
   update(context: ScriptContext<State>, dt: number): void;
   onMessage?(context: ScriptContext<State>, message: ScriptMessage): void;
   onInput?(context: ScriptContext<State>, action: InputAction): void;

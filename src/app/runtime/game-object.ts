@@ -51,7 +51,7 @@ export class GameObject<State = Record<string, unknown>> {
         collection.spawn(object);
       }
     } satisfies ScriptContext<State>;
-    this.script.init(this.context);
+    this.script.init?.(this.context);
   }
 
   update(dt: number): void {
