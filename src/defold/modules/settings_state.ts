@@ -1,7 +1,7 @@
 import { budgetData } from './budget.js';
 
 export let showSettings = false;
-export let asciiArtEnabled = true;
+export let asciiArtEnabled = false;
 
 export function toggleSettings(): void {
   showSettings = !showSettings;
