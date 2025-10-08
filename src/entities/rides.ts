@@ -23,6 +23,19 @@ import {
 import { clamp, rectsIntersect } from '../utils/utils.js';
 import { asciiArtEnabled } from '../systems/settings.js';
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = hex.trim();
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(normalized.startsWith('#') ? normalized : `#${normalized}`);
+  if (!match) return null;
+
+  const value = parseInt(match[1], 16);
+  return {
+    r: (value >> 16) & 0xff,
+    g: (value >> 8) & 0xff,
+    b: value & 0xff,
+  };
+}
+
 type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
 type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';
 
@@ -131,6 +144,34 @@ export class Ride {
     } else {
       const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
       const offsetY = this.y - cameraY - visualThickness / 2;
+      const rgb = hexToRgb(color);
+      if (rgb) {
+        const glowHeight = Math.max(visualThickness * 2, 10);
+        const glowSpread = Math.max(visualThickness * 1.5, 12);
+        const baseOpacity = this.floating ? 0.35 : 0.25;
+
+        ctx.save();
+        const gradient = ctx.createLinearGradient(
+          0,
+          offsetY - glowHeight,
+          0,
+          offsetY + visualThickness + glowHeight,
+        );
+        gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        gradient.addColorStop(0.45, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${baseOpacity * 0.25})`);
+        gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${baseOpacity})`);
+        gradient.addColorStop(0.55, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${baseOpacity * 0.25})`);
+        gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(
+          this.x - glowSpread / 2,
+          offsetY - glowHeight,
+          this.width + glowSpread,
+          visualThickness + glowHeight * 2,
+        );
+        ctx.restore();
+      }
+
       ctx.fillStyle = color;
       ctx.fillRect(this.x, offsetY, this.width, visualThickness);
     }

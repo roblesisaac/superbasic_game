@@ -61,7 +61,10 @@ export function drawGateVisuals({
   }
 
   const visualThickness = Math.max(1, Math.round(GATE_THICKNESS / 5));
-  ctx.fillStyle = '#fff';
+  const defaultColor = '#fff';
+  const damagedColor = '#ffd400';
+  const gateColor = !asciiEnabled && asciiDamaged ? damagedColor : defaultColor;
+  ctx.fillStyle = gateColor;
 
   for (const rect of rects) {
     if (rect.w <= 0 || rect.h <= 0) continue;
@@ -80,7 +83,10 @@ export function drawGateVisuals({
 
   if (!gapInfo) return;
 
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  const gapHighlightColor = !asciiEnabled && asciiDamaged
+    ? 'rgba(255,212,0,0.25)'
+    : 'rgba(255,255,255,0.15)';
+  ctx.fillStyle = gapHighlightColor;
   if (gapInfo.type === 'H') {
     ctx.fillRect(gapInfo.gapX, gapInfo.gapY - cameraY, 1, GATE_THICKNESS);
     ctx.fillRect(gapInfo.gapX + gapInfo.gapWidth, gapInfo.gapY - cameraY, 1, GATE_THICKNESS);
