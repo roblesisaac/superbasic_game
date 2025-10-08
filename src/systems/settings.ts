@@ -49,6 +49,7 @@ export function drawSettings() {
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'center';
   overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '5';
 
   const panel = document.createElement('div');
   panel.style.background = '#000';
