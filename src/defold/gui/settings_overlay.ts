@@ -1,17 +1,16 @@
-import { canvasWidth } from '../core/globals.js';
-import { budgetData } from './budget.js';
+import { canvasWidth } from '../runtime/state/rendering_state.js';
+import {
+  asciiArtEnabled,
+  getBudgetData,
+  hideSettings,
+  showSettings,
+  toggleSettings,
+  setAsciiArtEnabled
+} from '../modules/settings_state.js';
 
-export let showSettings = false;
-export function toggleSettings() { showSettings = !showSettings; }
-export function hideSettings() { showSettings = false; }
+let overlay: HTMLDivElement | null = null;
 
-// ASCII art rendering setting (default: on)
-export let asciiArtEnabled = true;
-export function setAsciiArtEnabled(v) { asciiArtEnabled = !!v; }
-
-let overlay = null;
-
-export function drawSettingsIcon(ctx) {
+export function drawSettingsIcon(ctx: CanvasRenderingContext2D): void {
   const iconSize = 20;
   const iconX = canvasWidth - 30;
   const iconY = 30;
@@ -28,7 +27,7 @@ export function drawSettingsIcon(ctx) {
   ctx.fill();
 }
 
-export function drawSettings() {
+export function ensureSettingsOverlay(): void {
   if (!showSettings) {
     if (overlay) {
       document.body.removeChild(overlay);
@@ -66,7 +65,6 @@ export function drawSettings() {
   panel.style.color = '#fff';
   panel.style.letterSpacing = '0.5px';
 
-  // subtle scanlines overlay
   const scan = document.createElement('div');
   scan.style.position = 'absolute';
   scan.style.inset = '0';
@@ -88,7 +86,6 @@ export function drawSettings() {
   list.style.gap = '12px';
   list.style.margin = '8px 0 12px 0';
 
-  // ASCII Art toggle row
   const asciiRow = document.createElement('div');
   asciiRow.style.display = 'flex';
   asciiRow.style.alignItems = 'center';
@@ -110,21 +107,22 @@ export function drawSettings() {
   asciiToggle.style.padding = '6px 10px';
   asciiToggle.style.cursor = 'pointer';
   asciiToggle.style.boxShadow = 'none';
+
   function updateAsciiButton() {
     asciiToggle.textContent = asciiArtEnabled ? 'ON' : 'OFF';
     asciiToggle.style.opacity = asciiArtEnabled ? '1' : '0.7';
   }
+
   updateAsciiButton();
   asciiToggle.addEventListener('click', () => {
     setAsciiArtEnabled(!asciiArtEnabled);
     updateAsciiButton();
   });
+
   asciiRow.appendChild(asciiLabel);
   asciiRow.appendChild(asciiToggle);
-
   list.appendChild(asciiRow);
 
-  // Budget editor
   const budgetLabel = document.createElement('div');
   budgetLabel.textContent = 'BUDGET ARRAY (JSON)';
   budgetLabel.style.fontSize = '12px';
@@ -141,8 +139,8 @@ export function drawSettings() {
   textarea.style.padding = '10px';
   textarea.style.fontFamily = 'monospace';
   textarea.style.fontSize = '12px';
-  textarea.value = JSON.stringify(budgetData, null, 2);
-  const initialBudgetJSON = JSON.stringify(budgetData);
+  textarea.value = JSON.stringify(getBudgetData(), null, 2);
+  const initialBudgetJSON = JSON.stringify(getBudgetData());
 
   const resumeButton = document.createElement('button');
   resumeButton.textContent = 'RESUME';
@@ -156,24 +154,27 @@ export function drawSettings() {
   resumeButton.style.cursor = 'pointer';
   resumeButton.style.boxShadow = 'none';
   resumeButton.addEventListener('click', () => {
-    // Try apply edited budget JSON
     try {
       const parsed = JSON.parse(textarea.value);
       if (Array.isArray(parsed)) {
         const newJSON = JSON.stringify(parsed);
         const changed = newJSON !== initialBudgetJSON;
-        budgetData.length = 0;
-        budgetData.push(...parsed);
+        const data = getBudgetData();
+        data.length = 0;
+        data.push(...parsed);
         if (changed) {
           try {
             window.dispatchEvent(new Event('budget-changed'));
-          } catch (_) {}
+          } catch (error) {
+            console.error('Unable to dispatch budget change event', error);
+          }
         }
       }
-    } catch (e) {
-      console.error('Invalid budget data', e);
+    } catch (error) {
+      console.error('Invalid budget data', error);
     }
     hideSettings();
+    ensureSettingsOverlay();
   });
 
   panel.appendChild(title);
@@ -184,3 +185,5 @@ export function drawSettings() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 }
+
+export { toggleSettings, hideSettings, showSettings };

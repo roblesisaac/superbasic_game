@@ -2,8 +2,8 @@ import {
   GATE_THICKNESS,
   PIXELS_PER_FOOT,
   GATE_GAP_WIDTH,
-} from '../config/constants.js';
-import { asciiArtEnabled } from '../systems/settings.js';
+} from '../../config/constants.js';
+import { asciiArtEnabled } from '../modules/settings_state.js';
 import { drawGateVisuals } from './gateRenderer.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors

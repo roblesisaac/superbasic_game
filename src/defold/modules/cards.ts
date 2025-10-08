@@ -1,15 +1,15 @@
-import { GATE_THICKNESS } from '../config/constants.js';
-import { canvasHeight, canvasWidth, groundY } from '../core/globals.js';
+import { GATE_THICKNESS } from '../../config/constants.js';
+import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import {
   createGateForCardTop,
   resetCardGateFactory
-} from '../entities/gates.js';
+} from '../game_objects/gates.js';
 import {
   spawnEnemiesForGate,
   enemies as activeEnemies
-} from '../entities/enemies.js';
-import type { EnemyActor } from '../entities/enemies.js';
-import type { ControlledGateDefinition } from '../entities/controlledGate.js';
+} from '../game_objects/enemies.js';
+import type { EnemyActor } from '../game_objects/enemies.js';
+import type { ControlledGateDefinition } from '../game_objects/controlledGate.js';
 import { SAMPLE_CARDS } from './sampleCardsDb.js';
 
 type GateInstance = ReturnType<typeof createGateForCardTop>;

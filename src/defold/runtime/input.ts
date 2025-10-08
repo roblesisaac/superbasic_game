@@ -3,10 +3,12 @@ import {
   MIN_SWIPE_TIME,
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
-} from '../config/constants.js';
-import { canvas, canvasWidth, cameraY, type GameState } from './globals.js';
-import { createRideFromInput, countActiveMovingRides } from '../entities/rides.js';
-import { showSettings, toggleSettings, hideSettings } from '../systems/settings.js';
+} from '../../config/constants.js';
+import { canvas, canvasWidth } from './state/rendering_state.js';
+import { cameraY } from './state/camera_state.js';
+import type { GameWorldState } from './state/game_state.js';
+import { createRideFromInput, countActiveMovingRides } from '../game_objects/rides.js';
+import { showSettings, toggleSettings, hideSettings } from '../gui/settings_overlay.js';
 
 type PointSample = { x: number; y: number; time: number };
 
@@ -19,7 +21,7 @@ type RideGesture = {
 };
 
 export class InputHandler {
-  game: GameState;
+  game: GameWorldState;
   ensureReset: () => void;
   touchStart: PointSample | null;
   touchSamples: PointSample[];
@@ -41,7 +43,7 @@ export class InputHandler {
   lastArrowTime: number;
   arrowCooldownMs: number;
 
-  constructor(game: GameState, ensureReset: () => void) {
+  constructor(game: GameWorldState, ensureReset: () => void) {
     this.game = game;
     this.ensureReset = ensureReset;
 

@@ -12,9 +12,10 @@ import {
   MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
   RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
-} from '../config/constants.js';
-import { clamp } from '../utils/utils.js';
-import { canvasWidth, groundY, cameraY } from '../core/globals.js';
+} from '../../config/constants.js';
+import { clamp } from '../../utils/utils.js';
+import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
+import { cameraY } from '../runtime/state/camera_state.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
