@@ -129,8 +129,10 @@ export class Ride {
       const ascii = '='.repeat(count);
       ctx.fillText(ascii, this.x, this.y - cameraY);
     } else {
+      const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
+      const offsetY = this.y - cameraY - visualThickness / 2;
       ctx.fillStyle = color;
-      ctx.fillRect(this.x, this.y - RIDE_THICKNESS / 2 - cameraY, this.width, RIDE_THICKNESS);
+      ctx.fillRect(this.x, offsetY, this.width, visualThickness);
     }
   }
 
