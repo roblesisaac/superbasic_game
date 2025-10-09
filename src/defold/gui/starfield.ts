@@ -7,6 +7,37 @@ const STARFIELD_CANVAS_ID = 'starfieldCanvas';
  */
 const STAR_SIZE = 2;
 
+/**
+ * Number of cloud layers. Increase for more clouds, decrease for fewer.
+ * Example values: 2-4 (light), 5 (default), 6-8 (heavy)
+ */
+const NUM_CLOUDS = 5;
+
+/**
+ * Cloud size multiplier. Base size is 1.
+ * Example values: 0.5 (small), 1 (default), 2 (double size), 3 (triple)
+ */
+const CLOUD_SIZE = 1;
+
+/**
+ * Cloud opacity. Higher = more visible clouds.
+ * Example values: 0.15 (very subtle), 0.25 (default), 0.4 (prominent)
+ */
+const CLOUD_OPACITY = 0.25;
+
+/**
+ * Cloud speed multiplier.
+ * Example values: 0.5 (slow), 1 (default), 2 (fast)
+ */
+const CLOUD_SPEED = 1;
+
+/**
+ * Cloud detail/complexity (noise octaves).
+ * Higher = more detailed edges but slower performance.
+ * Example values: 2 (simple), 3 (default), 4-5 (very detailed)
+ */
+const CLOUD_DETAIL = 3;
+
 interface Star {
   x: number;
   y: number;
@@ -15,6 +46,17 @@ interface Star {
   twinkleSpeed: number;
   offset: number;
   currentAlpha?: number;
+}
+
+interface Cloud {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+  pixelSize: number;
+  seed: number;
+  octaves: number;
 }
 
 interface SceneConfig {
@@ -36,6 +78,7 @@ const baseConfig: SceneConfig = {
 let canvas: HTMLCanvasElement | null = null;
 let ctx: CanvasRenderingContext2D | null = null;
 let stars: Star[] = [];
+let clouds: Cloud[] = [];
 let lastTime = 0;
 
 function ensureCanvas(): void {
@@ -149,11 +192,45 @@ function initStars(): void {
   }
 }
 
+function initClouds(): void {
+  clouds = [];
+  const { width, height } = getCanvasDimensions();
+
+  for (let i = 0; i < NUM_CLOUDS; i += 1) {
+    const baseWidth = 120 + Math.random() * 60;
+    const baseHeight = 30 + Math.random() * 25;
+    const cloudWidth = baseWidth * CLOUD_SIZE;
+    const cloudHeight = baseHeight * CLOUD_SIZE;
+
+    clouds.push({
+      x: Math.random() * (width + cloudWidth) - cloudWidth,
+      y: Math.random() * height * 0.7,
+      width: cloudWidth,
+      height: cloudHeight,
+      speed: (5 + Math.random() * 15) * CLOUD_SPEED,
+      pixelSize: Math.max(2, Math.round(4 * CLOUD_SIZE)),
+      seed: Math.random() * 1000,
+      octaves: Math.max(1, Math.round(CLOUD_DETAIL))
+    });
+  }
+}
+
 function update(dt: number): void {
   for (const star of stars) {
     star.offset += dt * star.twinkleSpeed;
     const alpha = star.baseAlpha + Math.sin(star.offset) * 0.5;
     star.currentAlpha = Math.max(0.2, Math.min(1, alpha));
+  }
+
+  const { width, height } = getCanvasDimensions();
+
+  for (const cloud of clouds) {
+    cloud.x += cloud.speed * dt;
+
+    if (cloud.x > width + cloud.width) {
+      cloud.x = -cloud.width;
+      cloud.y = Math.random() * height * 0.7;
+    }
   }
 }
 
@@ -281,6 +358,71 @@ function drawStars(): void {
   ctx.globalAlpha = 1;
 }
 
+function noise2D(x: number, y: number, seed: number): number {
+  const n = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+function fbm(x: number, y: number, seed: number, octaves: number): number {
+  let value = 0;
+  let amplitude = 1;
+  let frequency = 1;
+  let maxValue = 0;
+
+  for (let i = 0; i < octaves; i++) {
+    value += noise2D(x * frequency, y * frequency, seed + i) * amplitude;
+    maxValue += amplitude;
+    amplitude *= 0.5;
+    frequency *= 2;
+  }
+
+  return maxValue > 0 ? value / maxValue : 0;
+}
+
+function drawClouds(): void {
+  if (!ctx) return;
+
+  const { width, height } = getCanvasDimensions();
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = width;
+  tempCanvas.height = height;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  if (!tempCtx) return;
+
+  tempCtx.clearRect(0, 0, width, height);
+  tempCtx.fillStyle = '#fff';
+
+  for (const cloud of clouds) {
+    const ps = cloud.pixelSize;
+    const scale = 0.05;
+
+    for (let px = 0; px < cloud.width; px += ps) {
+      for (let py = 0; py < cloud.height; py += ps) {
+        const worldX = cloud.x + px;
+        const worldY = cloud.y + py;
+
+        const nx = px / cloud.width - 0.5;
+        const ny = py / cloud.height - 0.5;
+        const distFromCenter = Math.sqrt(nx * nx * 4 + ny * ny * 4);
+        const edgeFalloff = Math.max(0, 1 - distFromCenter);
+
+        const noiseValue = fbm(px * scale, py * scale, cloud.seed, cloud.octaves);
+        const cloudValue = noiseValue * edgeFalloff;
+        const threshold = 0.3 + Math.sin(px * 0.1) * 0.05;
+
+        if (cloudValue > threshold) {
+          tempCtx.fillRect(Math.floor(worldX), Math.floor(worldY), ps, ps);
+        }
+      }
+    }
+  }
+
+  ctx.globalAlpha = CLOUD_OPACITY;
+  ctx.drawImage(tempCanvas, 0, 0);
+  ctx.globalAlpha = 1;
+}
+
 function draw(): void {
   if (!ctx || !canvas) return;
 
@@ -295,6 +437,9 @@ function draw(): void {
 
   // Draw moon LAST (top layer) - this ensures moon covers any stars
   drawMoon();
+
+  // Draw clouds on top with translucent overlay
+  drawClouds();
 }
 
 function animate(currentTime: number): void {
@@ -314,12 +459,14 @@ function animate(currentTime: number): void {
 function handleResize(): void {
   resizeCanvas();
   initStars();
+  initClouds();
 }
 
 function setupStarfield(): void {
   ensureCanvas();
   resizeCanvas();
   initStars();
+  initClouds();
   lastTime = performance.now();
   window.requestAnimationFrame(animate);
   window.removeEventListener('resize', handleResize);
