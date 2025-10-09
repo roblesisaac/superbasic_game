@@ -5,7 +5,7 @@ const STARFIELD_CANVAS_ID = 'starfieldCanvas';
  * Increase for bigger stars, decrease for smaller ones.
  * Example values: 1 (tiny), 2 (default), 3–4 (larger).
  */
-const STAR_SIZE = 1.5;
+const STAR_SIZE = 2;
 
 interface Star {
   x: number;
@@ -26,8 +26,8 @@ interface SceneConfig {
 }
 
 const baseConfig: SceneConfig = {
-  numSmallStars: 100,
-  numBrightStars: 20,
+  numSmallStars: 250,
+  numBrightStars: 40,
   baseWidth: 1024,
   baseHeight: 768,
   baseMoonRadius: 60
