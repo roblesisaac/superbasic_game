@@ -121,8 +121,21 @@ export class Ride {
 
     const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
     const offsetY = this.y - cameraY - visualThickness / 2;
+    const drawRide = () => ctx.fillRect(this.x, offsetY, this.width, visualThickness);
+
+    const glowBlur = Math.max(visualThickness * 3, 12);
+
+    ctx.save();
     ctx.fillStyle = color;
-    ctx.fillRect(this.x, offsetY, this.width, visualThickness);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = glowBlur;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    drawRide();
+    ctx.restore();
+
+    ctx.fillStyle = color;
+    drawRide();
   }
 
   getRect() {
