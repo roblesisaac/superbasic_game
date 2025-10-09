@@ -56,6 +56,6 @@ export function drawHUD(): void {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#eaeaea';
-  ctx.fillText(`HEIGHT: ${ft} FT`, canvasWidth / 2, 10);
+  ctx.fillText(`${ft} FT`, canvasWidth / 2, 10);
   ctx.restore();
 }
