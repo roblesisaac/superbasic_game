@@ -109,7 +109,7 @@ function getSceneDimensions(): {
   const { width, height } = getCanvasDimensions();
   const moonRadius = (Math.min(width, height) / baseConfig.baseHeight) * baseConfig.baseMoonRadius;
   const scaledRadius = Math.max(20, moonRadius);
-  const pixelSize = Math.max(4, Math.round(scaledRadius / 20));
+  const pixelSize = Math.max(3, Math.round(scaledRadius / 20));
 
   return {
     width,
