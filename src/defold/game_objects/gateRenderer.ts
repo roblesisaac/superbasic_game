@@ -1,4 +1,4 @@
-import { GATE_THICKNESS } from '../config/constants.js';
+import { GATE_THICKNESS } from '../../config/constants.js';
 
 export interface GateVisualRect {
   x: number;

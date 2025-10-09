@@ -1,0 +1,39 @@
+import type { Sprite } from '../../game_objects/sprite.js';
+import type { Ride } from '../../game_objects/rides.js';
+import type { Gate } from '../../game_objects/gates.js';
+import type { ControlledGate } from '../../game_objects/controlledGate.js';
+import type { InputHandler } from '../input.js';
+import type { EnergyBar, Hearts } from '../../gui/hud.js';
+
+export interface GameWorldState {
+  sprite: Sprite | null;
+  rides: Ride[];
+  gates: Array<Gate | ControlledGate>;
+  input: InputHandler | null;
+  energyBar: EnergyBar | null;
+  hearts: Hearts | null;
+  lastTime: number;
+  running: boolean;
+}
+
+export const gameWorld: GameWorldState = {
+  sprite: null,
+  rides: [],
+  gates: [],
+  input: null,
+  energyBar: null,
+  hearts: null,
+  lastTime: 0,
+  running: true
+};
+
+export function resetGameWorld(): void {
+  gameWorld.sprite = null;
+  gameWorld.rides = [];
+  gameWorld.gates = [];
+  gameWorld.input = null;
+  gameWorld.energyBar = null;
+  gameWorld.hearts = null;
+  gameWorld.lastTime = 0;
+  gameWorld.running = true;
+}

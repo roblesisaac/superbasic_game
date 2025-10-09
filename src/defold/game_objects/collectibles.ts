@@ -1,5 +1,7 @@
-import { ITEM_SIZE, SPRITE_SIZE } from '../config/constants.js';
-import { canvasHeight, cameraY, type GameState } from '../core/globals.js';
+import { ITEM_SIZE, SPRITE_SIZE } from '../../config/constants.js';
+import { canvasHeight } from '../runtime/state/rendering_state.js';
+import { cameraY } from '../runtime/state/camera_state.js';
+import type { GameWorldState } from '../runtime/state/game_state.js';
 
 export type CollectibleType = 'income' | 'expense';
 
@@ -32,7 +34,7 @@ export class Collectible {
     this.size = ITEM_SIZE;
   }
 
-  update(dt: number, game: GameState, gameStats: GameStats) {
+  update(dt: number, game: GameWorldState, gameStats: GameStats) {
     if (this.active && !this.collected) {
       const dx = this.x - game.sprite.x;
       const dy = this.y - game.sprite.y;

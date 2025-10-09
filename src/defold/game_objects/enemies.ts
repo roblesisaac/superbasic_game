@@ -1,5 +1,7 @@
-import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../config/constants.js';
-import { canvasHeight, cameraY, type GameState } from '../core/globals.js';
+import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../../config/constants.js';
+import { canvasHeight } from '../runtime/state/rendering_state.js';
+import { cameraY } from '../runtime/state/camera_state.js';
+import type { GameWorldState } from '../runtime/state/game_state.js';
 
 type EnemyOrientation = 'horizontal' | 'vertical';
 
@@ -96,7 +98,7 @@ class Enemy {
     this.y = orientation === 'horizontal' ? this.baseY : this.position;
   }
 
-  update(dt: number, game: GameState) {
+  update(dt: number, game: GameWorldState) {
     if (!this.active) return;
 
     if (this.damageCooldown > 0) {
@@ -318,7 +320,7 @@ export function spawnEnemiesForGate(
   return spawned;
 }
 
-export function updateEnemies(game: GameState, dt: number) {
+export function updateEnemies(game: GameWorldState, dt: number) {
   for (const enemy of enemies) enemy.update(dt, game);
 }
 

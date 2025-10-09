@@ -1,6 +1,6 @@
-import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../config/constants.js';
-import { clamp } from '../utils/utils.js';
-import { gameOverDiv } from '../core/globals.js';
+import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../../config/constants.js';
+import { clamp } from '../../utils/utils.js';
+import { gameOverContainer } from '../runtime/state/ui_state.js';
 
 export class EnergyBar {
   energy: number;
@@ -102,4 +102,4 @@ export class Hearts {
 }
 
 // Reference game over div so TypeScript recognises usage
-void gameOverDiv;
+void gameOverContainer;

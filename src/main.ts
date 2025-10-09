@@ -2,10 +2,10 @@
 import './styles/styles.css';
 
 // Starfield background
-import './ui/starfield';
+import './defold/gui/starfield';
 
 // Import and start the game
-import './core/game.js';
+import './defold/runtime/game_app.js';
 
 // Register service worker
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
