@@ -6,7 +6,7 @@ export function toggleSettings() { showSettings = !showSettings; }
 export function hideSettings() { showSettings = false; }
 
 // ASCII art rendering setting (default: on)
-export let asciiArtEnabled = true;
+export let asciiArtEnabled = false;
 export function setAsciiArtEnabled(v) { asciiArtEnabled = !!v; }
 
 let overlay = null;
