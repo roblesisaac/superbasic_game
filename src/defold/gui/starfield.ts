@@ -36,7 +36,7 @@ const CLOUD_SPEED = 1;
  * Higher = more detailed edges but slower performance.
  * Example values: 2 (simple), 3 (default), 4-5 (very detailed)
  */
-const CLOUD_DETAIL = 3;
+const CLOUD_DETAIL = 4;
 
 interface Star {
   x: number;
@@ -197,8 +197,8 @@ function initClouds(): void {
   const { width, height } = getCanvasDimensions();
 
   for (let i = 0; i < NUM_CLOUDS; i += 1) {
-    const baseWidth = 120 + Math.random() * 60;
-    const baseHeight = 30 + Math.random() * 25;
+    const baseWidth = 120 + Math.random() * 160;
+    const baseHeight = 30 + Math.random() * 55;
     const cloudWidth = baseWidth * CLOUD_SIZE;
     const cloudHeight = baseHeight * CLOUD_SIZE;
 
@@ -208,7 +208,7 @@ function initClouds(): void {
       width: cloudWidth,
       height: cloudHeight,
       speed: (5 + Math.random() * 15) * CLOUD_SPEED,
-      pixelSize: Math.max(2, Math.round(4 * CLOUD_SIZE)),
+      pixelSize: Math.max(1, Math.round(3 * CLOUD_SIZE)),
       seed: Math.random() * 1000,
       octaves: Math.max(1, Math.round(CLOUD_DETAIL))
     });
@@ -385,7 +385,7 @@ function drawClouds(): void {
   const { width, height } = getCanvasDimensions();
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = width;
-  tempCanvas.height = height;
+  tempCanvas.height = height / 2.3;
   const tempCtx = tempCanvas.getContext('2d');
 
   if (!tempCtx) return;
