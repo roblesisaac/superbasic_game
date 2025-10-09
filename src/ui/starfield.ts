@@ -239,15 +239,8 @@ function drawMoon(): void {
   drawPixelatedArc(x + r * 0.25, y - r * 0.35, craterRadius * 0.8, pixelSize);
 }
 
-function draw(): void {
-  if (!ctx || !canvas) return;
-
-  const { width, height } = getCanvasDimensions();
-
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
-
-  drawMoon();
+function drawStars(): void {
+  if (!ctx) return;
 
   // ---- Star sizing derived from STAR_SIZE ----
   const smallSize = Math.max(1, Math.round(STAR_SIZE));                 // square star size
@@ -286,6 +279,22 @@ function draw(): void {
   }
 
   ctx.globalAlpha = 1;
+}
+
+function draw(): void {
+  if (!ctx || !canvas) return;
+
+  const { width, height } = getCanvasDimensions();
+
+  // Clear background
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, width, height);
+
+  // Draw stars FIRST (bottom layer)
+  drawStars();
+
+  // Draw moon LAST (top layer) - this ensures moon covers any stars
+  drawMoon();
 }
 
 function animate(currentTime: number): void {
