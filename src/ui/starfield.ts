@@ -1,5 +1,12 @@
 const STARFIELD_CANVAS_ID = 'starfieldCanvas';
 
+/**
+ * Controls the size of *all* stars (small + bright), in CSS pixels.
+ * Increase for bigger stars, decrease for smaller ones.
+ * Example values: 1 (tiny), 2 (default), 3–4 (larger).
+ */
+const STAR_SIZE = 1.5;
+
 interface Star {
   x: number;
   y: number;
@@ -102,7 +109,7 @@ function getSceneDimensions(): {
   const { width, height } = getCanvasDimensions();
   const moonRadius = (Math.min(width, height) / baseConfig.baseHeight) * baseConfig.baseMoonRadius;
   const scaledRadius = Math.max(20, moonRadius);
-  const pixelSize = Math.max(2, Math.round(scaledRadius / 20));
+  const pixelSize = Math.max(4, Math.round(scaledRadius / 20));
 
   return {
     width,
@@ -124,7 +131,7 @@ function initStars(): void {
       x: Math.random() * width,
       y: Math.random() * height,
       type: 'small',
-      baseAlpha: 0.5 + Math.random() * 0.5,
+      baseAlpha: 0 + Math.random() * 0.5,
       twinkleSpeed: 1 + Math.random() * 2,
       offset: Math.random() * Math.PI * 2
     });
@@ -242,6 +249,12 @@ function draw(): void {
 
   drawMoon();
 
+  // ---- Star sizing derived from STAR_SIZE ----
+  const smallSize = Math.max(1, Math.round(STAR_SIZE));                 // square star size
+  const brightHalfLen = Math.max(1, Math.round(STAR_SIZE * 2));         // half-length of bright star arms
+  const brightThickness = Math.max(1, Math.round(STAR_SIZE * 0.6));     // thickness of arms
+  // -------------------------------------------
+
   for (const star of stars) {
     const alpha = star.currentAlpha ?? star.baseAlpha;
 
@@ -250,12 +263,25 @@ function draw(): void {
     ctx.strokeStyle = '#fff';
 
     if (star.type === 'small') {
-      ctx.fillRect(Math.floor(star.x), Math.floor(star.y), 2, 2);
+      // Draw a small square star
+      ctx.fillRect(
+        Math.floor(star.x),
+        Math.floor(star.y),
+        smallSize,
+        smallSize
+      );
     } else {
+      // Draw a bright "cross" star with arms scaled by STAR_SIZE
       const x = Math.floor(star.x);
       const y = Math.floor(star.y);
-      ctx.fillRect(x - 2, y, 5, 1);
-      ctx.fillRect(x, y - 2, 1, 5);
+
+      const t = brightThickness;
+      const L = brightHalfLen;
+
+      // Horizontal arm
+      ctx.fillRect(x - L, y - Math.floor(t / 2), 2 * L + t, t);
+      // Vertical arm
+      ctx.fillRect(x - Math.floor(t / 2), y - L, t, 2 * L + t);
     }
   }
 

@@ -83,7 +83,7 @@ export function drawGateVisuals({
   };
 
   const glowBlur = Math.max(visualThickness * 3, asciiDamaged ? 18 : 12);
-  const glowColor = asciiDamaged ? 'rgba(255,212,0,0.45)' : 'rgba(255,255,255,0.4)';
+  const glowColor = asciiDamaged ? 'rgba(255,212,0,0.45)' : 'rgba(255,255,255,1)';
 
   ctx.save();
   ctx.fillStyle = gateColor;
