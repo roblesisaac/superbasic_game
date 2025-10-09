@@ -3,7 +3,6 @@ import {
   PIXELS_PER_FOOT,
   GATE_GAP_WIDTH,
 } from '../config/constants.js';
-import { asciiArtEnabled } from '../defold/modules/settings_state.js';
 import { drawGateVisuals } from '../defold/game_objects/gateRenderer.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
@@ -430,7 +429,6 @@ export class ControlledGate {
       ctx,
       rects,
       cameraY,
-      asciiEnabled: asciiArtEnabled,
       asciiDamaged: this.asciiDamaged,
       gapInfo: this.gapInfo
         ? {

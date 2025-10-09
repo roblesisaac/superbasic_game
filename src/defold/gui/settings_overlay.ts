@@ -1,11 +1,9 @@
 import { canvasWidth } from '../runtime/state/rendering_state.js';
 import {
-  asciiArtEnabled,
   getBudgetData,
   hideSettings,
   showSettings,
-  toggleSettings,
-  setAsciiArtEnabled
+  toggleSettings
 } from '../modules/settings_state.js';
 
 let overlay: HTMLDivElement | null = null;
@@ -80,49 +78,6 @@ export function ensureSettingsOverlay(): void {
   title.style.textAlign = 'center';
   title.style.textShadow = '0 0 6px rgba(255,255,255,0.25)';
 
-  const list = document.createElement('div');
-  list.style.display = 'flex';
-  list.style.flexDirection = 'column';
-  list.style.gap = '12px';
-  list.style.margin = '8px 0 12px 0';
-
-  const asciiRow = document.createElement('div');
-  asciiRow.style.display = 'flex';
-  asciiRow.style.alignItems = 'center';
-  asciiRow.style.justifyContent = 'space-between';
-  asciiRow.style.border = '1px solid #fff';
-  asciiRow.style.padding = '10px 12px';
-  asciiRow.style.background = 'rgba(255,255,255,0.05)';
-
-  const asciiLabel = document.createElement('div');
-  asciiLabel.textContent = 'ASCII ART';
-  asciiLabel.style.fontSize = '12px';
-
-  const asciiToggle = document.createElement('button');
-  asciiToggle.style.fontFamily = 'LocalPressStart, monospace';
-  asciiToggle.style.fontSize = '12px';
-  asciiToggle.style.color = '#fff';
-  asciiToggle.style.background = 'transparent';
-  asciiToggle.style.border = '2px solid #fff';
-  asciiToggle.style.padding = '6px 10px';
-  asciiToggle.style.cursor = 'pointer';
-  asciiToggle.style.boxShadow = 'none';
-
-  function updateAsciiButton() {
-    asciiToggle.textContent = asciiArtEnabled ? 'ON' : 'OFF';
-    asciiToggle.style.opacity = asciiArtEnabled ? '1' : '0.7';
-  }
-
-  updateAsciiButton();
-  asciiToggle.addEventListener('click', () => {
-    setAsciiArtEnabled(!asciiArtEnabled);
-    updateAsciiButton();
-  });
-
-  asciiRow.appendChild(asciiLabel);
-  asciiRow.appendChild(asciiToggle);
-  list.appendChild(asciiRow);
-
   const budgetLabel = document.createElement('div');
   budgetLabel.textContent = 'BUDGET ARRAY (JSON)';
   budgetLabel.style.fontSize = '12px';
@@ -178,7 +133,6 @@ export function ensureSettingsOverlay(): void {
   });
 
   panel.appendChild(title);
-  panel.appendChild(list);
   panel.appendChild(budgetLabel);
   panel.appendChild(textarea);
   panel.appendChild(resumeButton);

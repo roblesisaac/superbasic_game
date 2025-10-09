@@ -12,7 +12,6 @@ import {
   ControlledGate,
   type ControlledGateDefinition
 } from './controlledGate.js';
-import { asciiArtEnabled } from '../modules/settings_state.js';
 import { drawGateVisuals } from './gateRenderer.js';
 
 type GateRect = {
@@ -207,7 +206,6 @@ export class Gate {
       ctx,
       rects,
       cameraY,
-      asciiEnabled: asciiArtEnabled,
       asciiDamaged: this.asciiDamaged,
       gapInfo: this.gapInfo
         ? {
