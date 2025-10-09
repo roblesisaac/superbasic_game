@@ -4,36 +4,64 @@ import { gameStats } from '../../modules/budget.js';
 export type GameOverRestartHandler = () => void;
 
 export function presentGameOverScreen(onRestart: GameOverRestartHandler): void {
-  let html = '<div style="color: white; font-family: Arial; font-size: 18px;"><h2>Final Budget Report</h2>';
+  gameOverPanel.innerHTML = '';
+
+  const scanOverlay = document.createElement('div');
+  scanOverlay.className = 'game-over__scan';
+  gameOverPanel.appendChild(scanOverlay);
+
+  const title = document.createElement('h2');
+  title.className = 'game-over__title';
+  title.textContent = 'FINAL BUDGET REPORT';
+  gameOverPanel.appendChild(title);
+
+  const statsList = document.createElement('div');
+  statsList.className = 'game-over__stats';
+  gameOverPanel.appendChild(statsList);
+
   let totalNet = 0;
 
-  for (const [title, stats] of Object.entries(gameStats)) {
+  for (const [titleText, stats] of Object.entries(gameStats)) {
     const isIncome = stats.target > 0;
-    const percentage = Math.round((stats.collected / Math.abs(stats.target)) * 100);
-    const color = isIncome ? '#4CAF50' : '#F44336';
+    const percentage = Math.round((stats.collected / Math.max(1, Math.abs(stats.target))) * 100);
+    const stat = document.createElement('div');
+    stat.className = `game-over__stat ${isIncome ? 'game-over__stat--income' : 'game-over__stat--expense'}`;
 
-    html += `<div style="margin: 10px 0; color: ${color};">`;
-    html += `<strong>${title}:</strong> `;
+    const label = document.createElement('div');
+    label.className = 'game-over__label';
+    label.textContent = titleText;
+    stat.appendChild(label);
 
+    const detail = document.createElement('div');
+    detail.className = 'game-over__detail';
     if (isIncome) {
-      html += `Collected ${stats.collected} of ${stats.target} (${percentage}%)`;
+      detail.textContent = `COLLECTED ${stats.collected} / ${stats.target} (${percentage}%)`;
       totalNet += stats.collected;
     } else {
-      html += `Avoided ${stats.target - stats.collected} of ${Math.abs(stats.target)} expenses`;
+      const avoided = stats.target - stats.collected;
+      detail.textContent = `AVOIDED ${Math.max(0, avoided)} / ${Math.abs(stats.target)} (${percentage}%)`;
       totalNet += stats.target + stats.collected;
     }
-    html += '</div>';
+    stat.appendChild(detail);
+
+    statsList.appendChild(stat);
   }
 
-  const netColor = totalNet >= 0 ? '#4CAF50' : '#F44336';
-  html += `<div style="margin: 20px 0; font-size: 24px; color: ${netColor}; border-top: 2px solid white; padding-top: 10px;">`;
-  html += `<strong>Net Result: ${totalNet.toFixed(2)}</strong>`;
-  html += '</div></div>';
-  html += '<button id="tryAgainBtn" style="margin-top: 20px; padding: 10px 20px; font-size: 18px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">Try Again</button>';
+  const netLine = document.createElement('div');
+  netLine.className = `game-over__net ${totalNet >= 0 ? 'game-over__net--positive' : 'game-over__net--negative'}`;
+  netLine.textContent = `NET RESULT: ${totalNet.toFixed(2)}`;
+  gameOverPanel.appendChild(netLine);
 
-  gameOverPanel.innerHTML = html;
-  const restartButton = document.getElementById('tryAgainBtn');
-  restartButton?.addEventListener('click', onRestart);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'tryAgainBtn';
+  button.className = 'game-over__button';
+  button.textContent = 'REBOOT MISSION';
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    onRestart();
+  });
+  gameOverPanel.appendChild(button);
 
   gameOverContainer.style.display = 'flex';
 }

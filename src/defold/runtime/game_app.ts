@@ -85,6 +85,7 @@ function initializeGameState(): void {
 
 function resetGame(): void {
   initializeGameState();
+  startLoop();
 }
 
 function updateCollectibles(dt: number): void {
