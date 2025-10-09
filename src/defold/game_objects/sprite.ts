@@ -16,6 +16,7 @@ import {
 import { clamp } from '../../utils/utils.js';
 import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
+import { showHeartGainNotification } from '../gui/notifications.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -403,7 +404,11 @@ export class Sprite {
   _handleGateClear(gate) {
     if (!this._isGateRewardEnabled(gate)) return;
     if (!this.hooks || !this.hooks.hearts || typeof this.hooks.hearts.gain !== 'function') return;
+    const prevHearts = typeof this.hooks.hearts.value === 'number' ? this.hooks.hearts.value : 0;
     this.hooks.hearts.gain(1);
+    if (typeof this.hooks.hearts.value === 'number' && this.hooks.hearts.value > prevHearts) {
+      showHeartGainNotification();
+    }
   }
 
   _isGateRewardEnabled(gate) {
