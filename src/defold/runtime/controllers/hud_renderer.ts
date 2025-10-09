@@ -33,11 +33,11 @@ function drawCurrentCardTitle(): void {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = accent;
-  ctx.fillText(`CARD ${currentCard.index + 1}: ${currentCard.definition.title}`, 12, 55);
+  ctx.fillText(`${currentCard.definition.title}`, 12, 55);
 
   ctx.font = '10px Arial';
   ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  ctx.fillText(`Enemies queued: ${totalEnemies}`, 12, 75);
+  // ctx.fillText(`Enemies queued: ${totalEnemies}`, 12, 75);
   ctx.restore();
 }
 
@@ -47,7 +47,7 @@ export function drawHUD(): void {
 
   energyBar.draw(ctx);
   hearts.draw(ctx);
-  drawCurrentCardTitle();
+  // drawCurrentCardTitle();
   drawSettingsIcon(ctx);
 
   const ft = Math.max(0, Math.round((groundY - sprite.y) / PIXELS_PER_FOOT));
