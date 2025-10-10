@@ -5,16 +5,11 @@ import {
   type HeartPickupEventPayload
 } from '../../game_objects/heartPickup.js';
 
-interface HeartDisintegrateShard {
+interface HeartDisintegratePixel {
   x: number;
   y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  lifetime: number;
   size: number;
-  baseSize: number;
-  intensity: number;
+  eraseAt: number;
 }
 
 interface HeartDisintegrateEffectOptions {
@@ -23,95 +18,78 @@ interface HeartDisintegrateEffectOptions {
   color: string;
 }
 
-const GRAVITY = 420;
-const HORIZONTAL_SPEED = 70;
-const VERTICAL_SPEED = 110;
+const PIXEL_ERASE_INTERVAL = 0.018;
 
 class HeartDisintegrateEffect {
-  private shards: HeartDisintegrateShard[];
+  private pixels: HeartDisintegratePixel[];
   private color: string;
+  private elapsed = 0;
+  private totalDuration: number;
 
   constructor({ rect, pixelSize, color }: HeartDisintegrateEffectOptions) {
     this.color = color;
-    this.shards = this._createShards(rect, pixelSize);
+    this.pixels = this._createPixels(rect, pixelSize);
+    this.totalDuration = PIXEL_ERASE_INTERVAL * (this.pixels.length + 1);
   }
 
   update(dt: number): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
-    for (const shard of this.shards) {
-      if (shard.life <= 0) continue;
-      shard.life -= dt;
-      if (shard.life <= 0) {
-        shard.life = 0;
-        continue;
-      }
-      shard.vy += GRAVITY * dt;
-      shard.x += shard.vx * dt;
-      shard.y += shard.vy * dt;
-    }
+    this.elapsed += dt;
   }
 
   draw(ctx: CanvasRenderingContext2D, cameraY: number): void {
+    if (this.pixels.length === 0) return;
+
     ctx.save();
     ctx.fillStyle = this.color;
+    ctx.globalAlpha = 1;
 
-    for (const shard of this.shards) {
-      if (shard.life <= 0) continue;
-      const alpha = Math.max(0, shard.life / shard.lifetime) * shard.intensity;
-      if (alpha <= 0.01) continue;
-
-      ctx.globalAlpha = alpha;
-
-      const shrink = 0.4 + 0.6 * (shard.life / shard.lifetime);
-      const size = Math.max(0.5, shard.baseSize * shrink);
-      ctx.fillRect(
-        shard.x - size / 2,
-        shard.y - cameraY - size / 2,
-        size,
-        size
-      );
+    for (const pixel of this.pixels) {
+      if (this.elapsed >= pixel.eraseAt) continue;
+      ctx.fillRect(pixel.x, pixel.y - cameraY, pixel.size, pixel.size);
     }
 
     ctx.restore();
   }
 
   isFinished(): boolean {
-    return this.shards.every((shard) => shard.life <= 0);
+    return this.elapsed >= this.totalDuration;
   }
 
-  private _createShards(
+  private _createPixels(
     rect: { x: number; y: number; width: number; height: number },
     pixelSize: number
-  ): HeartDisintegrateShard[] {
-    const shards: HeartDisintegrateShard[] = [];
+  ): HeartDisintegratePixel[] {
+    const pixels: HeartDisintegratePixel[] = [];
     const baseSize = Math.max(1, pixelSize);
 
     for (let row = 0; row < HEART_PATTERN.length; row += 1) {
       const patternRow = HEART_PATTERN[row];
       for (let col = 0; col < patternRow.length; col += 1) {
         if (patternRow[col] !== 1) continue;
-        const cellX = rect.x + col * baseSize + baseSize / 2;
-        const cellY = rect.y + row * baseSize + baseSize / 2;
-        const lifetime = 0.35 + Math.random() * 0.35;
-        const vx = (Math.random() - 0.5) * HORIZONTAL_SPEED;
-        const vy = -Math.random() * VERTICAL_SPEED - 40;
-        const intensity = 0.6 + Math.random() * 0.4;
-
-        shards.push({
-          x: cellX,
-          y: cellY,
-          vx,
-          vy,
-          life: lifetime,
-          lifetime,
-          baseSize: baseSize * (0.75 + Math.random() * 0.5),
+        pixels.push({
+          x: rect.x + col * baseSize,
+          y: rect.y + row * baseSize,
           size: baseSize,
-          intensity
+          eraseAt: 0
         });
       }
     }
 
-    return shards;
+    if (pixels.length === 0) return pixels;
+
+    const indices = pixels.map((_, index) => index);
+    for (let i = indices.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+
+    for (let order = 0; order < indices.length; order += 1) {
+      const pixelIndex = indices[order];
+      pixels[pixelIndex].eraseAt = (order + 1) * PIXEL_ERASE_INTERVAL;
+    }
+
+    return pixels;
   }
 }
 
