@@ -17,6 +17,7 @@ import { clamp } from '../../utils/utils.js';
 import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
+import { HeartPickup } from './heartPickup.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -30,6 +31,7 @@ type SpriteHooks = {
   onGameOver: () => void;
   getRides: () => any[];
   getGates: () => any[];
+  getHeartPickups?: () => HeartPickup[];
 };
 
 interface GatePassageState {
@@ -408,38 +410,48 @@ export class Sprite {
   }
 
   _checkHeartPickups(currRect: { left: number; right: number; top: number; bottom: number }) {
-    if (!this.hooks || typeof this.hooks.getGates !== 'function') return;
-    const gates = this.hooks.getGates();
-    if (!Array.isArray(gates) || gates.length === 0) return;
+    if (!this.hooks) return;
 
-    for (const gate of gates) {
-      if (!gate || typeof gate.getHeartPickup !== 'function') continue;
-      const pickup = gate.getHeartPickup();
-      if (!pickup) continue;
+    const overlapsBounds = (bounds: { x: number; y: number; width: number; height: number }) =>
+      currRect.right >= bounds.x &&
+      currRect.left <= bounds.x + bounds.width &&
+      currRect.bottom >= bounds.y &&
+      currRect.top <= bounds.y + bounds.height;
 
-      const pickupLeft = pickup.x;
-      const pickupRight = pickup.x + pickup.width;
-      const pickupTop = pickup.y;
-      const pickupBottom = pickup.y + pickup.height;
+    const tryCollect = (bounds: { x: number; y: number; width: number; height: number }, collect: () => boolean) => {
+      if (!overlapsBounds(bounds)) return;
+      if (collect()) {
+        this._awardHeart();
+      }
+    };
 
-      const overlaps =
-        currRect.right >= pickupLeft &&
-        currRect.left <= pickupRight &&
-        currRect.bottom >= pickupTop &&
-        currRect.top <= pickupBottom;
+    const gates = typeof this.hooks.getGates === 'function' ? this.hooks.getGates() : [];
+    if (Array.isArray(gates)) {
+      for (const gate of gates) {
+        if (!gate || typeof gate.getHeartPickup !== 'function') continue;
+        const pickup = gate.getHeartPickup();
+        if (!pickup) continue;
 
-      if (!overlaps) continue;
+        tryCollect(pickup, () => {
+          if (typeof gate.collectHeart === 'function') {
+            return gate.collectHeart();
+          }
+          if (typeof gate.onHeartCollected === 'function') {
+            return Boolean(gate.onHeartCollected());
+          }
+          return false;
+        });
+      }
+    }
 
-      if (typeof gate.collectHeart === 'function') {
-        const collected = gate.collectHeart();
-        if (collected) {
-          this._awardHeart();
-        }
-      } else if (typeof gate.onHeartCollected === 'function') {
-        const handled = gate.onHeartCollected();
-        if (handled) {
-          this._awardHeart();
-        }
+    const extraHearts =
+      typeof this.hooks.getHeartPickups === 'function' ? this.hooks.getHeartPickups() : [];
+
+    if (Array.isArray(extraHearts)) {
+      for (const heart of extraHearts) {
+        if (!heart || typeof heart.isActive !== 'function' || !heart.isActive()) continue;
+        const bounds = heart.getBounds();
+        tryCollect(bounds, () => heart.collect());
       }
     }
   }

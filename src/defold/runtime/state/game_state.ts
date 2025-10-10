@@ -4,11 +4,13 @@ import type { Gate } from '../../game_objects/gates.js';
 import type { ControlledGate } from '../../game_objects/controlledGate.js';
 import type { InputHandler } from '../input.js';
 import type { EnergyBar, Hearts } from '../../gui/hud.js';
+import type { HeartPickup } from '../../game_objects/heartPickup.js';
 
 export interface GameWorldState {
   sprite: Sprite | null;
   rides: Ride[];
   gates: Array<Gate | ControlledGate>;
+  heartPickups: HeartPickup[];
   input: InputHandler | null;
   energyBar: EnergyBar | null;
   hearts: Hearts | null;
@@ -20,6 +22,7 @@ export const gameWorld: GameWorldState = {
   sprite: null,
   rides: [],
   gates: [],
+  heartPickups: [],
   input: null,
   energyBar: null,
   hearts: null,
@@ -31,6 +34,7 @@ export function resetGameWorld(): void {
   gameWorld.sprite = null;
   gameWorld.rides = [];
   gameWorld.gates = [];
+  gameWorld.heartPickups = [];
   gameWorld.input = null;
   gameWorld.energyBar = null;
   gameWorld.hearts = null;

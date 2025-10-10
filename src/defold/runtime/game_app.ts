@@ -8,6 +8,8 @@ import { ensureSettingsOverlay, showSettings } from '../gui/settings_overlay.js'
 import { EnergyBar, Hearts } from '../gui/hud.js';
 import { InputHandler } from './input.js';
 import { Sprite } from '../game_objects/sprite.js';
+import { HeartPickup } from '../game_objects/heartPickup.js';
+import { drawPixelatedHeart } from '../gui/drawPixelatedHeart.js';
 import {
   updateRides,
   pruneInactiveRides,
@@ -52,10 +54,23 @@ function buildSprite(): Sprite {
     hearts,
     onGameOver,
     getRides: () => gameWorld.rides,
-    getGates: () => gameWorld.gates
+    getGates: () => gameWorld.gates,
+    getHeartPickups: () => gameWorld.heartPickups
   });
 
   return sprite;
+}
+
+function spawnGroundHeart(): void {
+  const pixelSize = 2;
+  const { width, height } = HeartPickup.getDimensions(pixelSize);
+  const heart = new HeartPickup({
+    x: canvasWidth - width - 20,
+    y: groundY - height - 4,
+    pixelSize,
+    respawns: false,
+  });
+  gameWorld.heartPickups.push(heart);
 }
 
 function initializeGameState(): void {
@@ -70,10 +85,12 @@ function initializeGameState(): void {
   gameWorld.hearts = new Hearts();
   gameWorld.rides = [];
   gameWorld.gates = [];
+  gameWorld.heartPickups = [];
   gameWorld.sprite = buildSprite();
 
   const cardFrame = bootstrapCards(gameWorld.sprite.y);
   gameWorld.gates = [...cardFrame.gates];
+  spawnGroundHeart();
 
   if (!gameWorld.input) {
     gameWorld.input = new InputHandler(gameWorld, resetGame);
@@ -98,6 +115,20 @@ function updateCollectibles(dt: number): void {
   }
 }
 
+function updateHeartPickups(dt: number): void {
+  for (const heart of gameWorld.heartPickups) {
+    heart.update(dt);
+  }
+}
+
+function drawHeartPickups(): void {
+  for (const heart of gameWorld.heartPickups) {
+    if (!heart.isActive()) continue;
+    const bounds = heart.getBounds();
+    drawPixelatedHeart(ctx, bounds.x, bounds.y - cameraY, heart.pixelSize, '#ff5b6e');
+  }
+}
+
 function updateWorld(dt: number): void {
   const sprite = gameWorld.sprite;
   if (!sprite) return;
@@ -114,6 +145,7 @@ function updateWorld(dt: number): void {
 
   updateRides(gameWorld.rides, dt);
   updateGates(gameWorld.gates, dt);
+  updateHeartPickups(dt);
   updateEnemies(gameWorld, dt);
   updateCollectibles(dt);
 
@@ -144,6 +176,7 @@ function drawWorld(): void {
 
   drawRides(ctx, gameWorld.rides, cameraY);
   drawGates(ctx, gameWorld.gates, cameraY);
+  drawHeartPickups();
   drawEnemies(ctx, cameraY);
 
   for (const collectible of collectibles) {
