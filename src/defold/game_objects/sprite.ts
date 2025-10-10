@@ -408,6 +408,11 @@ export class Sprite {
     this.hooks.hearts.gain(1);
     if (typeof this.hooks.hearts.value === 'number' && this.hooks.hearts.value > prevHearts) {
       showHeartGainNotification();
+      if (gate && typeof gate.handleCleanPass === 'function') {
+        gate.handleCleanPass();
+      } else if (gate && typeof gate.onCleanPass === 'function') {
+        gate.onCleanPass();
+      }
     }
   }
 

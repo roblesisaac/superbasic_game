@@ -25,6 +25,8 @@ type GateRect = {
 
 type GateGapInfo = { type: 'H' | 'V'; index: number | string } | null;
 
+const GAP_REWARD_RESPAWN_DELAY = 5;
+
 export class Gate {
   y: number;
   canvasWidth: number;
@@ -43,6 +45,8 @@ export class Gate {
   gapInfo: GateGapInfo;
   gapX: number;
   gapY: number;
+  gapRewardVisible: boolean;
+  gapRewardRespawnTimer: number;
 
   constructor({ y, canvasWidth, gapWidth, segmentCount }: {
     y: number;
@@ -63,11 +67,20 @@ export class Gate {
     this.rewardEnabled = true;
     this.asciiDamaged = false;
 
+    this.gapRewardVisible = true;
+    this.gapRewardRespawnTimer = 0;
+
     this._generateLayout();
     this._chooseGap();
   }
 
-  update() {}
+  update(dt = 0) {
+    if (!this.rewardEnabled || this.gapRewardVisible || this.gapRewardRespawnTimer <= 0) return;
+    this.gapRewardRespawnTimer = Math.max(0, this.gapRewardRespawnTimer - dt);
+    if (this.gapRewardRespawnTimer === 0) {
+      this.gapRewardVisible = true;
+    }
+  }
 
   startFloating() {}
 
@@ -76,10 +89,18 @@ export class Gate {
       this.asciiDamaged = true;
     }
     this.rewardEnabled = false;
+    this.gapRewardVisible = false;
+    this.gapRewardRespawnTimer = 0;
   }
 
   isRewardEnabled() {
     return this.rewardEnabled;
+  }
+
+  handleCleanPass() {
+    if (!this.rewardEnabled) return;
+    this.gapRewardVisible = false;
+    this.gapRewardRespawnTimer = GAP_REWARD_RESPAWN_DELAY;
   }
 
   _generateLayout() {
@@ -216,7 +237,7 @@ export class Gate {
           }
         : undefined,
       gapReward:
-        this.rewardEnabled && this.gapInfo
+        this.rewardEnabled && this.gapInfo && this.gapRewardVisible
           ? {
               type: 'heart',
               pixelSize: 2,

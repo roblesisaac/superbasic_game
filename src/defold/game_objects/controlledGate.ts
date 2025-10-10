@@ -6,6 +6,7 @@ import {
 import { drawGateVisuals } from './gateRenderer.js';
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
+const GAP_REWARD_RESPAWN_DELAY = 5;
 
 type GateSpecObject = { position?: number; width?: number };
 type GateSpecArray = [unknown, unknown?, unknown?];
@@ -100,6 +101,8 @@ export class ControlledGate {
   gapX = 0;
   gapY = 0;
   gapWidth = GATE_GAP_WIDTH;
+  gapRewardVisible = true;
+  gapRewardRespawnTimer = 0;
 
   constructor({ y, canvasWidth, definition }: ControlledGateOptions) {
     this.y = y;
@@ -111,7 +114,13 @@ export class ControlledGate {
     this._ensureGap();
   }
 
-  update(): void {}
+  update(dt = 0): void {
+    if (!this.rewardEnabled || this.gapRewardVisible || this.gapRewardRespawnTimer <= 0) return;
+    this.gapRewardRespawnTimer = Math.max(0, this.gapRewardRespawnTimer - dt);
+    if (this.gapRewardRespawnTimer === 0) {
+      this.gapRewardVisible = true;
+    }
+  }
   startFloating(): void {}
 
   handleBottomCollision(): void {
@@ -119,10 +128,17 @@ export class ControlledGate {
       this.asciiDamaged = true;
     }
     this.rewardEnabled = false;
+    this.gapRewardVisible = false;
+    this.gapRewardRespawnTimer = 0;
   }
 
   isRewardEnabled(): boolean {
     return this.rewardEnabled;
+  }
+  handleCleanPass(): void {
+    if (!this.rewardEnabled) return;
+    this.gapRewardVisible = false;
+    this.gapRewardRespawnTimer = GAP_REWARD_RESPAWN_DELAY;
   }
 
   private _parseDefinition(): void {
@@ -439,7 +455,7 @@ export class ControlledGate {
           }
         : undefined,
       gapReward:
-        this.rewardEnabled && this.gapInfo
+        this.rewardEnabled && this.gapInfo && this.gapRewardVisible
           ? {
               type: 'heart',
               pixelSize: 2,
