@@ -67,7 +67,7 @@ function spawnGroundHeart(): void {
   const { width, height } = HeartPickup.getDimensions(pixelSize);
   const heart = new HeartPickup({
     x: canvasWidth - width - 20,
-    y: groundY - height - 20,
+    y: groundY - height - 120,
     pixelSize,
     respawns: false,
   });
