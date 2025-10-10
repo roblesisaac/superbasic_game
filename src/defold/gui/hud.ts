@@ -6,24 +6,16 @@ import {
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
 } from './drawPixelatedHeart.js';
-import {
-  DisintegrateEffect,
-  buildPixelsForRect,
-  type DisintegrateMode,
-} from '../runtime/controllers/disintegrate_effect.js';
-
-type EnergySegmentState = 'filled' | 'empty' | 'integrating' | 'disintegrating';
+type EnergySegmentState = 'filled' | 'empty';
 
 interface EnergySegment {
   x: number;
   y: number;
   size: number;
   state: EnergySegmentState;
-  effect: DisintegrateEffect | null;
-  effectMode: DisintegrateMode | null;
 }
 
-const ENERGY_SEGMENT_COUNT = 16;
+const ENERGY_SEGMENT_COUNT = 10;
 const ENERGY_SEGMENT_SIZE = 7;
 const ENERGY_SEGMENT_SPACING = 2;
 const ENERGY_BAR_HEIGHT = 14;
@@ -90,7 +82,6 @@ export class EnergyBar {
       this.energy = clamp(this.energy + ENERGY_REGEN_RATE * 0.3 * dt, 0, ENERGY_MAX);
     }
 
-    this.updateSegmentEffects(dt);
     this.syncSegmentsToEnergy();
   }
 
@@ -109,14 +100,12 @@ export class EnergyBar {
 
     for (let i = 0; i < this.segments.length; i += 1) {
       const segment = this.segments[i];
-      const { x, y, size, state, effect } = segment;
+      const { x, y, size, state } = segment;
 
       ctx.fillStyle = ENERGY_SEGMENT_EMPTY_SHADE;
       ctx.fillRect(x, y, size, size);
 
-      if (effect) {
-        effect.draw(ctx);
-      } else if (state === 'filled') {
+      if (state === 'filled') {
         ctx.fillStyle = ENERGY_SEGMENT_COLOR;
         ctx.fillRect(x, y, size, size);
       } else if (state === 'empty' && i === segmentsToFill && partialRatio > 0 && partialRatio < 1) {
@@ -152,8 +141,6 @@ export class EnergyBar {
         y: baseY,
         size: ENERGY_SEGMENT_SIZE,
         state: 'empty',
-        effect: null,
-        effectMode: null,
       });
     }
 
@@ -164,25 +151,7 @@ export class EnergyBar {
     const target = this.getTargetSegmentCount();
     for (let i = 0; i < this.segments.length; i += 1) {
       const segment = this.segments[i];
-      segment.effect = null;
-      segment.effectMode = null;
       segment.state = i < target ? 'filled' : 'empty';
-    }
-  }
-
-  private updateSegmentEffects(dt: number): void {
-    for (const segment of this.segments) {
-      if (!segment.effect) continue;
-      segment.effect.update(dt);
-      if (!segment.effect.isFinished()) continue;
-
-      segment.effect = null;
-      if (segment.effectMode === 'integrate') {
-        segment.state = 'filled';
-      } else if (segment.effectMode === 'disintegrate') {
-        segment.state = 'empty';
-      }
-      segment.effectMode = null;
     }
   }
 
@@ -192,30 +161,8 @@ export class EnergyBar {
     for (let i = 0; i < this.segments.length; i += 1) {
       const segment = this.segments[i];
 
-      if (i < targetCount) {
-        if (segment.state === 'filled' && !segment.effect) continue;
-        if (segment.state === 'integrating' && segment.effect) continue;
-        this.startSegmentTransition(segment, 'integrate');
-      } else {
-        if (segment.state === 'empty' && !segment.effect) continue;
-        if (segment.state === 'disintegrating' && segment.effect) continue;
-        this.startSegmentTransition(segment, 'disintegrate');
-      }
+      segment.state = i < targetCount ? 'filled' : 'empty';
     }
-  }
-
-  private startSegmentTransition(segment: EnergySegment, mode: DisintegrateMode): void {
-    segment.effect = new DisintegrateEffect({
-      pixels: buildPixelsForRect(
-        { x: segment.x, y: segment.y, width: segment.size, height: segment.size },
-        2,
-      ),
-      color: ENERGY_SEGMENT_COLOR,
-      mode,
-      interval: 0.014,
-    });
-    segment.effectMode = mode;
-    segment.state = mode === 'integrate' ? 'integrating' : 'disintegrating';
   }
 
   private getTargetSegmentCount(): number {
