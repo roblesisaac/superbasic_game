@@ -13,6 +13,7 @@ import {
   type ControlledGateDefinition
 } from './controlledGate.js';
 import { drawGateVisuals } from './gateRenderer.js';
+import { HeartPickup } from './heartPickup.js';
 import {
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
@@ -50,11 +51,8 @@ export class Gate {
   gapInfo: GateGapInfo;
   gapX: number;
   gapY: number;
-  gapRewardVisible: boolean;
-  gapRewardRespawnTimer: number;
-  gapRewardRespawns: boolean;
-  gapRewardBounds: { x: number; y: number; width: number; height: number } | null;
-  gapRewardPixelSize: number;
+  gapHeart: HeartPickup | null;
+  gapHeartPixelSize: number;
 
   constructor({ y, canvasWidth, gapWidth, segmentCount }: {
     y: number;
@@ -75,29 +73,17 @@ export class Gate {
     this.rewardEnabled = true;
     this.asciiDamaged = false;
 
-    this.gapRewardVisible = true;
-    this.gapRewardRespawnTimer = 0;
-    this.gapRewardRespawns = true;
-    this.gapRewardBounds = null;
-    this.gapRewardPixelSize = GAP_HEART_PIXEL_SIZE;
+    this.gapHeart = null;
+    this.gapHeartPixelSize = GAP_HEART_PIXEL_SIZE;
 
     this._generateLayout();
     this._chooseGap();
+    this._initializeGapHeart();
   }
 
   update(dt = 0) {
-    if (
-      !this.rewardEnabled ||
-      this.gapRewardVisible ||
-      !this.gapRewardRespawns ||
-      this.gapRewardRespawnTimer <= 0
-    ) {
-      return;
-    }
-    this.gapRewardRespawnTimer = Math.max(0, this.gapRewardRespawnTimer - dt);
-    if (this.gapRewardRespawnTimer === 0) {
-      this.gapRewardVisible = true;
-    }
+    if (!this.gapHeart) return;
+    this.gapHeart.update(dt);
   }
 
   startFloating() {}
@@ -107,10 +93,7 @@ export class Gate {
       this.asciiDamaged = true;
     }
     this.rewardEnabled = false;
-    this.gapRewardVisible = false;
-    this.gapRewardRespawns = false;
-    this.gapRewardRespawnTimer = 0;
-    this.gapRewardBounds = null;
+    if (this.gapHeart) this.gapHeart.kill();
   }
 
   isRewardEnabled() {
@@ -118,40 +101,54 @@ export class Gate {
   }
 
   handleCleanPass() {
-    if (!this.rewardEnabled || !this.gapRewardRespawns) return;
-    this.gapRewardVisible = false;
-    this.gapRewardRespawnTimer = GAP_REWARD_RESPAWN_DELAY;
+    if (!this.rewardEnabled || !this.gapHeart) return;
+    this.gapHeart.collect();
   }
 
   collectHeart(): boolean {
-    if (!this.rewardEnabled || !this.gapRewardVisible) return false;
-    this.gapRewardVisible = false;
-    this.gapRewardBounds = null;
-    if (this.gapRewardRespawns) {
-      this.gapRewardRespawnTimer = GAP_REWARD_RESPAWN_DELAY;
-    } else {
-      this.gapRewardRespawnTimer = 0;
-    }
-    return true;
+    if (!this.rewardEnabled || !this.gapHeart) return false;
+    return this.gapHeart.collect();
   }
 
   getHeartPickup():
     | { x: number; y: number; width: number; height: number; respawns: boolean }
     | null {
-    if (!this.gapRewardVisible || !this.gapRewardBounds) return null;
+    if (!this.gapHeart || !this.gapHeart.isActive()) return null;
+    const bounds = this.gapHeart.getBounds();
     return {
-      ...this.gapRewardBounds,
-      respawns: this.gapRewardRespawns,
+      ...bounds,
+      respawns: this.gapHeart.respawns,
     };
   }
 
-  private _computeGapRewardBounds():
+  private _initializeGapHeart(): void {
+    const bounds = this._computeGapHeartBounds();
+    if (!bounds) {
+      this.gapHeart = null;
+      return;
+    }
+
+    if (this.gapHeart) {
+      this.gapHeart.pixelSize = this.gapHeartPixelSize;
+      this.gapHeart.setPosition(bounds.x, bounds.y);
+      this.gapHeart.respawnDelay = GAP_REWARD_RESPAWN_DELAY;
+      return;
+    }
+
+    this.gapHeart = new HeartPickup({
+      x: bounds.x,
+      y: bounds.y,
+      pixelSize: this.gapHeartPixelSize,
+      respawns: true,
+      respawnDelay: GAP_REWARD_RESPAWN_DELAY,
+    });
+  }
+
+  private _computeGapHeartBounds():
     | { x: number; y: number; width: number; height: number }
     | null {
     if (!this.gapInfo) return null;
-    const pixelSize = this.gapRewardPixelSize;
-    const width = HEART_PIXEL_COLUMNS * pixelSize;
-    const height = HEART_PIXEL_ROWS * pixelSize;
+    const { width, height } = HeartPickup.getDimensions(this.gapHeartPixelSize);
 
     if (this.gapInfo.type === 'H') {
       const centerX = this.gapX + this.gapWidth / 2;
@@ -294,11 +291,15 @@ export class Gate {
     if (!this.active) return;
 
     const rects = this.getRects();
-    if (this.gapRewardVisible && this.rewardEnabled) {
-      this.gapRewardBounds = this._computeGapRewardBounds();
-    } else {
-      this.gapRewardBounds = null;
+    if (this.gapHeart) {
+      const bounds = this._computeGapHeartBounds();
+      if (bounds) this.gapHeart.setPosition(bounds.x, bounds.y);
     }
+
+    const heartRenderInfo =
+      this.rewardEnabled && this.gapHeart && this.gapHeart.isActive()
+        ? this.gapHeart.getRenderInfo()
+        : null;
 
     drawGateVisuals({
       ctx,
@@ -313,14 +314,13 @@ export class Gate {
             gapWidth: this.gapWidth,
           }
         : undefined,
-      gapReward:
-        this.rewardEnabled && this.gapInfo && this.gapRewardVisible && this.gapRewardBounds
-          ? {
-              type: 'heart',
-              pixelSize: this.gapRewardPixelSize,
-              rect: this.gapRewardBounds,
-            }
-          : undefined,
+      gapReward: heartRenderInfo
+        ? {
+            type: 'heart',
+            pixelSize: heartRenderInfo.pixelSize,
+            rect: heartRenderInfo.rect,
+          }
+        : undefined,
     });
   }
 }
