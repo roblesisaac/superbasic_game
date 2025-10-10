@@ -10,7 +10,7 @@ import { EnergyBar, Hearts } from '../gui/hud.js';
 import { InputHandler } from './input.js';
 import { Sprite } from '../game_objects/sprite.js';
 import { HeartPickup } from '../game_objects/heartPickup.js';
-import { drawPixelatedHeart } from '../gui/drawPixelatedHeart.js';
+import { drawPixelatedHeart, computeHeartBobOffset } from '../gui/drawPixelatedHeart.js';
 import {
   updateRides,
   pruneInactiveRides,
@@ -125,10 +125,12 @@ function updateHeartPickups(dt: number): void {
 }
 
 function drawHeartPickups(): void {
+  const timeMs = Number.isFinite(gameWorld.lastTime) ? gameWorld.lastTime : now();
   for (const heart of gameWorld.heartPickups) {
     if (!heart.isActive()) continue;
     const bounds = heart.getBounds();
-    drawPixelatedHeart(ctx, bounds.x, bounds.y - cameraY, heart.pixelSize, '#ff5b6e');
+    const bob = computeHeartBobOffset(timeMs, heart.pixelSize, heart.x + heart.y);
+    drawPixelatedHeart(ctx, bounds.x, bounds.y - cameraY + bob, heart.pixelSize, '#ff5b6e');
   }
 }
 
@@ -179,7 +181,7 @@ function drawWorld(): void {
   ctx.stroke();
 
   drawRides(ctx, gameWorld.rides, cameraY);
-  drawGates(ctx, gameWorld.gates, cameraY);
+  drawGates(ctx, gameWorld.gates, cameraY, gameWorld.lastTime);
   drawHeartPickups();
   gameWorld.heartEffects?.draw(ctx, cameraY);
   drawEnemies(ctx, cameraY);

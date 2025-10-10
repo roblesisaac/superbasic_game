@@ -8,6 +8,9 @@
  * @param pixelSize - Size of each pixel block.
  * @param color - Fill color for the heart.
  */
+const HEART_BOB_PERIOD_MS = 2000;
+const HEART_BOB_AMPLITUDE_RATIO = 0.6;
+
 export function drawPixelatedHeart(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -28,6 +31,24 @@ export function drawPixelatedHeart(
       );
     }
   }
+}
+
+export function computeHeartBobOffset(
+  timeMs: number,
+  pixelSize: number,
+  phaseSeed = 0,
+): number {
+  if (!Number.isFinite(pixelSize) || pixelSize <= 0) return 0;
+
+  const amplitude = Math.max(1, Math.round(pixelSize * HEART_BOB_AMPLITUDE_RATIO));
+  if (amplitude <= 0) return 0;
+
+  const period = HEART_BOB_PERIOD_MS;
+  const baseTime = Number.isFinite(timeMs) ? timeMs : 0;
+  const seedComponent = Number.isFinite(phaseSeed) ? phaseSeed % period : 0;
+  const phase = ((baseTime + seedComponent + period) % period) / period;
+  const offset = Math.sin(phase * Math.PI * 2) * amplitude;
+  return Math.round(offset);
 }
 
 export const HEART_PATTERN: ReadonlyArray<ReadonlyArray<number>> = [

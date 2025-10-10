@@ -300,7 +300,7 @@ export class Gate {
     return output;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraY: number) {
+  draw(ctx: CanvasRenderingContext2D, cameraY: number, timeMs?: number) {
     if (!this.active) return;
 
     const rects = this.getRects();
@@ -334,6 +334,7 @@ export class Gate {
             rect: heartRenderInfo.rect,
           }
         : undefined,
+      timeMs,
     });
   }
 }
@@ -503,6 +504,6 @@ export function pruneInactiveGates(gates) {
   }
 }
 
-export function drawGates(ctx, gates, cameraY) {
-  for (const gate of gates) gate.draw(ctx, cameraY);
+export function drawGates(ctx, gates, cameraY, timeMs) {
+  for (const gate of gates) gate.draw(ctx, cameraY, timeMs);
 }

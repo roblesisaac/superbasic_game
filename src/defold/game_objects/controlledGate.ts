@@ -516,7 +516,7 @@ export class ControlledGate {
     return output;
   }
 
-  draw(ctx: CanvasRenderingContext2D, cameraY: number): void {
+  draw(ctx: CanvasRenderingContext2D, cameraY: number, timeMs?: number): void {
     if (!this.active) return;
 
     const rects = this.getRects();
@@ -550,6 +550,7 @@ export class ControlledGate {
             rect: heartRenderInfo.rect,
           }
         : undefined,
+      timeMs,
     });
   }
 }

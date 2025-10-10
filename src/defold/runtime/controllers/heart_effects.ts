@@ -1,4 +1,4 @@
-import { HEART_PATTERN } from '../../gui/drawPixelatedHeart.js';
+import { HEART_PATTERN, computeHeartBobOffset } from '../../gui/drawPixelatedHeart.js';
 import {
   onHeartPickupKilled,
   type HeartPickup,
@@ -8,6 +8,7 @@ import {
   DisintegrateEffect,
   buildPixelsFromPattern
 } from './disintegrate_effect.js';
+import { now } from '../../../utils/utils.js';
 
 export interface HeartEffectSystemOptions {
   color?: string;
@@ -38,7 +39,13 @@ export class HeartEffectSystem {
 
   spawnDisintegrateForHeart(heart: HeartPickup): void {
     const info = heart.getRenderInfo();
-    const pixels = buildPixelsFromPattern(info.rect, info.pixelSize, HEART_PATTERN);
+    const activeTime = now();
+    const bob = computeHeartBobOffset(activeTime, info.pixelSize, heart.x + heart.y);
+    const rect = {
+      ...info.rect,
+      y: info.rect.y + bob,
+    };
+    const pixels = buildPixelsFromPattern(rect, info.pixelSize, HEART_PATTERN);
     this.effects.push(
       new DisintegrateEffect({
         pixels,

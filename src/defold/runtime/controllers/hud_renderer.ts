@@ -46,7 +46,7 @@ export function drawHUD(): void {
   if (!sprite || !energyBar || !hearts) return;
 
   energyBar.draw(ctx);
-  hearts.draw(ctx);
+  hearts.draw(ctx, gameWorld.lastTime);
   // drawCurrentCardTitle();
   drawSettingsIcon(ctx);
 

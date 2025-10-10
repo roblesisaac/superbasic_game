@@ -1,10 +1,11 @@
 import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../../config/constants.js';
-import { clamp } from '../../utils/utils.js';
+import { clamp, now } from '../../utils/utils.js';
 import { gameOverContainer } from '../runtime/state/ui_state.js';
 import {
   drawPixelatedHeart,
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
+  computeHeartBobOffset,
 } from './drawPixelatedHeart.js';
 type EnergySegmentState = 'filled' | 'empty';
 
@@ -200,19 +201,21 @@ export class Hearts {
     this.value = Math.min(this.max, this.value + amount);
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, timeMs?: number) {
     const x0 = 12;
     const y0 = 28;
     const pixelSize = 2;
     const heartWidth = HEART_PIXEL_COLUMNS * pixelSize;
     const heartHeight = HEART_PIXEL_ROWS * pixelSize;
     const pad = 6;
+    const activeTime = Number.isFinite(timeMs) ? timeMs : now();
 
     for (let i = 0; i < this.max; i += 1) {
       const color = i < this.value ? '#ff5b6e' : 'rgba(255,255,255,0.2)';
       const x = x0 + i * (heartWidth + pad);
       const y = y0 + (heartHeight < 16 ? (16 - heartHeight) / 2 : 0);
-      drawPixelatedHeart(ctx, x, y, pixelSize, color);
+      const bob = computeHeartBobOffset(activeTime, pixelSize, i * 120);
+      drawPixelatedHeart(ctx, x, y + bob, pixelSize, color);
     }
   }
 }

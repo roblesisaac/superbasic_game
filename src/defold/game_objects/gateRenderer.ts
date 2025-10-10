@@ -3,7 +3,9 @@ import {
   drawPixelatedHeart,
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
+  computeHeartBobOffset,
 } from '../gui/drawPixelatedHeart.js';
+import { now } from '../../utils/utils.js';
 
 export interface GateVisualRect {
   x: number;
@@ -26,6 +28,7 @@ export interface DrawGateVisualsOptions {
   asciiDamaged: boolean;
   gapInfo?: GateVisualGapInfo | null;
   gapReward?: GateGapRewardInfo | null;
+  timeMs?: number;
 }
 
 export interface GateGapRewardInfo {
@@ -42,6 +45,7 @@ export function drawGateVisuals({
   asciiDamaged,
   gapInfo,
   gapReward,
+  timeMs,
 }: DrawGateVisualsOptions) {
   const visualThickness = Math.max(1, Math.round(GATE_THICKNESS / 5));
   const defaultColor = '#fff';
@@ -110,6 +114,7 @@ export function drawGateVisuals({
 
   let drawX: number;
   let drawY: number;
+  let phaseSeed: number;
 
   if (gapReward.rect) {
     const inferredPixelSize = Math.max(
@@ -123,6 +128,7 @@ export function drawGateVisuals({
     }
     drawX = gapReward.rect.x;
     drawY = gapReward.rect.y - cameraY;
+    phaseSeed = gapReward.rect.x + gapReward.rect.y;
   } else {
     let centerX: number;
     let centerYWorld: number;
@@ -137,9 +143,12 @@ export function drawGateVisuals({
 
     drawX = centerX - heartWidth / 2;
     drawY = centerYWorld - heartHeight / 2 - cameraY;
+    phaseSeed = centerX + centerYWorld;
   }
 
   const color = gapReward.color ?? '#ff5b6e';
 
-  drawPixelatedHeart(ctx, drawX, drawY, pixelSize, color);
+  const activeTime = Number.isFinite(timeMs) ? timeMs : now();
+  const bobOffset = computeHeartBobOffset(activeTime, pixelSize, phaseSeed);
+  drawPixelatedHeart(ctx, drawX, drawY + bobOffset, pixelSize, color);
 }
