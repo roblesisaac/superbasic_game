@@ -13,6 +13,10 @@ import {
   type ControlledGateDefinition
 } from './controlledGate.js';
 import { drawGateVisuals } from './gateRenderer.js';
+import {
+  HEART_PIXEL_COLUMNS,
+  HEART_PIXEL_ROWS,
+} from '../gui/drawPixelatedHeart.js';
 
 type GateRect = {
   type: 'H' | 'V';
@@ -26,6 +30,7 @@ type GateRect = {
 type GateGapInfo = { type: 'H' | 'V'; index: number | string } | null;
 
 const GAP_REWARD_RESPAWN_DELAY = 5;
+const GAP_HEART_PIXEL_SIZE = 2;
 
 export class Gate {
   y: number;
@@ -47,6 +52,9 @@ export class Gate {
   gapY: number;
   gapRewardVisible: boolean;
   gapRewardRespawnTimer: number;
+  gapRewardRespawns: boolean;
+  gapRewardBounds: { x: number; y: number; width: number; height: number } | null;
+  gapRewardPixelSize: number;
 
   constructor({ y, canvasWidth, gapWidth, segmentCount }: {
     y: number;
@@ -69,13 +77,23 @@ export class Gate {
 
     this.gapRewardVisible = true;
     this.gapRewardRespawnTimer = 0;
+    this.gapRewardRespawns = true;
+    this.gapRewardBounds = null;
+    this.gapRewardPixelSize = GAP_HEART_PIXEL_SIZE;
 
     this._generateLayout();
     this._chooseGap();
   }
 
   update(dt = 0) {
-    if (!this.rewardEnabled || this.gapRewardVisible || this.gapRewardRespawnTimer <= 0) return;
+    if (
+      !this.rewardEnabled ||
+      this.gapRewardVisible ||
+      !this.gapRewardRespawns ||
+      this.gapRewardRespawnTimer <= 0
+    ) {
+      return;
+    }
     this.gapRewardRespawnTimer = Math.max(0, this.gapRewardRespawnTimer - dt);
     if (this.gapRewardRespawnTimer === 0) {
       this.gapRewardVisible = true;
@@ -90,7 +108,9 @@ export class Gate {
     }
     this.rewardEnabled = false;
     this.gapRewardVisible = false;
+    this.gapRewardRespawns = false;
     this.gapRewardRespawnTimer = 0;
+    this.gapRewardBounds = null;
   }
 
   isRewardEnabled() {
@@ -98,9 +118,60 @@ export class Gate {
   }
 
   handleCleanPass() {
-    if (!this.rewardEnabled) return;
+    if (!this.rewardEnabled || !this.gapRewardRespawns) return;
     this.gapRewardVisible = false;
     this.gapRewardRespawnTimer = GAP_REWARD_RESPAWN_DELAY;
+  }
+
+  collectHeart(): boolean {
+    if (!this.rewardEnabled || !this.gapRewardVisible) return false;
+    this.gapRewardVisible = false;
+    this.gapRewardBounds = null;
+    if (this.gapRewardRespawns) {
+      this.gapRewardRespawnTimer = GAP_REWARD_RESPAWN_DELAY;
+    } else {
+      this.gapRewardRespawnTimer = 0;
+    }
+    return true;
+  }
+
+  getHeartPickup():
+    | { x: number; y: number; width: number; height: number; respawns: boolean }
+    | null {
+    if (!this.gapRewardVisible || !this.gapRewardBounds) return null;
+    return {
+      ...this.gapRewardBounds,
+      respawns: this.gapRewardRespawns,
+    };
+  }
+
+  private _computeGapRewardBounds():
+    | { x: number; y: number; width: number; height: number }
+    | null {
+    if (!this.gapInfo) return null;
+    const pixelSize = this.gapRewardPixelSize;
+    const width = HEART_PIXEL_COLUMNS * pixelSize;
+    const height = HEART_PIXEL_ROWS * pixelSize;
+
+    if (this.gapInfo.type === 'H') {
+      const centerX = this.gapX + this.gapWidth / 2;
+      const centerY = this.gapY + GATE_THICKNESS / 2;
+      return {
+        x: centerX - width / 2,
+        y: centerY - height / 2,
+        width,
+        height,
+      };
+    }
+
+    const centerX = this.gapX + GATE_THICKNESS / 2;
+    const centerY = this.gapY + this.gapWidth / 2;
+    return {
+      x: centerX - width / 2,
+      y: centerY - height / 2,
+      width,
+      height,
+    };
   }
 
   _generateLayout() {
@@ -223,6 +294,12 @@ export class Gate {
     if (!this.active) return;
 
     const rects = this.getRects();
+    if (this.gapRewardVisible && this.rewardEnabled) {
+      this.gapRewardBounds = this._computeGapRewardBounds();
+    } else {
+      this.gapRewardBounds = null;
+    }
+
     drawGateVisuals({
       ctx,
       rects,
@@ -237,10 +314,11 @@ export class Gate {
           }
         : undefined,
       gapReward:
-        this.rewardEnabled && this.gapInfo && this.gapRewardVisible
+        this.rewardEnabled && this.gapInfo && this.gapRewardVisible && this.gapRewardBounds
           ? {
               type: 'heart',
-              pixelSize: 2,
+              pixelSize: this.gapRewardPixelSize,
+              rect: this.gapRewardBounds,
             }
           : undefined,
     });

@@ -402,25 +402,55 @@ export class Sprite {
   }
 
   _handleGateClear(gate) {
-    if (!this._isGateRewardEnabled(gate)) return;
+    if (gate && typeof gate.onCleanPass === 'function') {
+      gate.onCleanPass();
+    }
+  }
+
+  _checkHeartPickups(currRect: { left: number; right: number; top: number; bottom: number }) {
+    if (!this.hooks || typeof this.hooks.getGates !== 'function') return;
+    const gates = this.hooks.getGates();
+    if (!Array.isArray(gates) || gates.length === 0) return;
+
+    for (const gate of gates) {
+      if (!gate || typeof gate.getHeartPickup !== 'function') continue;
+      const pickup = gate.getHeartPickup();
+      if (!pickup) continue;
+
+      const pickupLeft = pickup.x;
+      const pickupRight = pickup.x + pickup.width;
+      const pickupTop = pickup.y;
+      const pickupBottom = pickup.y + pickup.height;
+
+      const overlaps =
+        currRect.right >= pickupLeft &&
+        currRect.left <= pickupRight &&
+        currRect.bottom >= pickupTop &&
+        currRect.top <= pickupBottom;
+
+      if (!overlaps) continue;
+
+      if (typeof gate.collectHeart === 'function') {
+        const collected = gate.collectHeart();
+        if (collected) {
+          this._awardHeart();
+        }
+      } else if (typeof gate.onHeartCollected === 'function') {
+        const handled = gate.onHeartCollected();
+        if (handled) {
+          this._awardHeart();
+        }
+      }
+    }
+  }
+
+  _awardHeart() {
     if (!this.hooks || !this.hooks.hearts || typeof this.hooks.hearts.gain !== 'function') return;
     const prevHearts = typeof this.hooks.hearts.value === 'number' ? this.hooks.hearts.value : 0;
     this.hooks.hearts.gain(1);
     if (typeof this.hooks.hearts.value === 'number' && this.hooks.hearts.value > prevHearts) {
       showHeartGainNotification();
-      if (gate && typeof gate.handleCleanPass === 'function') {
-        gate.handleCleanPass();
-      } else if (gate && typeof gate.onCleanPass === 'function') {
-        gate.onCleanPass();
-      }
     }
-  }
-
-  _isGateRewardEnabled(gate) {
-    if (!this._isGateSurface(gate)) return true;
-    if (typeof gate.isRewardEnabled === 'function') return gate.isRewardEnabled();
-    if ('rewardEnabled' in gate) return Boolean(gate.rewardEnabled);
-    return true;
   }
 
   _updateVelocityStretch() {
@@ -757,6 +787,7 @@ export class Sprite {
       top: this.y - hs,
       bottom: this.y + hs
     };
+    this._checkHeartPickups(currRect);
     this._updateGatePassage(prevRect, currRect);
 
     if (wasOnGround && !this.onGround) this.fallStartY = this.y;

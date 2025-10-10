@@ -32,6 +32,7 @@ export interface GateGapRewardInfo {
   type: 'heart';
   color?: string;
   pixelSize?: number;
+  rect?: { x: number; y: number; width: number; height: number };
 }
 
 export function drawGateVisuals({
@@ -100,23 +101,44 @@ export function drawGateVisuals({
 
   if (!gapReward || gapReward.type !== 'heart') return;
 
-  const pixelSize = Math.max(1, Math.floor(gapReward.pixelSize ?? GATE_THICKNESS / HEART_PIXEL_ROWS));
-  const heartWidth = HEART_PIXEL_COLUMNS * pixelSize;
-  const heartHeight = HEART_PIXEL_ROWS * pixelSize;
+  let pixelSize = Math.max(
+    1,
+    Math.floor(gapReward.pixelSize ?? GATE_THICKNESS / HEART_PIXEL_ROWS),
+  );
+  let heartWidth = HEART_PIXEL_COLUMNS * pixelSize;
+  let heartHeight = HEART_PIXEL_ROWS * pixelSize;
 
-  let centerX: number;
-  let centerY: number;
+  let drawX: number;
+  let drawY: number;
 
-  if (gapInfo.type === 'H') {
-    centerX = gapInfo.gapX + gapInfo.gapWidth / 2;
-    centerY = gapInfo.gapY - cameraY + GATE_THICKNESS / 2;
+  if (gapReward.rect) {
+    const inferredPixelSize = Math.max(
+      1,
+      Math.round(gapReward.rect.width / HEART_PIXEL_COLUMNS),
+    );
+    if (!gapReward.pixelSize) {
+      pixelSize = inferredPixelSize;
+      heartWidth = HEART_PIXEL_COLUMNS * pixelSize;
+      heartHeight = HEART_PIXEL_ROWS * pixelSize;
+    }
+    drawX = gapReward.rect.x;
+    drawY = gapReward.rect.y - cameraY;
   } else {
-    centerX = gapInfo.gapX + GATE_THICKNESS / 2;
-    centerY = gapInfo.gapY - cameraY + gapInfo.gapWidth / 2;
+    let centerX: number;
+    let centerYWorld: number;
+
+    if (gapInfo.type === 'H') {
+      centerX = gapInfo.gapX + gapInfo.gapWidth / 2;
+      centerYWorld = gapInfo.gapY + GATE_THICKNESS / 2;
+    } else {
+      centerX = gapInfo.gapX + GATE_THICKNESS / 2;
+      centerYWorld = gapInfo.gapY + gapInfo.gapWidth / 2;
+    }
+
+    drawX = centerX - heartWidth / 2;
+    drawY = centerYWorld - heartHeight / 2 - cameraY;
   }
 
-  const drawX = centerX - heartWidth / 2;
-  const drawY = centerY - heartHeight / 2;
   const color = gapReward.color ?? '#ff5b6e';
 
   drawPixelatedHeart(ctx, drawX, drawY, pixelSize, color);
