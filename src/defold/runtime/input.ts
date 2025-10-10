@@ -147,7 +147,7 @@ export class InputHandler {
       stickX: 0,
       stickY: 0,
       baseRadius: 15,
-      stickRadius: 6,
+      stickRadius: 8,
       maxDistance: 9,
     };
 
