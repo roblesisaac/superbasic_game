@@ -194,6 +194,7 @@ function drawWorld(): void {
     gameWorld.sprite?.draw(ctx, cameraY);
   }
 
+  gameWorld.input?.drawJoystick(ctx);
   drawHUD();
 }
 

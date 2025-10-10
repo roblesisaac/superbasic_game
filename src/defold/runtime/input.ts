@@ -20,6 +20,17 @@ type RideGesture = {
   canvasWidth: number;
 };
 
+type JoystickState = {
+  active: boolean;
+  baseX: number;
+  baseY: number;
+  stickX: number;
+  stickY: number;
+  baseRadius: number;
+  stickRadius: number;
+  maxDistance: number;
+};
+
 export class InputHandler {
   game: GameWorldState;
   ensureReset: () => void;
@@ -42,6 +53,7 @@ export class InputHandler {
   trackpadStartTime: number;
   lastArrowTime: number;
   arrowCooldownMs: number;
+  joystick: JoystickState;
 
   constructor(game: GameWorldState, ensureReset: () => void) {
     this.game = game;
@@ -72,6 +84,17 @@ export class InputHandler {
     this.lastArrowTime = 0;
     this.arrowCooldownMs = 140;
 
+    this.joystick = {
+      active: false,
+      baseX: 0,
+      baseY: 0,
+      stickX: 0,
+      stickY: 0,
+      baseRadius: 20,
+      stickRadius: 8,
+      maxDistance: 12,
+    };
+
     this.bind();
   }
 
@@ -87,6 +110,56 @@ export class InputHandler {
       y: dy / distance,
       distance,
     };
+  }
+
+  startJoystick(x: number, y: number) {
+    this.joystick.active = true;
+    this.joystick.baseX = x;
+    this.joystick.baseY = y;
+    this.joystick.stickX = x;
+    this.joystick.stickY = y;
+  }
+
+  updateJoystick(x: number, y: number) {
+    if (!this.joystick.active) return;
+    const { baseX, baseY, maxDistance } = this.joystick;
+    const dx = x - baseX;
+    const dy = y - baseY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance <= maxDistance) {
+      this.joystick.stickX = x;
+      this.joystick.stickY = y;
+      return;
+    }
+
+    const angle = Math.atan2(dy, dx);
+    this.joystick.stickX = baseX + Math.cos(angle) * maxDistance;
+    this.joystick.stickY = baseY + Math.sin(angle) * maxDistance;
+  }
+
+  endJoystick() {
+    this.joystick.active = false;
+  }
+
+  drawJoystick(ctx: CanvasRenderingContext2D) {
+    if (!this.joystick.active || showSettings) return;
+
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+
+    ctx.beginPath();
+    ctx.arc(this.joystick.baseX, this.joystick.baseY, this.joystick.baseRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(this.joystick.stickX, this.joystick.stickY, this.joystick.stickRadius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fill();
+
+    ctx.restore();
   }
 
   bind() {
@@ -115,6 +188,8 @@ export class InputHandler {
         this.touchSwipe = false;
         this.isJoystickMode = false;
 
+        this.startJoystick(x, y);
+
         this.game.sprite?.startCharging();
         if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
           this.game.sprite.startGliding();
@@ -139,6 +214,7 @@ export class InputHandler {
         this.touchSamples.push(sample);
         const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
         this.touchSamples = this.touchSamples.filter((q) => q.time >= cutoff);
+        this.updateJoystick(sample.x, sample.y);
 
         const direction = this.calculateDirection(
           this.touchStart.x,
@@ -184,7 +260,10 @@ export class InputHandler {
       'touchend',
       (e) => {
         e.preventDefault();
-        if (!this.touchStart || showSettings) return;
+        if (!this.touchStart || showSettings) {
+          this.endJoystick();
+          return;
+        }
 
         const endTime = Date.now();
         const last = this.touchSamples[this.touchSamples.length - 1] || this.touchStart;
@@ -200,6 +279,7 @@ export class InputHandler {
         }
 
         this.game.sprite?.stopGliding();
+        this.endJoystick();
         this.touchStart = null;
         this.touchSamples = [];
         this.touchSwipe = false;
@@ -230,6 +310,8 @@ export class InputHandler {
       this.mouseSwipe = false;
       this.isMouseJoystickMode = false;
 
+      this.startJoystick(x, y);
+
       this.game.sprite?.startCharging();
       if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
         this.game.sprite.startGliding();
@@ -248,6 +330,7 @@ export class InputHandler {
       this.mouseSamples.push(sample);
       const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
       this.mouseSamples = this.mouseSamples.filter((q) => q.time >= cutoff);
+      this.updateJoystick(sample.x, sample.y);
 
       const direction = this.calculateDirection(
         this.mouseStart.x,
@@ -288,7 +371,10 @@ export class InputHandler {
     });
 
     canvas.addEventListener('mouseup', () => {
-      if (!this.mouseStart || showSettings) return;
+      if (!this.mouseStart || showSettings) {
+        this.endJoystick();
+        return;
+      }
 
       const endTime = Date.now();
       const last = this.mouseSamples[this.mouseSamples.length - 1] || this.mouseStart;
@@ -304,6 +390,7 @@ export class InputHandler {
       }
 
       this.game.sprite?.stopGliding();
+      this.endJoystick();
       this.isMouseDragging = false;
       this.mouseStart = null;
       this.mouseSamples = [];
