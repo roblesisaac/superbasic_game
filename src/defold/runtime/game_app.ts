@@ -63,11 +63,11 @@ function buildSprite(): Sprite {
 }
 
 function spawnGroundHeart(): void {
-  const pixelSize = 2;
+  const pixelSize = 3;
   const { width, height } = HeartPickup.getDimensions(pixelSize);
   const heart = new HeartPickup({
     x: canvasWidth - width - 20,
-    y: groundY - height - 4,
+    y: groundY - height - 20,
     pixelSize,
     respawns: false,
   });

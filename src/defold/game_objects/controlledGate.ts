@@ -108,6 +108,7 @@ export class ControlledGate {
   gapWidth = GATE_GAP_WIDTH;
   gapHeart: HeartPickup | null = null;
   gapHeartPixelSize = 2;
+  nonTopContactTriggered = false;
 
   constructor({ y, canvasWidth, definition }: ControlledGateOptions) {
     this.y = y;
@@ -127,11 +128,22 @@ export class ControlledGate {
   startFloating(): void {}
 
   handleBottomCollision(): void {
+    this.notifyContact('bottom');
     if (!this.asciiDamaged) {
       this.asciiDamaged = true;
     }
     this.rewardEnabled = false;
     if (this.gapHeart) this.gapHeart.kill();
+  }
+
+  notifyContact(contactType: 'top' | 'side' | 'bottom'): void {
+    if (contactType !== 'top') {
+      this.nonTopContactTriggered = true;
+    }
+  }
+
+  hasNonTopContact(): boolean {
+    return this.nonTopContactTriggered;
   }
 
   isRewardEnabled(): boolean {

@@ -53,6 +53,7 @@ export class Gate {
   gapY: number;
   gapHeart: HeartPickup | null;
   gapHeartPixelSize: number;
+  nonTopContactTriggered: boolean;
 
   constructor({ y, canvasWidth, gapWidth, segmentCount }: {
     y: number;
@@ -75,6 +76,7 @@ export class Gate {
 
     this.gapHeart = null;
     this.gapHeartPixelSize = GAP_HEART_PIXEL_SIZE;
+    this.nonTopContactTriggered = false;
 
     this._generateLayout();
     this._chooseGap();
@@ -89,11 +91,22 @@ export class Gate {
   startFloating() {}
 
   handleBottomCollision() {
+    this.notifyContact('bottom');
     if (!this.asciiDamaged) {
       this.asciiDamaged = true;
     }
     this.rewardEnabled = false;
     if (this.gapHeart) this.gapHeart.kill();
+  }
+
+  notifyContact(contactType: 'top' | 'side' | 'bottom') {
+    if (contactType !== 'top') {
+      this.nonTopContactTriggered = true;
+    }
+  }
+
+  hasNonTopContact() {
+    return this.nonTopContactTriggered;
   }
 
   isRewardEnabled() {

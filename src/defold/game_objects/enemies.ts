@@ -14,12 +14,15 @@ interface EnemyRect {
 
 type GateLike = {
   getRects?: () => EnemyRect[];
+  hasNonTopContact?: () => boolean;
 };
 
 const ENEMY_SIZE = 22;
 const ENEMY_RADIUS = ENEMY_SIZE / 2;
 const ENEMY_SPEED_MIN = 70;
 const ENEMY_SPEED_MAX = 140;
+const ENEMY_INITIAL_SPEED_FACTOR = 0.5;
+const ENEMY_ALERT_ICON_DURATION = 1.1;
 const DAMAGE_COOLDOWN = 0.6;
 const OFFSCREEN_BUFFER = 220;
 const ENEMY_STUN_DURATION = 10;
@@ -42,6 +45,8 @@ class Enemy {
   orientation: EnemyOrientation;
   radius: number;
   speed: number;
+  targetSpeed: number;
+  initialSpeed: number;
   direction: number;
   damageCooldown: number;
   active: boolean;
@@ -49,6 +54,8 @@ class Enemy {
   stunTimer: number;
   stunBlinkTimer: number;
   stunVisible: boolean;
+  alerted: boolean;
+  alertTimer: number;
   min: number;
   max: number;
   position: number;
@@ -67,7 +74,9 @@ class Enemy {
     this.orientation = orientation;
 
     this.radius = ENEMY_RADIUS;
-    this.speed = randomSpeed();
+    this.targetSpeed = randomSpeed();
+    this.initialSpeed = Math.max(20, this.targetSpeed * ENEMY_INITIAL_SPEED_FACTOR);
+    this.speed = this.initialSpeed;
     this.direction = Math.random() > 0.5 ? 1 : -1;
     this.damageCooldown = 0;
     this.active = true;
@@ -75,6 +84,8 @@ class Enemy {
     this.stunTimer = 0;
     this.stunBlinkTimer = 0;
     this.stunVisible = true;
+    this.alerted = false;
+    this.alertTimer = 0;
 
     if (orientation === 'horizontal') {
       const minX = rect.x + this.radius;
@@ -106,6 +117,7 @@ class Enemy {
     }
 
     this._updateStunState(dt);
+    this._updateAlertState(dt);
 
     if (!this.stunned) {
       if (this.orientation === 'horizontal') {
@@ -207,6 +219,14 @@ class Enemy {
     ctx.arc(this.radius * 0.3, -this.radius * 0.25, this.radius * 0.08, 0, Math.PI * 2);
     ctx.fill();
 
+    if (this.alertTimer > 0) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('!', 0, -this.radius - 4);
+    }
+
     ctx.restore();
   }
 
@@ -233,6 +253,23 @@ class Enemy {
       this.stunVisible = true;
       this.stunBlinkTimer = 0;
     }
+  }
+
+  _updateAlertState(dt: number) {
+    if (!this.alerted && this._hasGateNonTopContact()) {
+      this.alerted = true;
+      this.speed = this.targetSpeed;
+      this.alertTimer = ENEMY_ALERT_ICON_DURATION;
+    }
+
+    if (this.alertTimer > 0) {
+      this.alertTimer = Math.max(0, this.alertTimer - dt);
+    }
+  }
+
+  _hasGateNonTopContact() {
+    if (!this.gate || typeof this.gate.hasNonTopContact !== 'function') return false;
+    return Boolean(this.gate.hasNonTopContact());
   }
 
   _getBlinkInterval() {

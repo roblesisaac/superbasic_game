@@ -282,8 +282,11 @@ export class Sprite {
     return this.gateStates.get(gate);
   }
 
-  _markGateCollision(surface) {
+  _markGateCollision(surface, contactType: 'top' | 'side' | 'bottom' = 'side') {
     if (!this._isGateSurface(surface)) return;
+    if (typeof surface.notifyContact === 'function') {
+      surface.notifyContact(contactType);
+    }
     const state = this._getGateState(surface);
     state.pendingCollision = true;
   }
@@ -293,7 +296,7 @@ export class Sprite {
     if (typeof surface.handleBottomCollision === 'function') {
       surface.handleBottomCollision();
     }
-    this._markGateCollision(surface);
+    this._markGateCollision(surface, 'bottom');
   }
 
   _getGateGapRect(gate) {
@@ -720,7 +723,7 @@ export class Sprite {
       this.vx = 0;
       this.impactSquash = Math.max(this.impactSquash, 0.6);
       blockedHorizontally = true;
-      this._markGateCollision(activeSideCollision.surface);
+      this._markGateCollision(activeSideCollision.surface, 'side');
     }
 
     if (ceilingCandidate) {
@@ -733,7 +736,7 @@ export class Sprite {
 
     if (landingCandidate) {
       const surface = landingCandidate.surface;
-      this._markGateCollision(surface);
+      this._markGateCollision(surface, 'top');
       if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
         this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
         this.vy = RIDE_BOUNCE_VY;
