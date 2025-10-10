@@ -4,6 +4,7 @@ import { drawHUD } from './controllers/hud_renderer.js';
 import { updateCameraForSprite, resetCameraController } from './controllers/camera_controller.js';
 import { bootstrapCards, syncCards, resetCardController } from './controllers/card_controller.js';
 import { presentGameOverScreen, hideGameOverScreen } from './controllers/game_over_controller.js';
+import { HeartEffectSystem } from './controllers/heart_effects.js';
 import { ensureSettingsOverlay, showSettings } from '../gui/settings_overlay.js';
 import { EnergyBar, Hearts } from '../gui/hud.js';
 import { InputHandler } from './input.js';
@@ -80,12 +81,14 @@ function initializeGameState(): void {
   resetCameraController();
   hideGameOverScreen();
   ensureSettingsOverlay();
+  gameWorld.heartEffects?.dispose();
 
   gameWorld.energyBar = new EnergyBar();
   gameWorld.hearts = new Hearts();
   gameWorld.rides = [];
   gameWorld.gates = [];
   gameWorld.heartPickups = [];
+  gameWorld.heartEffects = new HeartEffectSystem();
   gameWorld.sprite = buildSprite();
 
   const cardFrame = bootstrapCards(gameWorld.sprite.y);
@@ -146,6 +149,7 @@ function updateWorld(dt: number): void {
   updateRides(gameWorld.rides, dt);
   updateGates(gameWorld.gates, dt);
   updateHeartPickups(dt);
+  gameWorld.heartEffects?.update(dt);
   updateEnemies(gameWorld, dt);
   updateCollectibles(dt);
 
@@ -177,6 +181,7 @@ function drawWorld(): void {
   drawRides(ctx, gameWorld.rides, cameraY);
   drawGates(ctx, gameWorld.gates, cameraY);
   drawHeartPickups();
+  gameWorld.heartEffects?.draw(ctx, cameraY);
   drawEnemies(ctx, cameraY);
 
   for (const collectible of collectibles) {

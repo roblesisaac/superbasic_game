@@ -56,13 +56,18 @@ export class HeartPickup {
     if (!this.active) return false;
     this.active = false;
     this._timer = this.respawns ? this.respawnDelay : 0;
+    emitHeartPickupEvent('collected', { heart: this, wasActive: true });
     return true;
   }
 
   kill(): void {
+    const wasActive = this.active;
     this.active = false;
     this.respawns = false;
     this._timer = 0;
+    if (wasActive) {
+      emitHeartPickupEvent('killed', { heart: this, wasActive });
+    }
   }
 
   isActive(): boolean {
@@ -92,4 +97,41 @@ export class HeartPickup {
       height: HEART_PIXEL_ROWS * size,
     };
   }
+}
+
+export type HeartPickupEventName = 'collected' | 'killed';
+
+export interface HeartPickupEventPayload {
+  heart: HeartPickup;
+  wasActive: boolean;
+}
+
+type HeartPickupEventListener = (payload: HeartPickupEventPayload) => void;
+
+const heartPickupListeners: Record<HeartPickupEventName, Set<HeartPickupEventListener>> = {
+  collected: new Set(),
+  killed: new Set(),
+};
+
+function emitHeartPickupEvent(event: HeartPickupEventName, payload: HeartPickupEventPayload): void {
+  const listeners = heartPickupListeners[event];
+  if (!listeners || listeners.size === 0) return;
+  for (const listener of listeners) {
+    listener(payload);
+  }
+}
+
+function addHeartPickupListener(event: HeartPickupEventName, listener: HeartPickupEventListener): () => void {
+  heartPickupListeners[event].add(listener);
+  return () => {
+    heartPickupListeners[event].delete(listener);
+  };
+}
+
+export function onHeartPickupCollected(listener: HeartPickupEventListener): () => void {
+  return addHeartPickupListener('collected', listener);
+}
+
+export function onHeartPickupKilled(listener: HeartPickupEventListener): () => void {
+  return addHeartPickupListener('killed', listener);
 }

@@ -30,7 +30,7 @@ export function drawPixelatedHeart(
   }
 }
 
-const HEART_PATTERN: ReadonlyArray<ReadonlyArray<number>> = [
+export const HEART_PATTERN: ReadonlyArray<ReadonlyArray<number>> = [
   [0, 1, 1, 0, 0, 1, 1, 0],
   [1, 1, 1, 1, 1, 1, 1, 1],
   [1, 1, 1, 1, 1, 1, 1, 1],

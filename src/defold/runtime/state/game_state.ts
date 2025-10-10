@@ -5,6 +5,7 @@ import type { ControlledGate } from '../../game_objects/controlledGate.js';
 import type { InputHandler } from '../input.js';
 import type { EnergyBar, Hearts } from '../../gui/hud.js';
 import type { HeartPickup } from '../../game_objects/heartPickup.js';
+import type { HeartEffectSystem } from '../controllers/heart_effects.js';
 
 export interface GameWorldState {
   sprite: Sprite | null;
@@ -14,6 +15,7 @@ export interface GameWorldState {
   input: InputHandler | null;
   energyBar: EnergyBar | null;
   hearts: Hearts | null;
+  heartEffects: HeartEffectSystem | null;
   lastTime: number;
   running: boolean;
 }
@@ -26,11 +28,13 @@ export const gameWorld: GameWorldState = {
   input: null,
   energyBar: null,
   hearts: null,
+  heartEffects: null,
   lastTime: 0,
   running: true
 };
 
 export function resetGameWorld(): void {
+  gameWorld.heartEffects?.dispose();
   gameWorld.sprite = null;
   gameWorld.rides = [];
   gameWorld.gates = [];
@@ -38,6 +42,7 @@ export function resetGameWorld(): void {
   gameWorld.input = null;
   gameWorld.energyBar = null;
   gameWorld.hearts = null;
+  gameWorld.heartEffects = null;
   gameWorld.lastTime = 0;
   gameWorld.running = true;
 }
