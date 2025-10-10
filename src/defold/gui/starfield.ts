@@ -1,4 +1,5 @@
 import { groundY } from '../runtime/state/rendering_state.js';
+import { cameraY } from '../runtime/state/camera_state.js';
 
 const STARFIELD_CANVAS_ID = 'starfieldCanvas';
 
@@ -133,32 +134,10 @@ function getCanvasDimensions(): { width: number; height: number } {
   };
 }
 
-function getSkyLimit(height: number): number {
-  const fallback = height - GROUND_OFFSET_FALLBACK;
-  if (Number.isFinite(groundY) && groundY > 0) {
-    return Math.max(0, Math.min(height, groundY));
-  }
-  return Math.max(0, Math.min(height, fallback));
-}
-
-function getStarPlacementHeight(height: number): number {
-  const skyLimit = getSkyLimit(height);
-  const smallSize = Math.max(1, Math.round(STAR_SIZE));
-  const brightHalfLen = Math.max(1, Math.round(STAR_SIZE * 2));
-  const margin = Math.max(smallSize, brightHalfLen) + 1;
-  const available = skyLimit - margin;
-  return available > 0 ? available : 0;
-}
-
 function computeStarCounts(): { small: number; bright: number } {
   const { width, height } = getCanvasDimensions();
-  const skyHeight = getSkyLimit(height);
-  if (skyHeight <= 0) {
-    return { small: 0, bright: 0 };
-  }
-  const area = Math.max(width * skyHeight, 1);
-  const baseSkyHeight = Math.max(1, baseConfig.baseHeight - GROUND_OFFSET_FALLBACK);
-  const baseArea = baseConfig.baseWidth * baseSkyHeight;
+  const area = Math.max(width * height, 1);
+  const baseArea = baseConfig.baseWidth * baseConfig.baseHeight;
   const ratio = area / baseArea;
 
   const small = Math.max(40, Math.round(baseConfig.numSmallStars * ratio));
@@ -194,15 +173,11 @@ function initStars(): void {
   stars = [];
   const { small, bright } = computeStarCounts();
   const { width, height } = getCanvasDimensions();
-  const placementHeight = getStarPlacementHeight(height);
-  if (placementHeight <= 0) {
-    return;
-  }
 
   for (let i = 0; i < small; i += 1) {
     stars.push({
       x: Math.random() * width,
-      y: Math.random() * placementHeight,
+      y: Math.random() * height,
       type: 'small',
       baseAlpha: 0 + Math.random() * 0.5,
       twinkleSpeed: 1 + Math.random() * 2,
@@ -213,7 +188,7 @@ function initStars(): void {
   for (let i = 0; i < bright; i += 1) {
     stars.push({
       x: Math.random() * width,
-      y: Math.random() * placementHeight,
+      y: Math.random() * height,
       type: 'bright',
       baseAlpha: 0.7 + Math.random() * 0.3,
       twinkleSpeed: 0.5 + Math.random() * 1,
@@ -348,8 +323,6 @@ function drawMoon(): void {
 
 function drawStars(): void {
   if (!ctx) return;
-  const { height } = getCanvasDimensions();
-  const skyLimit = getSkyLimit(height);
 
   // ---- Star sizing derived from STAR_SIZE ----
   const smallSize = Math.max(1, Math.round(STAR_SIZE)); // square star size
@@ -358,8 +331,6 @@ function drawStars(): void {
   // -------------------------------------------
 
   for (const star of stars) {
-    if (star.y >= skyLimit - brightHalfLen) continue;
-
     const alpha = star.currentAlpha ?? star.baseAlpha;
 
     ctx.globalAlpha = alpha;
@@ -457,6 +428,25 @@ function drawClouds(): void {
   ctx.globalAlpha = 1;
 }
 
+function getGroundLineY(canvasHeight: number): number {
+  const fallback = canvasHeight - GROUND_OFFSET_FALLBACK;
+  const baseGround = Number.isFinite(groundY) && groundY > 0 ? groundY : fallback;
+  const line = baseGround - cameraY;
+  if (!Number.isFinite(line)) return fallback;
+  return line;
+}
+
+function drawGroundMask(width: number, height: number): void {
+  if (!ctx) return;
+  const lineY = getGroundLineY(height);
+  if (lineY <= 0) return;
+  if (lineY >= height) return;
+  const maskHeight = height - lineY;
+  if (maskHeight <= 0) return;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, Math.round(lineY), width, Math.ceil(maskHeight));
+}
+
 function draw(): void {
   if (!ctx || !canvas) return;
 
@@ -474,6 +464,9 @@ function draw(): void {
 
   // Draw clouds on top with translucent overlay
   drawClouds();
+
+  // Mask ground area to hide stars beneath the horizon
+  drawGroundMask(width, height);
 }
 
 function animate(currentTime: number): void {
