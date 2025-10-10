@@ -215,6 +215,13 @@ export class Gate {
             gapWidth: this.gapWidth,
           }
         : undefined,
+      gapReward:
+        this.rewardEnabled && this.gapInfo
+          ? {
+              type: 'heart',
+              pixelSize: 2,
+            }
+          : undefined,
     });
   }
 }

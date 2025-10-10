@@ -1,6 +1,11 @@
 import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
 import { gameOverContainer } from '../runtime/state/ui_state.js';
+import {
+  drawPixelatedHeart,
+  HEART_PIXEL_COLUMNS,
+  HEART_PIXEL_ROWS,
+} from './drawPixelatedHeart.js';
 
 export class EnergyBar {
   energy: number;
@@ -91,12 +96,17 @@ export class Hearts {
 
   draw(ctx: CanvasRenderingContext2D) {
     const x0 = 12;
-    const y0 = 30;
-    const size = 12;
-    const pad = 4;
-    for (let i = 0; i < this.max; i++) {
-      ctx.fillStyle = i < this.value ? '#ff5b6e' : 'rgba(255,255,255,0.2)';
-      ctx.fillRect(x0 + i * (size + pad), y0, size, size);
+    const y0 = 28;
+    const pixelSize = 2;
+    const heartWidth = HEART_PIXEL_COLUMNS * pixelSize;
+    const heartHeight = HEART_PIXEL_ROWS * pixelSize;
+    const pad = 6;
+
+    for (let i = 0; i < this.max; i += 1) {
+      const color = i < this.value ? '#ff5b6e' : 'rgba(255,255,255,0.2)';
+      const x = x0 + i * (heartWidth + pad);
+      const y = y0 + (heartHeight < 16 ? (16 - heartHeight) / 2 : 0);
+      drawPixelatedHeart(ctx, x, y, pixelSize, color);
     }
   }
 }

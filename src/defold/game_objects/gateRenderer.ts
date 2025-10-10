@@ -1,4 +1,9 @@
 import { GATE_THICKNESS } from '../../config/constants.js';
+import {
+  drawPixelatedHeart,
+  HEART_PIXEL_COLUMNS,
+  HEART_PIXEL_ROWS,
+} from '../gui/drawPixelatedHeart.js';
 
 export interface GateVisualRect {
   x: number;
@@ -20,6 +25,13 @@ export interface DrawGateVisualsOptions {
   cameraY: number;
   asciiDamaged: boolean;
   gapInfo?: GateVisualGapInfo | null;
+  gapReward?: GateGapRewardInfo | null;
+}
+
+export interface GateGapRewardInfo {
+  type: 'heart';
+  color?: string;
+  pixelSize?: number;
 }
 
 export function drawGateVisuals({
@@ -28,6 +40,7 @@ export function drawGateVisuals({
   cameraY,
   asciiDamaged,
   gapInfo,
+  gapReward,
 }: DrawGateVisualsOptions) {
   const visualThickness = Math.max(1, Math.round(GATE_THICKNESS / 5));
   const defaultColor = '#fff';
@@ -84,4 +97,27 @@ export function drawGateVisuals({
       1,
     );
   }
+
+  if (!gapReward || gapReward.type !== 'heart') return;
+
+  const pixelSize = Math.max(1, Math.floor(gapReward.pixelSize ?? GATE_THICKNESS / HEART_PIXEL_ROWS));
+  const heartWidth = HEART_PIXEL_COLUMNS * pixelSize;
+  const heartHeight = HEART_PIXEL_ROWS * pixelSize;
+
+  let centerX: number;
+  let centerY: number;
+
+  if (gapInfo.type === 'H') {
+    centerX = gapInfo.gapX + gapInfo.gapWidth / 2;
+    centerY = gapInfo.gapY - cameraY + GATE_THICKNESS / 2;
+  } else {
+    centerX = gapInfo.gapX + GATE_THICKNESS / 2;
+    centerY = gapInfo.gapY - cameraY + gapInfo.gapWidth / 2;
+  }
+
+  const drawX = centerX - heartWidth / 2;
+  const drawY = centerY - heartHeight / 2;
+  const color = gapReward.color ?? '#ff5b6e';
+
+  drawPixelatedHeart(ctx, drawX, drawY, pixelSize, color);
 }
