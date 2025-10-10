@@ -33,6 +33,55 @@ type JoystickState = {
 
 const JOYSTICK_PIXEL_SIZE = 2;
 
+function drawDPadBase(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number
+): void {
+  const pixel = JOYSTICK_PIXEL_SIZE;
+  const maxOffset = Math.floor(radius / pixel) * pixel;
+  const halfThickness = pixel;
+
+  ctx.fillStyle = '#ffffff';
+
+  for (let px = -halfThickness; px <= halfThickness; px += pixel) {
+    for (let py = -maxOffset; py <= maxOffset; py += pixel) {
+      ctx.fillRect(x + px, y + py, pixel, pixel);
+    }
+  }
+
+  for (let px = -maxOffset; px <= maxOffset; px += pixel) {
+    for (let py = -halfThickness; py <= halfThickness; py += pixel) {
+      ctx.fillRect(x + px, y + py, pixel, pixel);
+    }
+  }
+
+  ctx.fillStyle = '#000000';
+
+  const innerOffset = Math.max(0, maxOffset - pixel);
+
+  for (let px = -halfThickness; px <= halfThickness; px += pixel) {
+    for (let py = -innerOffset; py <= innerOffset; py += pixel) {
+      ctx.fillRect(x + px, y + py, pixel, pixel);
+    }
+  }
+
+  for (let px = -innerOffset; px <= innerOffset; px += pixel) {
+    for (let py = -halfThickness; py <= halfThickness; py += pixel) {
+      ctx.fillRect(x + px, y + py, pixel, pixel);
+    }
+  }
+
+  const clearOffset = pixel * 2;
+
+  for (let px = -clearOffset; px <= clearOffset; px += pixel) {
+    for (let py = -clearOffset; py <= clearOffset; py += pixel) {
+      ctx.clearRect(x + px, y + py, pixel, pixel);
+    }
+  }
+}
+
 function drawPixelCircle(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -147,7 +196,7 @@ export class InputHandler {
       stickX: 0,
       stickY: 0,
       baseRadius: 15,
-      stickRadius: 8,
+      stickRadius: 6,
       maxDistance: 9,
     };
 
@@ -203,8 +252,9 @@ export class InputHandler {
 
     const { baseX, baseY, baseRadius, stickX, stickY, stickRadius } = this.joystick;
 
+    drawDPadBase(ctx, baseX, baseY, baseRadius);
+
     ctx.fillStyle = '#ffffff';
-    drawPixelCircle(ctx, baseX, baseY, baseRadius);
     drawPixelCircle(ctx, stickX, stickY, stickRadius, true);
   }
 
