@@ -31,6 +31,62 @@ type JoystickState = {
   maxDistance: number;
 };
 
+const JOYSTICK_PIXEL_SIZE = 2;
+
+function drawPixelCircle(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  fill = false
+): void {
+  if (fill) {
+    for (let px = -radius; px <= radius; px += JOYSTICK_PIXEL_SIZE) {
+      for (let py = -radius; py <= radius; py += JOYSTICK_PIXEL_SIZE) {
+        const distance = Math.sqrt(px * px + py * py);
+        if (distance <= radius - JOYSTICK_PIXEL_SIZE / 2) {
+          ctx.fillRect(x + px, y + py, JOYSTICK_PIXEL_SIZE, JOYSTICK_PIXEL_SIZE);
+        }
+      }
+    }
+    return;
+  }
+
+  let decision = 3 - 2 * radius;
+  let offsetX = 0;
+  let offsetY = radius;
+
+  const drawCirclePoints = (cx: number, cy: number, dx: number, dy: number) => {
+    const points: Array<[number, number]> = [
+      [cx + dx, cy + dy],
+      [cx - dx, cy + dy],
+      [cx + dx, cy - dy],
+      [cx - dx, cy - dy],
+      [cx + dy, cy + dx],
+      [cx - dy, cy + dx],
+      [cx + dy, cy - dx],
+      [cx - dy, cy - dx],
+    ];
+
+    for (const [pointX, pointY] of points) {
+      ctx.fillRect(pointX, pointY, JOYSTICK_PIXEL_SIZE, JOYSTICK_PIXEL_SIZE);
+    }
+  };
+
+  drawCirclePoints(x, y, offsetX, offsetY);
+
+  while (offsetY >= offsetX) {
+    offsetX += JOYSTICK_PIXEL_SIZE;
+    if (decision > 0) {
+      offsetY -= JOYSTICK_PIXEL_SIZE;
+      decision = decision + 4 * (offsetX - offsetY) + 10;
+    } else {
+      decision = decision + 4 * offsetX + 6;
+    }
+    drawCirclePoints(x, y, offsetX, offsetY);
+  }
+}
+
 export class InputHandler {
   game: GameWorldState;
   ensureReset: () => void;
@@ -91,8 +147,8 @@ export class InputHandler {
       stickX: 0,
       stickY: 0,
       baseRadius: 15,
-      stickRadius: 6,
-      maxDistance: 12,
+      stickRadius: 8,
+      maxDistance: 9,
     };
 
     this.bind();
@@ -145,21 +201,11 @@ export class InputHandler {
   drawJoystick(ctx: CanvasRenderingContext2D) {
     if (!this.joystick.active || showSettings) return;
 
-    ctx.save();
-    ctx.globalAlpha = 0.85;
+    const { baseX, baseY, baseRadius, stickX, stickY, stickRadius } = this.joystick;
 
-    ctx.beginPath();
-    ctx.arc(this.joystick.baseX, this.joystick.baseY, this.joystick.baseRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(this.joystick.stickX, this.joystick.stickY, this.joystick.stickRadius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.fill();
-
-    ctx.restore();
+    ctx.fillStyle = '#ffffff';
+    drawPixelCircle(ctx, baseX, baseY, baseRadius);
+    drawPixelCircle(ctx, stickX, stickY, stickRadius, true);
   }
 
   bind() {
