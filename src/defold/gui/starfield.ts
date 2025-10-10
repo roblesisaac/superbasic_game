@@ -1,3 +1,5 @@
+import { groundY } from '../runtime/state/rendering_state.js';
+
 const STARFIELD_CANVAS_ID = 'starfieldCanvas';
 
 /**
@@ -37,6 +39,8 @@ const CLOUD_SPEED = 1;
  * Example values: 2 (simple), 3 (default), 4-5 (very detailed)
  */
 const CLOUD_DETAIL = 4;
+
+const GROUND_OFFSET_FALLBACK = 116;
 
 interface Star {
   x: number;
@@ -129,10 +133,32 @@ function getCanvasDimensions(): { width: number; height: number } {
   };
 }
 
+function getSkyLimit(height: number): number {
+  const fallback = height - GROUND_OFFSET_FALLBACK;
+  if (Number.isFinite(groundY) && groundY > 0) {
+    return Math.max(0, Math.min(height, groundY));
+  }
+  return Math.max(0, Math.min(height, fallback));
+}
+
+function getStarPlacementHeight(height: number): number {
+  const skyLimit = getSkyLimit(height);
+  const smallSize = Math.max(1, Math.round(STAR_SIZE));
+  const brightHalfLen = Math.max(1, Math.round(STAR_SIZE * 2));
+  const margin = Math.max(smallSize, brightHalfLen) + 1;
+  const available = skyLimit - margin;
+  return available > 0 ? available : 0;
+}
+
 function computeStarCounts(): { small: number; bright: number } {
   const { width, height } = getCanvasDimensions();
-  const area = Math.max(width * height, 1);
-  const baseArea = baseConfig.baseWidth * baseConfig.baseHeight;
+  const skyHeight = getSkyLimit(height);
+  if (skyHeight <= 0) {
+    return { small: 0, bright: 0 };
+  }
+  const area = Math.max(width * skyHeight, 1);
+  const baseSkyHeight = Math.max(1, baseConfig.baseHeight - GROUND_OFFSET_FALLBACK);
+  const baseArea = baseConfig.baseWidth * baseSkyHeight;
   const ratio = area / baseArea;
 
   const small = Math.max(40, Math.round(baseConfig.numSmallStars * ratio));
@@ -168,11 +194,15 @@ function initStars(): void {
   stars = [];
   const { small, bright } = computeStarCounts();
   const { width, height } = getCanvasDimensions();
+  const placementHeight = getStarPlacementHeight(height);
+  if (placementHeight <= 0) {
+    return;
+  }
 
   for (let i = 0; i < small; i += 1) {
     stars.push({
       x: Math.random() * width,
-      y: Math.random() * height,
+      y: Math.random() * placementHeight,
       type: 'small',
       baseAlpha: 0 + Math.random() * 0.5,
       twinkleSpeed: 1 + Math.random() * 2,
@@ -183,7 +213,7 @@ function initStars(): void {
   for (let i = 0; i < bright; i += 1) {
     stars.push({
       x: Math.random() * width,
-      y: Math.random() * height,
+      y: Math.random() * placementHeight,
       type: 'bright',
       baseAlpha: 0.7 + Math.random() * 0.3,
       twinkleSpeed: 0.5 + Math.random() * 1,
@@ -318,14 +348,18 @@ function drawMoon(): void {
 
 function drawStars(): void {
   if (!ctx) return;
+  const { height } = getCanvasDimensions();
+  const skyLimit = getSkyLimit(height);
 
   // ---- Star sizing derived from STAR_SIZE ----
-  const smallSize = Math.max(1, Math.round(STAR_SIZE));                 // square star size
-  const brightHalfLen = Math.max(1, Math.round(STAR_SIZE * 2));         // half-length of bright star arms
-  const brightThickness = Math.max(1, Math.round(STAR_SIZE * 0.6));     // thickness of arms
+  const smallSize = Math.max(1, Math.round(STAR_SIZE)); // square star size
+  const brightHalfLen = Math.max(1, Math.round(STAR_SIZE * 2)); // half-length of bright star arms
+  const brightThickness = Math.max(1, Math.round(STAR_SIZE * 0.6)); // thickness of arms
   // -------------------------------------------
 
   for (const star of stars) {
+    if (star.y >= skyLimit - brightHalfLen) continue;
+
     const alpha = star.currentAlpha ?? star.baseAlpha;
 
     ctx.globalAlpha = alpha;

@@ -170,7 +170,7 @@ function updateWorld(dt: number): void {
 
 function drawWorld(): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  drawBackgroundGrid();
+  drawBackgroundGrid(cameraY);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
