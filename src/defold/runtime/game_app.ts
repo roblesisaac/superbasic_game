@@ -33,6 +33,8 @@ import {
 } from './state/rendering_state.js';
 import { cameraY } from './state/camera_state.js';
 import { gameWorld } from './state/game_state.js';
+import { initializeWell, updateWell } from '../game_objects/well.js';
+import { drawWell } from '../gui/drawWell.js';
 
 const MAX_DELTA_SECONDS = 0.04;
 let animationHandle: number | null = null;
@@ -90,6 +92,7 @@ function initializeGameState(): void {
   gameWorld.heartPickups = [];
   gameWorld.heartEffects = new HeartEffectSystem();
   gameWorld.sprite = buildSprite();
+  initializeWell();
 
   const cardFrame = bootstrapCards(gameWorld.sprite.y);
   gameWorld.gates = [...cardFrame.gates];
@@ -151,6 +154,7 @@ function updateWorld(dt: number): void {
   updateRides(gameWorld.rides, dt);
   updateGates(gameWorld.gates, dt);
   updateHeartPickups(dt);
+  updateWell(dt, sprite);
   gameWorld.heartEffects?.update(dt);
   updateEnemies(gameWorld, dt);
   updateCollectibles(dt);
@@ -173,6 +177,7 @@ function updateWorld(dt: number): void {
 function drawWorld(): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   drawBackgroundGrid(cameraY);
+  drawWell({ ctx, cameraY, sprite: gameWorld.sprite, timeMs: gameWorld.lastTime });
 
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();

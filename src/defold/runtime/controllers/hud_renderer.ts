@@ -3,6 +3,7 @@ import { ctx, canvasWidth, groundY } from '../state/rendering_state.js';
 import { gameWorld } from '../state/game_state.js';
 import { drawSettingsIcon } from '../../gui/settings_overlay.js';
 import { getCurrentCard } from './card_controller.js';
+import { getWellState } from '../../game_objects/well.js';
 
 function lightenColor(hex: string, ratio = 0.5): string {
   const normalized = hex.replace('#', '');
@@ -58,4 +59,39 @@ export function drawHUD(): void {
   ctx.fillStyle = '#eaeaea';
   ctx.fillText(`${ft} FT`, canvasWidth / 2, 10);
   ctx.restore();
+
+  const well = getWellState();
+  if (well.occupant.inWell) {
+    const meterWidth = 118;
+    const meterHeight = 10;
+    const meterX = 12;
+    const meterY = 46;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
+    const ratio = Math.max(0, Math.min(1, well.occupant.oxygen / 30));
+    if (ratio > 0.5) ctx.fillStyle = '#ffffff';
+    else if (ratio > 0.25) ctx.fillStyle = '#ffe066';
+    else ctx.fillStyle = '#ff4d4d';
+    ctx.fillRect(meterX, meterY, meterWidth * ratio, meterHeight);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
+
+    ctx.font = '9px LocalPressStart, monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#eaeaea';
+    ctx.fillText('OXYGEN', meterX, meterY - 2);
+
+    const depthMeters = Math.max(0, Math.floor(well.occupant.depth / 10));
+    const depthLabel = `DEPTH ${depthMeters}M`;
+    const labelY = meterY + meterHeight + 4;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(meterX - 2, labelY - 1, ctx.measureText(depthLabel).width + 4, 11);
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'top';
+    ctx.fillText(depthLabel, meterX, labelY);
+    ctx.restore();
+  }
 }

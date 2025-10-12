@@ -1,3 +1,5 @@
+import { getWellCameraBounds } from '../../game_objects/well.js';
+
 export let cameraY = 0;
 export let maxHeight = 0;
 
@@ -6,7 +8,9 @@ export function setCameraY(value: number): void {
 }
 
 export function clampCameraToGround(): void {
-  cameraY = Math.min(cameraY, 0);
+  const { maxDownward } = getWellCameraBounds();
+  const limit = Number.isFinite(maxDownward) ? maxDownward : 0;
+  cameraY = Math.min(cameraY, limit);
 }
 
 export function registerHeight(y: number): void {

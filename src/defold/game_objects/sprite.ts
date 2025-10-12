@@ -18,6 +18,7 @@ import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
+import { isSpriteAboveWellOpening } from './well.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -781,7 +782,9 @@ export class Sprite {
     this.platformSurface = newPlatformSurface;
 
     // ground
-    if (!this.onPlatform && this.y + hs >= groundY) {
+    const overWell = isSpriteAboveWellOpening(this.x, hs);
+
+    if (!this.onPlatform && this.y + hs >= groundY && !overWell) {
       this.y = groundY - hs;
       if (!wasOnGround && this.vy > 0) {
         const fallHeight = this.y - this.fallStartY;
