@@ -14,7 +14,7 @@ export function updateCameraForSprite(sprite: Sprite): void {
     setCameraY(sprite.y - bottomLine);
   }
 
-  clampCameraToGround();
+  clampCameraToGround(sprite.y);
 }
 
 export function resetCameraController(): void {
