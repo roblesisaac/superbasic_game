@@ -103,8 +103,11 @@ function computeHeartAnchorX(): number {
 function updateGeometry(): void {
   const anchorX = computeHeartAnchorX();
   const halfTop = WELL_TOP_WIDTH / 2;
-  const topLeftX = anchorX - halfTop;
-  const topRightX = anchorX + halfTop;
+  const margin = WELL_WALL_THICKNESS + 6;
+  const maxLeft = canvasWidth - margin - WELL_TOP_WIDTH;
+  const clampedCenter = Math.max(margin + halfTop, Math.min(anchorX, maxLeft + halfTop));
+  const topLeftX = Math.max(margin, Math.min(clampedCenter - halfTop, maxLeft));
+  const topRightX = topLeftX + WELL_TOP_WIDTH;
 
   const bottomLeftX = WELL_WALL_THICKNESS;
   const bottomRightX = canvasWidth - WELL_WALL_THICKNESS;
@@ -346,6 +349,7 @@ export function updateWell(dt: number, sprite: Sprite | null): void {
 }
 
 export function getWellState(): Readonly<WellState> {
+  updateGeometry();
   return wellState;
 }
 

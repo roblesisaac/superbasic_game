@@ -18,7 +18,7 @@ import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
-import { isSpriteAboveWellOpening } from './well.js';
+import { getWellState, isSpriteAboveWellOpening } from './well.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -566,6 +566,8 @@ export class Sprite {
     this.prevY = this.y;
     this.prevVy = this.vy;
 
+    const wasInWater = getWellState().occupant.inWater;
+
     this._updateVelocityStretch();
     this._updateImpactSquash(dt);
     this._updateFollowThrough(dt);
@@ -608,9 +610,11 @@ export class Sprite {
 
     let g = GRAVITY;
     if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
-    this.vy += g * dt;
+    if (!wasInWater) {
+      this.vy += g * dt;
+    }
 
-    if (this.onGround && Math.abs(this.vx) > 0) {
+    if (!wasInWater && this.onGround && Math.abs(this.vx) > 0) {
       const fr = GROUND_FRICTION * dt;
       if (Math.abs(this.vx) <= fr) this.vx = 0; 
       else this.vx -= Math.sign(this.vx) * fr;

@@ -1,5 +1,6 @@
 import { groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
+import { getWellState } from '../game_objects/well.js';
 
 const STARFIELD_CANVAS_ID = 'starfieldCanvas';
 
@@ -439,12 +440,50 @@ function getGroundLineY(canvasHeight: number): number {
 function drawGroundMask(width: number, height: number): void {
   if (!ctx) return;
   const lineY = getGroundLineY(height);
-  if (lineY <= 0) return;
-  if (lineY >= height) return;
-  const maskHeight = height - lineY;
-  if (maskHeight <= 0) return;
   ctx.fillStyle = '#000';
-  ctx.fillRect(0, Math.round(lineY), width, Math.ceil(maskHeight));
+
+  if (lineY <= 0) {
+    ctx.fillRect(0, 0, width, height);
+    return;
+  }
+
+  if (lineY >= height) return;
+  const startY = Math.round(lineY);
+  const maskHeight = height - startY;
+  if (maskHeight <= 0) return;
+  ctx.fillRect(0, startY, width, Math.ceil(maskHeight));
+}
+
+function drawWellMask(width: number, height: number): void {
+  if (!ctx) return;
+  const state = getWellState();
+  const { geometry } = state;
+
+  const top = geometry.topY - cameraY;
+  const narrow = geometry.narrowBottomY - cameraY;
+  const bottom = geometry.bottomY - cameraY;
+  if (bottom <= 0 || top >= height) return;
+
+  const clampX = (value: number) => Math.max(0, Math.min(width, value));
+  const clampY = (value: number) => Math.max(0, Math.min(height, Math.round(value)));
+
+  const topY = clampY(top);
+  const narrowY = clampY(Math.max(top, narrow));
+  const bottomY = clampY(bottom);
+  if (bottomY <= topY) return;
+
+  ctx.save();
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.moveTo(clampX(geometry.topLeftX), topY);
+  ctx.lineTo(clampX(geometry.topLeftX), narrowY);
+  ctx.lineTo(clampX(geometry.bottomLeftX), bottomY);
+  ctx.lineTo(clampX(geometry.bottomRightX), bottomY);
+  ctx.lineTo(clampX(geometry.topRightX), narrowY);
+  ctx.lineTo(clampX(geometry.topRightX), topY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function draw(): void {
@@ -467,6 +506,7 @@ function draw(): void {
 
   // Mask ground area to hide stars beneath the horizon
   drawGroundMask(width, height);
+  drawWellMask(width, height);
 }
 
 function animate(currentTime: number): void {
