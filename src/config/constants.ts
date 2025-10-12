@@ -49,6 +49,15 @@ export const WATER_MAX_SPEED = 620;
 export const SWIM_FORCE_MIN = 220;
 export const SWIM_FORCE_MAX = 360;
 
+export const WELL_BUBBLE_MIN_RADIUS = SPRITE_SIZE * 0.5;
+export const WELL_BUBBLE_MAX_RADIUS = SPRITE_SIZE * 0.9;
+export const WELL_BUBBLE_LARGE_RADIUS = SPRITE_SIZE * 1.3;
+export const WELL_BUBBLE_LARGE_CHANCE = 0.05;
+export const WELL_BUBBLE_SPAWN_RATE = 1.4; // bubbles per second
+export const WELL_BUBBLE_MAX_COUNT = 20;
+export const WELL_BUBBLE_SPEED_MIN = 26;
+export const WELL_BUBBLE_SPEED_MAX = 44;
+
 // Rides
 export const RIDE_THICKNESS = 20;
 export const RIDE_SPEED_THRESHOLD = 650;

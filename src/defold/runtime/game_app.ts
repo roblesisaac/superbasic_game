@@ -1,6 +1,6 @@
 import { now } from '../../utils/utils.js';
 import { drawBackgroundGrid } from './environment/background_renderer.js';
-import { drawWell, setWellAnchorX } from './environment/well.js';
+import { drawWell, setWellAnchorX, updateWellEnvironment } from './environment/well.js';
 import { drawHUD } from './controllers/hud_renderer.js';
 import { updateCameraForSprite, resetCameraController } from './controllers/camera_controller.js';
 import { bootstrapCards, syncCards, resetCardController } from './controllers/card_controller.js';
@@ -148,6 +148,8 @@ function updateWorld(dt: number): void {
   }
 
   sprite.update(dt);
+
+  updateWellEnvironment(dt);
 
   const cardFrame = syncCards(sprite.y);
   gameWorld.gates = [...cardFrame.gates];

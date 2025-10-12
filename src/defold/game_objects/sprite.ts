@@ -196,49 +196,60 @@ export class Sprite {
   }
 
   releaseMovement() {
-    if (this.movementCharging) {
-      if (this.hooks.energyBar.state === 'cooldown') {
-        // Small movement during cooldown
-        const force = MOVEMENT_MIN * 0.5;
-        this.vx += -this.movementDirection.x * force;
-        this.vy += -this.movementDirection.y * force;
-        this.hooks.energyBar.extendCooldown(0.15);
+    if (!this.movementCharging) {
+      return;
+    }
+
+    const direction = this.movementDirection;
+    const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
+
+    if (this.hooks.energyBar.state === 'cooldown') {
+      const force = MOVEMENT_MIN * 0.5;
+      this.vx += -direction.x * force;
+      this.vy += -direction.y * force;
+      this.hooks.energyBar.extendCooldown(0.15);
+      this.lastMovementDirection = { x: -direction.x, y: -direction.y };
+      this._doFollowThroughStretch(this.lastMovementDirection);
+    } else if (this.isInWell()) {
+      if (this.inWater) {
+        const { min, max } = getSwimImpulseRange();
+        const force = (min + (max - min) * r) * 0.35;
+        const waterMax = getWaterSpeedLimit();
+
+        this.vx += direction.x * force;
+        this.vy += direction.y * force;
+        this.vx = clamp(this.vx, -waterMax, waterMax);
+        this.vy = clamp(this.vy, -waterMax, waterMax);
+
+        this.lastMovementDirection = { ...direction };
+        this._doFollowThroughStretch(direction);
       } else {
-        // Normal movement
-        const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
-        const inWell = this.isInWell();
+        const { min, max } = getSwimImpulseRange();
+        const force = min + (max - min) * r;
+        const waterMax = getWaterSpeedLimit();
 
-        if (inWell) {
-          const { min, max } = getSwimImpulseRange();
-          const force = min + (max - min) * r;
-          this.vx += -this.movementDirection.x * force;
-          this.vy += -this.movementDirection.y * force;
-          const waterMax = getWaterSpeedLimit();
-          this.vx = clamp(this.vx, -waterMax, waterMax);
-          this.vy = clamp(this.vy, -waterMax, waterMax);
-        } else {
-          const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        this.vx += -direction.x * force;
+        this.vy += -direction.y * force;
+        this.vx = clamp(this.vx, -waterMax, waterMax);
+        this.vy = clamp(this.vy, -waterMax, waterMax);
 
-          // Apply movement in opposite direction of drag
-          this.vx += -this.movementDirection.x * force;
-          this.vy += -this.movementDirection.y * force;
+        this.lastMovementDirection = { x: -direction.x, y: -direction.y };
+        this._doFollowThroughStretch(this.lastMovementDirection);
+      }
+    } else {
+      const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+      const maxVel = MOVEMENT_MAX * 1.2;
 
-          // Clamp velocity to prevent extreme speeds
-          const maxVel = MOVEMENT_MAX * 1.2;
-          this.vx = clamp(this.vx, -maxVel, maxVel);
-          this.vy = clamp(this.vy, -maxVel, maxVel);
+      this.vx += -direction.x * force;
+      this.vy += -direction.y * force;
+      this.vx = clamp(this.vx, -maxVel, maxVel);
+      this.vy = clamp(this.vy, -maxVel, maxVel);
 
-          if (!this.onGround) {
-            this.fallStartY = this.y;
-          }
-        }
+      if (!this.onGround) {
+        this.fallStartY = this.y;
       }
 
-      // Store direction for stretch effects
-      this.lastMovementDirection = {
-        x: -this.movementDirection.x,
-        y: -this.movementDirection.y
-      };
+      this.lastMovementDirection = { x: -direction.x, y: -direction.y };
       this._doFollowThroughStretch(this.lastMovementDirection);
     }
 
@@ -649,6 +660,22 @@ export class Sprite {
     if (this.movementCharging && this.hooks.energyBar.state === 'active') {
       this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
       this.hooks.energyBar.drain(35 * dt); // Slightly less drain than jump
+    }
+
+    if (this.movementCharging && this.inWater && this.hooks.energyBar.state === 'active') {
+      const { x, y } = this.movementDirection;
+      if (Math.abs(x) > 0.01 || Math.abs(y) > 0.01) {
+        const ratio = Math.min(1, this.movementChargeTime / CHARGE_TIME);
+        const { min, max } = getSwimImpulseRange();
+        const force = min + (max - min) * ratio;
+        const accel = force * dt;
+        const waterMax = getWaterSpeedLimit();
+
+        this.vx += x * accel;
+        this.vy += y * accel;
+        this.vx = clamp(this.vx, -waterMax, waterMax);
+        this.vy = clamp(this.vy, -waterMax, waterMax);
+      }
     }
 
     if (this.gliding && this.vy > 0 && !this.onGround) {
