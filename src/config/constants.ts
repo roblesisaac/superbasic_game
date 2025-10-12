@@ -37,18 +37,17 @@ export const INVULNERABILITY_BLINK_INTERVAL_FAST = 0.08;
 export const SPRITE_SIZE = 25;
 
 // Well & water tuning
-export const WELL_OPENING_MIN_WIDTH = 90;
-export const WELL_OPENING_MAX_WIDTH = 140;
-export const WELL_WALL_THICKNESS = 14;
+export const WELL_OPENING_WIDTH = 120;
+export const WELL_WALL_THICKNESS = 12;
 export const WELL_WATER_SURFACE_OFFSET = 140;
 export const WELL_BOTTOM_DEPTH = 900;
 
-export const WATER_GRAVITY_FACTOR = 0.18;
-export const WATER_DRAG = 3.2;
-export const WATER_BUOYANCY = 420;
-export const WATER_MAX_SPEED = 600;
+export const WATER_GRAVITY_FACTOR = 0.24;
+export const WATER_DRAG = 3.4;
+export const WATER_BUOYANCY = 780;
+export const WATER_MAX_SPEED = 620;
 export const SWIM_FORCE_MIN = 220;
-export const SWIM_FORCE_MAX = 420;
+export const SWIM_FORCE_MAX = 360;
 
 // Rides
 export const RIDE_THICKNESS = 20;

@@ -4,8 +4,7 @@ import {
   SWIM_FORCE_MIN,
   WATER_MAX_SPEED,
   WELL_BOTTOM_DEPTH,
-  WELL_OPENING_MAX_WIDTH,
-  WELL_OPENING_MIN_WIDTH,
+  WELL_OPENING_WIDTH,
   WELL_WALL_THICKNESS,
   WELL_WATER_SURFACE_OFFSET,
 } from '../../../config/constants.js';
@@ -15,7 +14,6 @@ type WellGeometry = {
   canvasWidth: number;
   groundY: number;
   centerX: number;
-  openingWidth: number;
   openingLeft: number;
   openingRight: number;
   innerLeft: number;
@@ -30,7 +28,6 @@ const DEFAULT_GEOMETRY: WellGeometry = {
   canvasWidth: 0,
   groundY: 0,
   centerX: 0,
-  openingWidth: 0,
   openingLeft: 0,
   openingRight: 0,
   innerLeft: 0,
@@ -51,17 +48,18 @@ function recomputeGeometry(): void {
     return;
   }
 
-  const rawOpening = clamp(canvasWidth * 0.22, WELL_OPENING_MIN_WIDTH, WELL_OPENING_MAX_WIDTH);
-  const margin = rawOpening / 2 + WELL_WALL_THICKNESS + 16;
-  const center = clamp(anchorX ?? (canvasWidth - rawOpening / 2 - 48), margin, canvasWidth - margin);
-  const openingLeft = center - rawOpening / 2;
-  const openingRight = center + rawOpening / 2;
+  const halfOpening = WELL_OPENING_WIDTH / 2;
+  const margin = halfOpening + WELL_WALL_THICKNESS + 20;
+  const desiredCenter = anchorX ?? (canvasWidth - margin);
+  const center = clamp(desiredCenter, margin, canvasWidth - margin);
+
+  const openingLeft = center - halfOpening;
+  const openingRight = center + halfOpening;
   const innerLeft = openingLeft + WELL_WALL_THICKNESS;
   const innerRight = openingRight - WELL_WALL_THICKNESS;
 
   geometry.enabled = true;
   geometry.centerX = center;
-  geometry.openingWidth = rawOpening;
   geometry.openingLeft = openingLeft;
   geometry.openingRight = openingRight;
   geometry.innerLeft = innerLeft;
@@ -121,7 +119,6 @@ export function drawWell(ctx: CanvasRenderingContext2D, cameraY: number): void {
 
   ctx.save();
 
-  // Draw shaft walls
   ctx.strokeStyle = 'rgba(255,255,255,0.35)';
   ctx.lineWidth = geometry.wallThickness;
   ctx.lineCap = 'round';
@@ -132,36 +129,22 @@ export function drawWell(ctx: CanvasRenderingContext2D, cameraY: number): void {
   ctx.lineTo(geometry.openingRight, bottomY);
   ctx.stroke();
 
-  // Fill water volume
   ctx.fillStyle = 'rgba(0, 90, 180, 0.18)';
   ctx.fillRect(
     geometry.innerLeft,
     waterSurface,
     geometry.innerRight - geometry.innerLeft,
-    bottomY - waterSurface,
+    Math.max(0, bottomY - waterSurface),
   );
 
-  // Draw water surface waves
-  ctx.strokeStyle = 'rgba(80, 200, 255, 0.7)';
+  ctx.strokeStyle = 'rgba(100, 200, 255, 0.75)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  const waveWidth = 16;
-  const waveHeight = 4;
-  let x = geometry.innerLeft;
-  let flip = false;
-  ctx.moveTo(x, waterSurface);
-  while (x <= geometry.innerRight) {
-    const nextX = Math.min(x + waveWidth, geometry.innerRight);
-    const midX = (x + nextX) / 2;
-    const peakY = waterSurface + (flip ? -waveHeight : waveHeight);
-    ctx.quadraticCurveTo(midX, peakY, nextX, waterSurface);
-    x = nextX;
-    flip = !flip;
-  }
+  ctx.moveTo(geometry.innerLeft, waterSurface);
+  ctx.lineTo(geometry.innerRight, waterSurface);
   ctx.stroke();
 
-  // Draw rim highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(geometry.openingLeft - geometry.wallThickness / 2, rimY);

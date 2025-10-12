@@ -131,7 +131,7 @@ export class Sprite {
   }
 
   startCharging() {
-    if (this.isSwimming()) {
+    if (this.isInWell()) {
       this.charging = false;
       this.chargeTime = 0;
       return;
@@ -168,7 +168,7 @@ export class Sprite {
   }
 
   releaseJump() {
-    if (this.isSwimming()) {
+    if (this.isInWell()) {
       this.charging = false;
       this.chargeTime = 0;
       return;
@@ -206,9 +206,9 @@ export class Sprite {
       } else {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
-        const swimming = this.isSwimming();
+        const inWell = this.isInWell();
 
-        if (swimming) {
+        if (inWell) {
           const { min, max } = getSwimImpulseRange();
           const force = min + (max - min) * r;
           this.vx += -this.movementDirection.x * force;
@@ -256,7 +256,7 @@ export class Sprite {
   }
 
   startGliding() {
-    if (this.isSwimming()) return;
+    if (this.isInWell()) return;
     if (!this.onGround && this.vy > 0 && this.hooks.energyBar.canUse()) {
       this.gliding = true;
     }
@@ -633,13 +633,11 @@ export class Sprite {
     const hs = SPRITE_SIZE / 2;
     const wasOnGround = this.onGround;
     const wasOnPlatform = this.onPlatform;
-    const wasInWater = this.inWater;
     const wellGeometry = getWellGeometry();
     const waterSurfaceY = getWaterSurfaceY();
+    const wasInWater = this.inWater;
     const insideWellBefore = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
-    const submergedBefore = insideWellBefore && (this.y + hs >= waterSurfaceY);
-
-    if (submergedBefore) this.gliding = false;
+    const submergedBefore = insideWellBefore && this.y + hs >= waterSurfaceY;
 
     // Handle charging
     if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
@@ -658,25 +656,23 @@ export class Sprite {
       else this.gliding = false;
     }
 
-    let g = GRAVITY;
-    if (submergedBefore) g *= WATER_GRAVITY_FACTOR;
-    else if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
-    this.vy += g * dt;
+    if (wasInWater) {
+      this.vy += GRAVITY * WATER_GRAVITY_FACTOR * dt;
+    } else {
+      let g = GRAVITY;
+      if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
+      this.vy += g * dt;
+    }
 
-    if (this.onGround && Math.abs(this.vx) > 0) {
+    if (!wasInWater && this.onGround && Math.abs(this.vx) > 0) {
       const fr = GROUND_FRICTION * dt;
-      if (Math.abs(this.vx) <= fr) this.vx = 0; 
+      if (Math.abs(this.vx) <= fr) this.vx = 0;
       else this.vx -= Math.sign(this.vx) * fr;
     }
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.x = clamp(this.x, hs, canvasWidth - hs);
-    if (wellGeometry.enabled && this.y + hs >= wellGeometry.groundY - 1) {
-      if (isInsideWell(this.x, this.y, hs)) {
-        this.x = clampXToWell(this.x, hs);
-      }
-    }
 
     const prevTop = prevY - hs;
     const prevBottom = prevY + hs;
@@ -839,10 +835,19 @@ export class Sprite {
 
     this.platformSurface = newPlatformSurface;
 
-    // ground
     if (!this.onPlatform) {
       const overWellOpening = wellGeometry.enabled && isOverWellOpening(this.x, hs);
       const insideWellNow = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
+
+      if (insideWellNow) {
+        this.x = clampXToWell(this.x, hs);
+        const bottomLimit = getWellBottomY() - hs;
+        if (this.y > bottomLimit) {
+          this.y = bottomLimit;
+          if (this.vy > 0) this.vy = 0;
+        }
+      }
+
       if (this.y + hs >= groundY && !(wellGeometry.enabled && (overWellOpening || insideWellNow))) {
         this.y = groundY - hs;
         if (!wasOnGround && this.vy > 0) {
@@ -858,18 +863,9 @@ export class Sprite {
       }
     }
 
-    const insideWellAfter = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
-    if (insideWellAfter) {
-      this.x = clampXToWell(this.x, hs);
-      const bottomLimit = getWellBottomY() - hs;
-      if (this.y > bottomLimit) {
-        this.y = bottomLimit;
-        if (this.vy > 0) this.vy = 0;
-      }
-    }
-
     const topY = this.y - hs;
     const bottomY = this.y + hs;
+    const insideWellAfter = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
     const nowInWater = insideWellAfter && topY >= waterSurfaceY - 6;
     const submergedNow = insideWellAfter && bottomY >= waterSurfaceY + 6;
 
@@ -878,7 +874,7 @@ export class Sprite {
 
     if (nowInWater) this.gliding = false;
     if (!wasInWater && nowInWater && this.vy > 0) {
-      this.vy *= 0.4;
+      this.vy *= 0.45;
     }
 
     if (submergedBefore || submergedNow) {
