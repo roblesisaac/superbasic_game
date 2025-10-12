@@ -1,5 +1,6 @@
 import { now } from '../../utils/utils.js';
 import { drawBackgroundGrid } from './environment/background_renderer.js';
+import { drawWell, setWellAnchorX } from './environment/well.js';
 import { drawHUD } from './controllers/hud_renderer.js';
 import { updateCameraForSprite, resetCameraController } from './controllers/camera_controller.js';
 import { bootstrapCards, syncCards, resetCardController } from './controllers/card_controller.js';
@@ -72,6 +73,9 @@ function spawnGroundHeart(): void {
     respawns: false,
   });
   gameWorld.heartPickups.push(heart);
+  const bounds = heart.getBounds();
+  const centerX = bounds.x + bounds.width / 2;
+  setWellAnchorX(centerX);
 }
 
 function initializeGameState(): void {
@@ -179,6 +183,8 @@ function drawWorld(): void {
   ctx.moveTo(0, groundY - cameraY);
   ctx.lineTo(canvasWidth, groundY - cameraY);
   ctx.stroke();
+
+  drawWell(ctx, cameraY);
 
   drawRides(ctx, gameWorld.rides, cameraY);
   drawGates(ctx, gameWorld.gates, cameraY, gameWorld.lastTime);

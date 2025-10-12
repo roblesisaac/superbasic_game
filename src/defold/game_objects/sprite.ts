@@ -9,6 +9,7 @@ import {
   INVULNERABILITY_TIME, INVULNERABILITY_BLINK_INTERVAL_SLOW,
   INVULNERABILITY_BLINK_INTERVAL_FAST,
   SPRITE_SIZE,
+  WATER_GRAVITY_FACTOR, WATER_DRAG, WATER_BUOYANCY,
   MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
   RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
@@ -18,6 +19,16 @@ import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
+import {
+  clampXToWell,
+  getSwimImpulseRange,
+  getWaterSpeedLimit,
+  getWaterSurfaceY,
+  getWellBottomY,
+  getWellGeometry,
+  isInsideWell,
+  isOverWellOpening,
+} from '../runtime/environment/well.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -74,6 +85,8 @@ export class Sprite {
   prevX: number;
   prevY: number;
   prevVy: number;
+  inWell: boolean;
+  inWater: boolean;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -113,12 +126,19 @@ export class Sprite {
     this.prevX = x;
     this.prevY = y;
     this.prevVy = 0;
+    this.inWell = false;
+    this.inWater = false;
   }
 
   startCharging() {
+    if (this.isSwimming()) {
+      this.charging = false;
+      this.chargeTime = 0;
+      return;
+    }
     if (this.hooks.energyBar.state === 'cooldown') {
-      this.charging = true; 
-      this.chargeTime = 0; 
+      this.charging = true;
+      this.chargeTime = 0;
       return;
     }
     if (this.onGround && this.hooks.energyBar.canUse()) {
@@ -148,6 +168,11 @@ export class Sprite {
   }
 
   releaseJump() {
+    if (this.isSwimming()) {
+      this.charging = false;
+      this.chargeTime = 0;
+      return;
+    }
     if (this.charging && this.hooks.energyBar.state === 'cooldown') {
       this.vy = -JUMP_SMALL_COOLDOWN;
       this.onGround = false;
@@ -181,26 +206,38 @@ export class Sprite {
       } else {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
-        const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        const swimming = this.isSwimming();
 
-        // Apply movement in opposite direction of drag
-        this.vx += -this.movementDirection.x * force;
-        this.vy += -this.movementDirection.y * force;
+        if (swimming) {
+          const { min, max } = getSwimImpulseRange();
+          const force = min + (max - min) * r;
+          this.vx += -this.movementDirection.x * force;
+          this.vy += -this.movementDirection.y * force;
+          const waterMax = getWaterSpeedLimit();
+          this.vx = clamp(this.vx, -waterMax, waterMax);
+          this.vy = clamp(this.vy, -waterMax, waterMax);
+        } else {
+          const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
 
-        // Clamp velocity to prevent extreme speeds
-        const maxVel = MOVEMENT_MAX * 1.2;
-        this.vx = clamp(this.vx, -maxVel, maxVel);
-        this.vy = clamp(this.vy, -maxVel, maxVel);
+          // Apply movement in opposite direction of drag
+          this.vx += -this.movementDirection.x * force;
+          this.vy += -this.movementDirection.y * force;
 
-        if (!this.onGround) {
-          this.fallStartY = this.y;
+          // Clamp velocity to prevent extreme speeds
+          const maxVel = MOVEMENT_MAX * 1.2;
+          this.vx = clamp(this.vx, -maxVel, maxVel);
+          this.vy = clamp(this.vy, -maxVel, maxVel);
+
+          if (!this.onGround) {
+            this.fallStartY = this.y;
+          }
         }
       }
 
       // Store direction for stretch effects
-      this.lastMovementDirection = { 
-        x: -this.movementDirection.x, 
-        y: -this.movementDirection.y 
+      this.lastMovementDirection = {
+        x: -this.movementDirection.x,
+        y: -this.movementDirection.y
       };
       this._doFollowThroughStretch(this.lastMovementDirection);
     }
@@ -210,7 +247,16 @@ export class Sprite {
     this.movementDirection = { x: 0, y: 0 };
   }
 
+  isInWell(): boolean {
+    return this.inWell;
+  }
+
+  isSwimming(): boolean {
+    return this.inWater;
+  }
+
   startGliding() {
+    if (this.isSwimming()) return;
     if (!this.onGround && this.vy > 0 && this.hooks.energyBar.canUse()) {
       this.gliding = true;
     }
@@ -587,6 +633,13 @@ export class Sprite {
     const hs = SPRITE_SIZE / 2;
     const wasOnGround = this.onGround;
     const wasOnPlatform = this.onPlatform;
+    const wasInWater = this.inWater;
+    const wellGeometry = getWellGeometry();
+    const waterSurfaceY = getWaterSurfaceY();
+    const insideWellBefore = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
+    const submergedBefore = insideWellBefore && (this.y + hs >= waterSurfaceY);
+
+    if (submergedBefore) this.gliding = false;
 
     // Handle charging
     if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
@@ -606,7 +659,8 @@ export class Sprite {
     }
 
     let g = GRAVITY;
-    if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
+    if (submergedBefore) g *= WATER_GRAVITY_FACTOR;
+    else if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
     this.vy += g * dt;
 
     if (this.onGround && Math.abs(this.vx) > 0) {
@@ -618,6 +672,11 @@ export class Sprite {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.x = clamp(this.x, hs, canvasWidth - hs);
+    if (wellGeometry.enabled && this.y + hs >= wellGeometry.groundY - 1) {
+      if (isInsideWell(this.x, this.y, hs)) {
+        this.x = clampXToWell(this.x, hs);
+      }
+    }
 
     const prevTop = prevY - hs;
     const prevBottom = prevY + hs;
@@ -781,18 +840,54 @@ export class Sprite {
     this.platformSurface = newPlatformSurface;
 
     // ground
-    if (!this.onPlatform && this.y + hs >= groundY) {
-      this.y = groundY - hs;
-      if (!wasOnGround && this.vy > 0) {
-        const fallHeight = this.y - this.fallStartY;
-        const safe = Math.abs(this.vy) <= SAFE_FALL_VY || fallHeight <= SAFE_FALL_HEIGHT;
-        if (!safe) this.takeDamage();
-        const impactStrength = Math.min(2.0, Math.abs(this.vy) / 400);
-        this.impactSquash = 1.8 * impactStrength;
+    if (!this.onPlatform) {
+      const overWellOpening = wellGeometry.enabled && isOverWellOpening(this.x, hs);
+      const insideWellNow = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
+      if (this.y + hs >= groundY && !(wellGeometry.enabled && (overWellOpening || insideWellNow))) {
+        this.y = groundY - hs;
+        if (!wasOnGround && this.vy > 0) {
+          const fallHeight = this.y - this.fallStartY;
+          const safe = Math.abs(this.vy) <= SAFE_FALL_VY || fallHeight <= SAFE_FALL_HEIGHT;
+          if (!safe) this.takeDamage();
+          const impactStrength = Math.min(2.0, Math.abs(this.vy) / 400);
+          this.impactSquash = 1.8 * impactStrength;
+        }
+        this.onGround = true;
+        this.vy = 0;
+        this.gliding = false;
       }
-      this.onGround = true;
-      this.vy = 0;
-      this.gliding = false;
+    }
+
+    const insideWellAfter = wellGeometry.enabled && isInsideWell(this.x, this.y, hs);
+    if (insideWellAfter) {
+      this.x = clampXToWell(this.x, hs);
+      const bottomLimit = getWellBottomY() - hs;
+      if (this.y > bottomLimit) {
+        this.y = bottomLimit;
+        if (this.vy > 0) this.vy = 0;
+      }
+    }
+
+    const topY = this.y - hs;
+    const bottomY = this.y + hs;
+    const nowInWater = insideWellAfter && topY >= waterSurfaceY - 6;
+    const submergedNow = insideWellAfter && bottomY >= waterSurfaceY + 6;
+
+    this.inWell = insideWellAfter;
+    this.inWater = nowInWater;
+
+    if (nowInWater) this.gliding = false;
+    if (!wasInWater && nowInWater && this.vy > 0) {
+      this.vy *= 0.4;
+    }
+
+    if (submergedBefore || submergedNow) {
+      const drag = Math.exp(-WATER_DRAG * dt);
+      this.vx *= drag;
+      this.vy = (this.vy - WATER_BUOYANCY * dt) * drag;
+      const waterLimit = getWaterSpeedLimit();
+      this.vx = clamp(this.vx, -waterLimit, waterLimit);
+      this.vy = clamp(this.vy, -waterLimit, waterLimit);
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };

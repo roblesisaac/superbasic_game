@@ -609,7 +609,7 @@ export class InputHandler {
   }
 
   spawnRideFromGesture(dx: number, totalTimeMs: number, screenY: number) {
-    if (!this.game.sprite || this.game.sprite.onGround) return;
+    if (!this.game.sprite || this.game.sprite.onGround || this.game.sprite.isSwimming()) return;
 
     const activeMovers = countActiveMovingRides(this.game.rides);
     if (activeMovers >= MAX_RIDES) return;
