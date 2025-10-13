@@ -33,6 +33,9 @@ import {
 } from './state/rendering_state.js';
 import { cameraY } from './state/camera_state.js';
 import { gameWorld } from './state/game_state.js';
+import { SPRITE_SIZE } from '../../config/constants.js';
+import { WellExperience, getSurfaceWellRect } from './environment/well_experience.js';
+import { setStarfieldEnabled } from '../gui/starfield.js';
 
 const MAX_DELTA_SECONDS = 0.04;
 let animationHandle: number | null = null;
@@ -56,7 +59,11 @@ function buildSprite(): Sprite {
     onGameOver,
     getRides: () => gameWorld.rides,
     getGates: () => gameWorld.gates,
-    getHeartPickups: () => gameWorld.heartPickups
+    getHeartPickups: () => gameWorld.heartPickups,
+    hasGroundSupportAt: (x: number) => {
+      const rect = getSurfaceWellRect(canvasWidth, groundY);
+      return !(x >= rect.x && x <= rect.x + rect.width);
+    }
   });
 
   return sprite;
@@ -74,6 +81,50 @@ function spawnGroundHeart(): void {
   gameWorld.heartPickups.push(heart);
 }
 
+function ensureWellExperience(): WellExperience {
+  if (!gameWorld.wellExperience) {
+    gameWorld.wellExperience = new WellExperience();
+  }
+  return gameWorld.wellExperience;
+}
+
+function enterWell(): void {
+  const sprite = gameWorld.sprite;
+  if (!sprite) return;
+
+  const rect = getSurfaceWellRect(canvasWidth, groundY);
+  const well = ensureWellExperience();
+  well.enter(canvasWidth, canvasHeight, rect);
+  gameWorld.mode = 'well';
+  setStarfieldEnabled(false);
+
+  sprite.vx = 0;
+  sprite.vy = 0;
+  sprite.onGround = false;
+  sprite.onPlatform = false;
+}
+
+function exitWell(): void {
+  const sprite = gameWorld.sprite;
+  if (!sprite) return;
+
+  const rect = getSurfaceWellRect(canvasWidth, groundY);
+  gameWorld.wellExperience?.exit();
+  gameWorld.mode = 'surface';
+  setStarfieldEnabled(true);
+
+  sprite.x = rect.centerX;
+  sprite.y = groundY - SPRITE_SIZE / 2;
+  sprite.vx = 0;
+  sprite.vy = 0;
+  sprite.onGround = true;
+  sprite.onPlatform = false;
+  sprite.gliding = false;
+  sprite.charging = false;
+  sprite.movementCharging = false;
+  sprite.fallStartY = sprite.y;
+}
+
 function initializeGameState(): void {
   resetBudgetContainers();
   resetEnemies();
@@ -82,6 +133,8 @@ function initializeGameState(): void {
   hideGameOverScreen();
   ensureSettingsOverlay();
   gameWorld.heartEffects?.dispose();
+  gameWorld.mode = 'surface';
+  setStarfieldEnabled(true);
 
   gameWorld.energyBar = new EnergyBar();
   gameWorld.hearts = new Hearts();
@@ -135,13 +188,23 @@ function drawHeartPickups(): void {
 }
 
 function updateWorld(dt: number): void {
-  const sprite = gameWorld.sprite;
-  if (!sprite) return;
-
   if (showSettings) {
     ensureSettingsOverlay();
     return;
   }
+
+  if (gameWorld.mode === 'well') {
+    const rect = getSurfaceWellRect(canvasWidth, groundY);
+    const well = ensureWellExperience();
+    const resurfacing = well.update(dt, canvasWidth, canvasHeight, rect);
+    if (resurfacing && well.consumeResurfaceRequest()) {
+      exitWell();
+    }
+    return;
+  }
+
+  const sprite = gameWorld.sprite;
+  if (!sprite) return;
 
   sprite.update(dt);
 
@@ -168,10 +231,29 @@ function updateWorld(dt: number): void {
 
   updateCameraForSprite(sprite);
   ensureSettingsOverlay();
+
+  const rect = getSurfaceWellRect(canvasWidth, groundY);
+  const spriteBottom = sprite.y + SPRITE_SIZE / 2;
+  if (
+    spriteBottom > groundY + 6 &&
+    !sprite.onGround &&
+    sprite.vy >= 0 &&
+    sprite.x >= rect.x &&
+    sprite.x <= rect.x + rect.width
+  ) {
+    enterWell();
+  }
 }
 
 function drawWorld(): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  if (gameWorld.mode === 'well') {
+    ensureWellExperience().draw(ctx, canvasWidth, canvasHeight);
+    drawHUD();
+    return;
+  }
+
   drawBackgroundGrid(cameraY);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';

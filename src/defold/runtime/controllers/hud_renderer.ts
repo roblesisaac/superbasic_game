@@ -42,7 +42,15 @@ function drawCurrentCardTitle(): void {
 }
 
 export function drawHUD(): void {
-  const { sprite, energyBar, hearts } = gameWorld;
+  const { sprite, energyBar, hearts, mode } = gameWorld;
+
+  if (mode === 'well') {
+    if (!hearts) return;
+    hearts.draw(ctx, gameWorld.lastTime);
+    drawSettingsIcon(ctx);
+    return;
+  }
+
   if (!sprite || !energyBar || !hearts) return;
 
   energyBar.draw(ctx);

@@ -32,6 +32,7 @@ type SpriteHooks = {
   getRides: () => any[];
   getGates: () => any[];
   getHeartPickups?: () => HeartPickup[];
+  hasGroundSupportAt?: (x: number) => boolean;
 };
 
 interface GatePassageState {
@@ -780,8 +781,12 @@ export class Sprite {
 
     this.platformSurface = newPlatformSurface;
 
+    const hasGroundSupport = typeof this.hooks.hasGroundSupportAt === 'function'
+      ? this.hooks.hasGroundSupportAt(this.x)
+      : true;
+
     // ground
-    if (!this.onPlatform && this.y + hs >= groundY) {
+    if (!this.onPlatform && this.y + hs >= groundY && hasGroundSupport) {
       this.y = groundY - hs;
       if (!wasOnGround && this.vy > 0) {
         const fallHeight = this.y - this.fallStartY;

@@ -85,6 +85,7 @@ let ctx: CanvasRenderingContext2D | null = null;
 let stars: Star[] = [];
 let clouds: Cloud[] = [];
 let lastTime = 0;
+let starfieldVisible = true;
 
 function ensureCanvas(): void {
   if (canvas) return;
@@ -103,6 +104,10 @@ function ensureCanvas(): void {
 
   if (ctx) {
     ctx.imageSmoothingEnabled = false;
+  }
+
+  if (canvas) {
+    canvas.style.display = starfieldVisible ? 'block' : 'none';
   }
 }
 
@@ -505,5 +510,13 @@ if (typeof window !== 'undefined') {
     document.addEventListener('DOMContentLoaded', setupStarfield, { once: true });
   } else {
     setupStarfield();
+  }
+}
+
+export function setStarfieldEnabled(enabled: boolean): void {
+  starfieldVisible = enabled;
+  ensureCanvas();
+  if (canvas) {
+    canvas.style.display = enabled ? 'block' : 'none';
   }
 }

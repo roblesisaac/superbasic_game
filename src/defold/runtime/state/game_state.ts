@@ -6,6 +6,9 @@ import type { InputHandler } from '../input.js';
 import type { EnergyBar, Hearts } from '../../gui/hud.js';
 import type { HeartPickup } from '../../game_objects/heartPickup.js';
 import type { HeartEffectSystem } from '../controllers/heart_effects.js';
+import type { WellExperience } from '../environment/well_experience.js';
+
+export type GameMode = 'surface' | 'well';
 
 export interface GameWorldState {
   sprite: Sprite | null;
@@ -18,6 +21,8 @@ export interface GameWorldState {
   heartEffects: HeartEffectSystem | null;
   lastTime: number;
   running: boolean;
+  mode: GameMode;
+  wellExperience: WellExperience | null;
 }
 
 export const gameWorld: GameWorldState = {
@@ -30,7 +35,9 @@ export const gameWorld: GameWorldState = {
   hearts: null,
   heartEffects: null,
   lastTime: 0,
-  running: true
+  running: true,
+  mode: 'surface',
+  wellExperience: null
 };
 
 export function resetGameWorld(): void {
@@ -45,4 +52,6 @@ export function resetGameWorld(): void {
   gameWorld.heartEffects = null;
   gameWorld.lastTime = 0;
   gameWorld.running = true;
+  gameWorld.mode = 'surface';
+  gameWorld.wellExperience = null;
 }

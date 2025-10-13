@@ -248,7 +248,7 @@ export class InputHandler {
   }
 
   drawJoystick(ctx: CanvasRenderingContext2D) {
-    if (!this.joystick.active || showSettings) return;
+    if (!this.joystick.active || showSettings || this.isWellMode()) return;
 
     const { baseX, baseY, baseRadius, stickX, stickY, stickRadius } = this.joystick;
 
@@ -256,6 +256,39 @@ export class InputHandler {
 
     ctx.fillStyle = '#ffffff';
     drawPixelCircle(ctx, stickX, stickY, stickRadius, true);
+  }
+
+  private resetTouchState(): void {
+    this.touchStart = null;
+    this.touchSamples = [];
+    this.touchSwipe = false;
+    this.isJoystickMode = false;
+    this.endJoystick();
+  }
+
+  private resetMouseState(): void {
+    this.isMouseDragging = false;
+    this.mouseStart = null;
+    this.mouseSamples = [];
+    this.mouseSwipe = false;
+    this.isMouseJoystickMode = false;
+    this.endJoystick();
+  }
+
+  private isWellMode(): boolean {
+    return this.game.mode === 'well' && !!this.game.wellExperience;
+  }
+
+  private handleWellPointer(eventType: 'start' | 'move' | 'end', x?: number, y?: number): boolean {
+    if (!this.isWellMode() || !this.game.wellExperience) return false;
+    if (eventType === 'start' && x !== undefined && y !== undefined) {
+      this.game.wellExperience.onPointerStart(x, y);
+    } else if (eventType === 'move' && x !== undefined && y !== undefined) {
+      this.game.wellExperience.onPointerMove(x, y);
+    } else if (eventType === 'end') {
+      this.game.wellExperience.onPointerEnd();
+    }
+    return true;
   }
 
   bind() {
@@ -279,6 +312,11 @@ export class InputHandler {
           return;
         }
 
+        if (this.handleWellPointer('start', x, y)) {
+          this.resetTouchState();
+          return;
+        }
+
         this.touchStart = { x, y, time: Date.now() };
         this.touchSamples = [{ ...this.touchStart }];
         this.touchSwipe = false;
@@ -298,8 +336,6 @@ export class InputHandler {
       'touchmove',
       (e) => {
         e.preventDefault();
-        if (!this.touchStart || showSettings) return;
-
         const t = e.touches[0];
         const r = canvas.getBoundingClientRect();
         const sample: PointSample = {
@@ -307,6 +343,13 @@ export class InputHandler {
           y: t.clientY - r.top,
           time: Date.now(),
         };
+
+        if (this.handleWellPointer('move', sample.x, sample.y)) {
+          return;
+        }
+
+        if (!this.touchStart || showSettings) return;
+
         this.touchSamples.push(sample);
         const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
         this.touchSamples = this.touchSamples.filter((q) => q.time >= cutoff);
@@ -356,6 +399,11 @@ export class InputHandler {
       'touchend',
       (e) => {
         e.preventDefault();
+        if (this.handleWellPointer('end')) {
+          this.resetTouchState();
+          return;
+        }
+
         if (!this.touchStart || showSettings) {
           this.endJoystick();
           return;
@@ -400,6 +448,11 @@ export class InputHandler {
         return;
       }
 
+      if (this.handleWellPointer('start', x, y)) {
+        this.resetMouseState();
+        return;
+      }
+
       this.mouseStart = { x, y, time: Date.now() };
       this.mouseSamples = [{ ...this.mouseStart }];
       this.isMouseDragging = true;
@@ -415,14 +468,19 @@ export class InputHandler {
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      if (!this.isMouseDragging || showSettings || !this.mouseStart) return;
-
       const r = canvas.getBoundingClientRect();
       const sample: PointSample = {
         x: e.clientX - r.left,
         y: e.clientY - r.top,
         time: Date.now(),
       };
+
+      if (this.handleWellPointer('move', sample.x, sample.y)) {
+        return;
+      }
+
+      if (!this.isMouseDragging || showSettings || !this.mouseStart) return;
+
       this.mouseSamples.push(sample);
       const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
       this.mouseSamples = this.mouseSamples.filter((q) => q.time >= cutoff);
@@ -467,6 +525,11 @@ export class InputHandler {
     });
 
     canvas.addEventListener('mouseup', () => {
+      if (this.handleWellPointer('end')) {
+        this.resetMouseState();
+        return;
+      }
+
       if (!this.mouseStart || showSettings) {
         this.endJoystick();
         return;
@@ -498,6 +561,7 @@ export class InputHandler {
       'wheel',
       (e) => {
         if (showSettings) return;
+        if (this.isWellMode()) return;
 
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
           e.preventDefault();
@@ -536,6 +600,7 @@ export class InputHandler {
     });
 
     document.addEventListener('keydown', (e) => {
+      if (this.isWellMode()) return;
       if (e.code === 'Space' && !showSettings && !this.keyboardCharging) {
         e.preventDefault();
         this.keyboardCharging = true;
@@ -562,6 +627,7 @@ export class InputHandler {
     });
 
     document.addEventListener('keyup', (e) => {
+      if (this.isWellMode()) return;
       if (e.code === 'Space' && !showSettings && this.keyboardCharging) {
         e.preventDefault();
         this.keyboardCharging = false;
@@ -584,6 +650,7 @@ export class InputHandler {
     });
 
     document.addEventListener('keydown', (e) => {
+      if (this.isWellMode()) return;
       if (e.code === 'Space' || ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
