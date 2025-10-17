@@ -75,8 +75,6 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const lineTop = Math.min(screenGroundY, shaftBottom);
   const shaftLines = [
     innerLeft + 1,
-    innerLeft + Math.round(normalizedOpeningWidth * 0.33),
-    innerLeft + Math.round(normalizedOpeningWidth * 0.66),
     innerLeft + normalizedOpeningWidth - 2
   ];
 
