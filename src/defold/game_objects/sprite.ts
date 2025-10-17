@@ -18,6 +18,7 @@ import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
+import { getWellBounds, getWellRimTopY } from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -780,9 +781,8 @@ export class Sprite {
 
     this.platformSurface = newPlatformSurface;
 
-    // ground
-    if (!this.onPlatform && this.y + hs >= groundY) {
-      this.y = groundY - hs;
+    const applyStaticLanding = (surfaceY: number) => {
+      this.y = surfaceY - hs;
       if (!wasOnGround && this.vy > 0) {
         const fallHeight = this.y - this.fallStartY;
         const safe = Math.abs(this.vy) <= SAFE_FALL_VY || fallHeight <= SAFE_FALL_HEIGHT;
@@ -793,6 +793,24 @@ export class Sprite {
       this.onGround = true;
       this.vy = 0;
       this.gliding = false;
+    };
+
+    const spriteLeft = this.x - hs;
+    const spriteRight = this.x + hs;
+    const spriteBottom = this.y + hs;
+    const well = getWellBounds(canvasWidth);
+    const centerOverOpening = this.x > well.left && this.x < well.right;
+    const rimTopY = getWellRimTopY(groundY);
+    const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
+    const eligibleForRimLanding = overlapsRimSpan && !centerOverOpening && spriteBottom >= rimTopY;
+
+    // ground and well rim collisions
+    if (!this.onPlatform) {
+      if (eligibleForRimLanding) {
+        applyStaticLanding(rimTopY);
+      } else if (spriteBottom >= groundY && !centerOverOpening) {
+        applyStaticLanding(groundY);
+      }
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
