@@ -4,6 +4,7 @@ import {
   WELL_RIM_THICKNESS,
   WELL_SHAFT_COLUMN_INSET,
   WELL_SHAFT_COLUMN_WIDTH,
+  getWellExpansionBottomY,
   getWellExpansionTopY,
   getWellShaftBottomY
 } from '../runtime/environment/well_layout.js';
@@ -27,6 +28,7 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const shaftBottomWorld = getWellShaftBottomY(groundY, canvasHeight);
   const shaftBottomScreen = Math.round(shaftBottomWorld - cameraY);
   const expansionTopScreen = Math.round(getWellExpansionTopY(groundY, canvasHeight) - cameraY);
+  const expansionBottomScreen = Math.round(getWellExpansionBottomY(groundY, canvasHeight) - cameraY);
   const canvasWidth = ctx.canvas?.width ?? 0;
 
   const rimOuterWidth = normalizedOpeningWidth + WELL_RIM_THICKNESS * 2;
@@ -98,10 +100,32 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     }
   }
 
+  // Paint the wider cavern section with subtle mortar bands for texture
+  if (expansionBottomScreen > 0 && expansionTopScreen < canvasHeight) {
+    const cavernDrawTop = Math.max(expansionTopScreen, 0);
+    const cavernDrawBottom = Math.min(expansionBottomScreen, canvasHeight);
+    if (cavernDrawBottom > cavernDrawTop) {
+      ctx.fillStyle = '#050505';
+      ctx.fillRect(0, cavernDrawTop, canvasWidth, cavernDrawBottom - cavernDrawTop);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      const mortarSpacing = WELL_SHAFT_COLUMN_WIDTH + 2;
+      for (let y = cavernDrawTop + mortarSpacing; y < cavernDrawBottom; y += mortarSpacing) {
+        ctx.fillRect(0, y, canvasWidth, 1);
+      }
+    }
+  }
+
   // Cap the shaft where it opens into the wider cavern with a horizontal lintel
+  ctx.fillStyle = '#fff';
   if (expansionTopScreen >= 0 && expansionTopScreen <= canvasHeight) {
     const lintelHeight = 2;
     ctx.fillRect(0, expansionTopScreen - lintelHeight, canvasWidth, lintelHeight);
+  }
+
+  // Reinforce the cavern floor with a bright edge to signify a stable landing surface
+  if (expansionBottomScreen >= 0 && expansionBottomScreen <= canvasHeight) {
+    ctx.fillRect(0, expansionBottomScreen - 1, canvasWidth, 1);
   }
 
   // Reinforce the inner edge with a subtle highlight for a cylindrical feel

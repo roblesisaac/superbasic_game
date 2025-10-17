@@ -9,7 +9,8 @@ export const WELL_RIM_THICKNESS = 4;
 export const WELL_COLLAR_HEIGHT = 8;
 export const WELL_SHAFT_COLUMN_INSET = 2;
 export const WELL_SHAFT_COLUMN_WIDTH = 4;
-export const WELL_SHAFT_DEPTH_MULTIPLIER = 3;
+export const WELL_NARROW_SHAFT_DEPTH_MULTIPLIER = 3;
+export const WELL_CAVERN_DEPTH_MULTIPLIER = 1;
 export const WELL_RIM_TOP_OFFSET = WELL_RIM_THICKNESS * 2 + 1;
 
 export interface WellBounds {
@@ -75,8 +76,16 @@ export function getWellShaftSpan(bounds: WellBounds): WellShaftSpan {
   return { interiorLeft, interiorRight };
 }
 
+export function getWellNarrowShaftDepth(canvasHeight: number): number {
+  return Math.max(0, Math.round(canvasHeight * WELL_NARROW_SHAFT_DEPTH_MULTIPLIER));
+}
+
+export function getWellCavernDepth(canvasHeight: number): number {
+  return Math.max(0, Math.round(canvasHeight * WELL_CAVERN_DEPTH_MULTIPLIER));
+}
+
 export function getWellShaftDepth(canvasHeight: number): number {
-  return Math.max(0, Math.round(canvasHeight * WELL_SHAFT_DEPTH_MULTIPLIER));
+  return getWellNarrowShaftDepth(canvasHeight) + getWellCavernDepth(canvasHeight);
 }
 
 export function getWellShaftBottomY(groundY: number, canvasHeight: number): number {
@@ -88,5 +97,9 @@ export function getWellExpansionSpan(canvasWidth: number): WellShaftSpan {
 }
 
 export function getWellExpansionTopY(groundY: number, canvasHeight: number): number {
-  return getWellShaftBottomY(groundY, canvasHeight);
+  return groundY + getWellNarrowShaftDepth(canvasHeight);
+}
+
+export function getWellExpansionBottomY(groundY: number, canvasHeight: number): number {
+  return getWellExpansionTopY(groundY, canvasHeight) + getWellCavernDepth(canvasHeight);
 }
