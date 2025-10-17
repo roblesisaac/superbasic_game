@@ -45,6 +45,22 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const rimLeft = Math.round(centerX - rimOuterWidth / 2);
   const rimTop = screenGroundY - (RIM_THICKNESS + 1);
 
+  const innerLeft = Math.round(centerX - normalizedOpeningWidth / 2);
+  const innerTop = screenGroundY - Math.max(2, Math.floor(RIM_THICKNESS / 2)) - 1;
+  const innerHeight = WALL_HEIGHT + RIM_THICKNESS;
+
+  ctx.save();
+
+  // Ensure grass and ground details behind the rim opening are cleared before painting the well
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillRect(
+    innerLeft - 1,
+    innerTop - 1,
+    normalizedOpeningWidth + 2,
+    innerHeight + 2
+  );
+  ctx.restore();
+
   ctx.save();
   ctx.fillStyle = '#fff';
 
@@ -58,10 +74,6 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.fillRect(collarLeft, screenGroundY - collarHeight, collarWidth, collarHeight);
 
   // Darken the inner lip to give depth
-  const innerLeft = Math.round(centerX - normalizedOpeningWidth / 2);
-  const innerTop = screenGroundY - Math.max(2, Math.floor(RIM_THICKNESS / 2)) - 1;
-  const innerHeight = collarHeight + RIM_THICKNESS;
-
   ctx.fillStyle = '#000';
   ctx.fillRect(innerLeft, innerTop, normalizedOpeningWidth, innerHeight);
 
