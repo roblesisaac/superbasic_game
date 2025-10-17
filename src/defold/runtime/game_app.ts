@@ -94,7 +94,14 @@ function enterWell(): void {
 
   const rect = getSurfaceWellRect(canvasWidth, groundY);
   const well = ensureWellExperience();
-  well.enter(canvasWidth, canvasHeight, rect);
+  const entryOffset = Math.max(0, sprite.y + SPRITE_SIZE / 2 - groundY);
+  const entryState = {
+    x: sprite.x,
+    vx: sprite.vx,
+    vy: sprite.vy,
+    offsetFromGround: entryOffset
+  };
+  well.enter(canvasWidth, canvasHeight, rect, entryState);
   gameWorld.mode = 'well';
   setStarfieldEnabled(false);
 

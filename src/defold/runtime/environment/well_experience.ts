@@ -71,6 +71,13 @@ interface PointerState {
   y: number;
 }
 
+interface WellEntryState {
+  x: number;
+  vx: number;
+  vy: number;
+  offsetFromGround: number;
+}
+
 interface WellSprite {
   x: number;
   y: number;
@@ -227,18 +234,33 @@ export class WellExperience {
     }
   }
 
-  enter(width: number, height: number, rect: WellEntranceRect): void {
+  enter(
+    width: number,
+    height: number,
+    rect: WellEntranceRect,
+    entryState?: WellEntryState
+  ): void {
     this.ensureInitialized(width, height, rect);
     if (!this.sprite || !this.dimensions) return;
     this.active = true;
     this.resurfacePending = false;
     this.pointer.active = false;
     this.cameraY = 0;
-    this.sprite.x = rect.centerX;
-    this.sprite.worldY = this.dimensions.landSurfaceY - this.sprite.size;
+    const baseTop = this.dimensions.landSurfaceY - this.sprite.size;
+    const offset = entryState ? Math.max(0, entryState.offsetFromGround) : 0;
+    if (entryState) {
+      const wellLeft = this.dimensions.wellX - this.dimensions.wellTopWidth / 2 + this.sprite.size / 2;
+      const wellRight = this.dimensions.wellX + this.dimensions.wellTopWidth / 2 - this.sprite.size / 2;
+      this.sprite.x = clamp(entryState.x, wellLeft, wellRight);
+      this.sprite.vx = entryState.vx;
+      this.sprite.vy = entryState.vy;
+    } else {
+      this.sprite.x = rect.centerX;
+      this.sprite.vx = 0;
+      this.sprite.vy = 0;
+    }
+    this.sprite.worldY = baseTop + offset;
     this.sprite.y = this.sprite.worldY;
-    this.sprite.vx = 0;
-    this.sprite.vy = 0;
     this.sprite.onLand = true;
     this.sprite.isClimbing = false;
   }
