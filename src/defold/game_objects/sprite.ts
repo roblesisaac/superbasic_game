@@ -24,6 +24,7 @@ import {
   getWellShaftBottomY,
   getWellShaftSpan
 } from '../runtime/environment/well_layout.js';
+import { getWellBounds, getWellRimTopY } from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -805,6 +806,10 @@ export class Sprite {
     let spriteBottom = this.y + hs;
     const well = getWellBounds(canvasWidth);
     const shaftBottomY = getWellShaftBottomY(groundY, canvasHeight);
+    const spriteLeft = this.x - hs;
+    const spriteRight = this.x + hs;
+    const spriteBottom = this.y + hs;
+    const well = getWellBounds(canvasWidth);
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
     const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;

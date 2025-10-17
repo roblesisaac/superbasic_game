@@ -5,6 +5,7 @@ import {
   WELL_SHAFT_COLUMN_INSET,
   WELL_SHAFT_COLUMN_WIDTH,
   getWellShaftBottomY
+  WELL_RIM_THICKNESS
 } from '../runtime/environment/well_layout.js';
 
 interface DrawWellOptions {
@@ -13,6 +14,21 @@ interface DrawWellOptions {
   cameraY: number;
   canvasHeight: number;
   openingWidth?: number;
+}
+
+function clampToCanvasBounds(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  canvasWidth: number,
+  canvasHeight: number
+): boolean {
+  if (width <= 0 || height <= 0) return false;
+  if (x + width < 0 || x > canvasWidth) return false;
+  if (y > canvasHeight) return false;
+  if (y + height < 0) return false;
+  return true;
 }
 
 export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions): void {
@@ -26,6 +42,12 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const shaftBottomWorld = getWellShaftBottomY(groundY, canvasHeight);
   const shaftBottomScreen = Math.round(shaftBottomWorld - cameraY);
   const canvasWidth = ctx.canvas?.width ?? 0;
+
+  const canvasWidth = ctx.canvas?.width ?? 0;
+
+  if (!clampToCanvasBounds(centerX - normalizedOpeningWidth, screenGroundY - WELL_COLLAR_HEIGHT - WELL_RIM_THICKNESS, normalizedOpeningWidth * 2, canvasHeight, canvasWidth, canvasHeight)) {
+    return;
+  }
 
   const rimOuterWidth = normalizedOpeningWidth + WELL_RIM_THICKNESS * 2;
   const rimLeft = Math.round(centerX - rimOuterWidth / 2);
@@ -93,6 +115,18 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
       const drawHeight = Math.min(brickSize, columnBottom - y);
       ctx.fillRect(Math.round(columnX), Math.round(y), brickSize, drawHeight);
     }
+  // Draw shaft guide lines extending downward
+  const shaftBottom = canvasHeight;
+  const lineTop = Math.min(screenGroundY, shaftBottom);
+  const shaftLines = [
+    innerLeft + 1,
+    innerLeft + normalizedOpeningWidth - 2
+  ];
+
+  for (const x of shaftLines) {
+    if (x < 0 || x >= canvasWidth) continue;
+    if (lineTop >= shaftBottom) continue;
+    ctx.fillRect(Math.round(x), lineTop, 1, shaftBottom - lineTop);
   }
 
   // Reinforce the inner edge with a subtle highlight for a cylindrical feel
