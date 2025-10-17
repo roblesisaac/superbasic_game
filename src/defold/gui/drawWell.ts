@@ -1,9 +1,7 @@
 import {
   WELL_COLLAR_HEIGHT,
   WELL_OPENING_WIDTH,
-  WELL_RIM_THICKNESS,
-  WELL_SHAFT_COLUMN_INSET,
-  WELL_SHAFT_COLUMN_WIDTH
+  WELL_RIM_THICKNESS
 } from '../runtime/environment/well_layout.js';
 
 interface DrawWellOptions {
@@ -84,25 +82,18 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.fillRect(innerLeft, innerTop, normalizedOpeningWidth, Math.ceil(innerHeight * 0.45));
   ctx.globalAlpha = 1;
 
-  // Draw shaft guide bricks extending downward
+  // Draw shaft guide lines extending downward
   const shaftBottom = canvasHeight;
   const lineTop = Math.min(screenGroundY, shaftBottom);
-  const brickSize = WELL_SHAFT_COLUMN_WIDTH;
-  const brickGap = 1;
-  const columnInset = WELL_SHAFT_COLUMN_INSET;
-  const brickColumns = [
-    innerLeft + columnInset,
-    innerLeft + normalizedOpeningWidth - columnInset - brickSize
+  const shaftLines = [
+    innerLeft + 1,
+    innerLeft + normalizedOpeningWidth - 2
   ];
 
-  for (const columnX of brickColumns) {
-    if (columnX + brickSize <= 0 || columnX >= canvasWidth) continue;
+  for (const x of shaftLines) {
+    if (x < 0 || x >= canvasWidth) continue;
     if (lineTop >= shaftBottom) continue;
-
-    for (let y = lineTop; y < shaftBottom; y += brickSize + brickGap) {
-      const drawHeight = Math.min(brickSize, shaftBottom - y);
-      ctx.fillRect(Math.round(columnX), Math.round(y), brickSize, drawHeight);
-    }
+    ctx.fillRect(Math.round(x), lineTop, 1, shaftBottom - lineTop);
   }
 
   // Reinforce the inner edge with a subtle highlight for a cylindrical feel
