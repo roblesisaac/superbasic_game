@@ -12,6 +12,8 @@ const DEFAULT_OPENING_WIDTH = SPRITE_SIZE * 2;
 const RIM_PADDING = 3;
 const RIM_HEIGHT = 5;
 const INTERIOR_OFFSET = 2;
+const BRICK_HEIGHT = 4;
+const BRICK_GAP = 3;
 
 function normalizeOpeningWidth(width: number | undefined): number {
   if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
@@ -35,12 +37,13 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   }
 
   const halfOpening = Math.floor(openingWidth / 2);
-  const rimLeft = Math.round(centerX) - halfOpening - RIM_PADDING;
+  const roundedCenterX = Math.round(centerX);
+  const rimLeft = roundedCenterX - halfOpening - RIM_PADDING;
   const rimRight = rimLeft + openingWidth + RIM_PADDING * 2;
   const rimTop = screenGroundY - RIM_HEIGHT;
   const rimBottom = screenGroundY + 1;
   const rimWidth = rimRight - rimLeft;
-  const interiorLeft = Math.round(centerX) - halfOpening;
+  const interiorLeft = roundedCenterX - halfOpening;
   const interiorRight = interiorLeft + openingWidth;
   const interiorWidth = interiorRight - interiorLeft;
   const interiorTop = rimTop + INTERIOR_OFFSET;
@@ -73,20 +76,38 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
 
   if (shaftHeight > 0) {
     ctx.fillStyle = '#060606';
-    ctx.fillRect(interiorLeft + 1, shaftTop, Math.max(0, interiorWidth - 2), shaftHeight);
+    ctx.fillRect(interiorLeft, shaftTop, interiorWidth, shaftHeight);
 
-    const lineTop = shaftTop;
-    const lineHeight = shaftHeight;
-    const leftLineX = interiorLeft + Math.max(1, Math.floor(interiorWidth * 0.28));
-    const rightLineX = interiorRight - Math.max(2, Math.floor(interiorWidth * 0.28));
+    const brickInset = Math.max(1, Math.floor(interiorWidth * 0.12));
+    const maxBrickWidth = interiorWidth - brickInset * 2;
+    if (maxBrickWidth >= 2) {
+      const brickWidth = Math.max(2, Math.floor(maxBrickWidth / 3));
+      const leftBrickX = interiorLeft + brickInset;
+      const centerBrickX = interiorLeft + Math.floor(interiorWidth / 2) - Math.floor(brickWidth / 2);
+      const rightBrickX = interiorRight - brickInset - brickWidth;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(leftLineX, lineTop, 1, lineHeight);
-    ctx.fillRect(rightLineX, lineTop, 1, lineHeight);
+      const worldShaftTop = groundY;
+      const patternStep = BRICK_HEIGHT + BRICK_GAP;
+      const worldStart = worldShaftTop + BRICK_GAP;
+      const worldEnd = cameraY + canvasH;
 
-    const centerLineX = interiorLeft + Math.floor(interiorWidth / 2);
-    if (interiorWidth > 6) {
-      ctx.fillRect(centerLineX, lineTop + 8, 1, Math.max(0, lineHeight - 16));
+      ctx.fillStyle = '#f5f5f5';
+      let rowIndex = 0;
+      for (let worldY = worldStart; worldY < worldEnd; worldY += patternStep, rowIndex += 1) {
+        const screenY = Math.round(worldY - cameraY);
+        const brickTop = Math.max(shaftTop, screenY);
+        if (brickTop >= canvasH) break;
+
+        const brickHeight = Math.min(BRICK_HEIGHT, canvasH - brickTop);
+        if (brickHeight <= 0) continue;
+
+        if (rowIndex % 2 === 0) {
+          ctx.fillRect(leftBrickX, brickTop, brickWidth, brickHeight);
+          ctx.fillRect(rightBrickX, brickTop, brickWidth, brickHeight);
+        } else {
+          ctx.fillRect(centerBrickX, brickTop, brickWidth, brickHeight);
+        }
+      }
     }
   }
 
