@@ -795,20 +795,20 @@ export class Sprite {
       this.gliding = false;
     };
 
-    const spriteLeft = this.x - hs;
-    const spriteRight = this.x + hs;
-    const spriteBottom = this.y + hs;
-    const well = getWellBounds(canvasWidth);
-    const centerOverOpening = this.x > well.left && this.x < well.right;
+    const spriteLeftEdge = this.x - hs;
+    const spriteRightEdge = this.x + hs;
+    const spriteBottomEdge = this.y + hs;
+    const wellBounds = getWellBounds(canvasWidth);
+    const centerOverOpening = this.x > wellBounds.left && this.x < wellBounds.right;
     const rimTopY = getWellRimTopY(groundY);
-    const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
-    const eligibleForRimLanding = overlapsRimSpan && !centerOverOpening && spriteBottom >= rimTopY;
+    const overlapsRimSpan = spriteRightEdge > wellBounds.rimLeft && spriteLeftEdge < wellBounds.rimRight;
+    const eligibleForRimLanding = overlapsRimSpan && !centerOverOpening && spriteBottomEdge >= rimTopY;
 
     // ground and well rim collisions
     if (!this.onPlatform) {
       if (eligibleForRimLanding) {
         applyStaticLanding(rimTopY);
-      } else if (spriteBottom >= groundY && !centerOverOpening) {
+      } else if (spriteBottomEdge >= groundY && !centerOverOpening) {
         applyStaticLanding(groundY);
       }
     }
