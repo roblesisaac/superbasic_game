@@ -1,12 +1,24 @@
 import { drawGrass } from '../../gui/drawGrass.js';
 import { drawTree } from '../../gui/drawTree.js';
-import { ctx, canvasWidth, groundY } from '../state/rendering_state.js';
+import { drawWell } from '../../gui/drawWell.js';
+import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
+import { getWellBounds } from './well_layout.js';
 
 export function drawBackgroundGrid(cameraY: number): void {
   drawGrass(ctx, {
     width: canvasWidth,
     groundY,
     cameraY
+  });
+
+  const well = getWellBounds(canvasWidth);
+
+  drawWell(ctx, {
+    centerX: well.centerX,
+    groundY,
+    cameraY,
+    canvasHeight,
+    openingWidth: well.openingWidth
   });
 
   drawTree(ctx, {
