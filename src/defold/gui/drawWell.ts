@@ -1,4 +1,8 @@
-import { SPRITE_SIZE } from '../../config/constants.js';
+import {
+  WELL_COLLAR_HEIGHT,
+  WELL_OPENING_WIDTH,
+  WELL_RIM_THICKNESS
+} from '../runtime/environment/well_layout.js';
 
 interface DrawWellOptions {
   centerX: number;
@@ -7,10 +11,6 @@ interface DrawWellOptions {
   canvasHeight: number;
   openingWidth?: number;
 }
-
-const DEFAULT_OPENING_WIDTH = SPRITE_SIZE * 2;
-const RIM_THICKNESS = 4;
-const WALL_HEIGHT = 8;
 
 function clampToCanvasBounds(
   x: number,
@@ -28,7 +28,7 @@ function clampToCanvasBounds(
 }
 
 export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions): void {
-  const { centerX, groundY, cameraY, canvasHeight, openingWidth = DEFAULT_OPENING_WIDTH } = options;
+  const { centerX, groundY, cameraY, canvasHeight, openingWidth = WELL_OPENING_WIDTH } = options;
 
   if (!Number.isFinite(centerX) || !Number.isFinite(groundY) || !Number.isFinite(cameraY)) return;
   if (!Number.isFinite(canvasHeight) || canvasHeight <= 0) return;
@@ -37,17 +37,17 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const screenGroundY = Math.round(groundY - cameraY);
   const canvasWidth = ctx.canvas?.width ?? 0;
 
-  if (!clampToCanvasBounds(centerX - normalizedOpeningWidth, screenGroundY - WALL_HEIGHT - RIM_THICKNESS, normalizedOpeningWidth * 2, canvasHeight, canvasWidth, canvasHeight)) {
+  if (!clampToCanvasBounds(centerX - normalizedOpeningWidth, screenGroundY - WELL_COLLAR_HEIGHT - WELL_RIM_THICKNESS, normalizedOpeningWidth * 2, canvasHeight, canvasWidth, canvasHeight)) {
     return;
   }
 
-  const rimOuterWidth = normalizedOpeningWidth + RIM_THICKNESS * 2;
+  const rimOuterWidth = normalizedOpeningWidth + WELL_RIM_THICKNESS * 2;
   const rimLeft = Math.round(centerX - rimOuterWidth / 2);
-  const rimTop = screenGroundY - (RIM_THICKNESS + 1);
+  const rimTop = screenGroundY - (WELL_RIM_THICKNESS + 1);
 
   const innerLeft = Math.round(centerX - normalizedOpeningWidth / 2);
-  const innerTop = screenGroundY - Math.max(2, Math.floor(RIM_THICKNESS / 2)) - 1;
-  const innerHeight = WALL_HEIGHT + RIM_THICKNESS;
+  const innerTop = screenGroundY - Math.max(2, Math.floor(WELL_RIM_THICKNESS / 2)) - 1;
+  const innerHeight = WELL_COLLAR_HEIGHT + WELL_RIM_THICKNESS;
 
   ctx.save();
 
@@ -65,10 +65,10 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.fillStyle = '#fff';
 
   // Draw the rim cap
-  ctx.fillRect(rimLeft, rimTop - RIM_THICKNESS, rimOuterWidth, RIM_THICKNESS);
+  ctx.fillRect(rimLeft, rimTop - WELL_RIM_THICKNESS, rimOuterWidth, WELL_RIM_THICKNESS);
 
   // Draw the rim collar overlapping the ground line for a pipe-like look
-  const collarHeight = WALL_HEIGHT;
+  const collarHeight = WELL_COLLAR_HEIGHT;
   const collarLeft = rimLeft + 1;
   const collarWidth = rimOuterWidth - 2;
   ctx.fillRect(collarLeft, screenGroundY - collarHeight, collarWidth, collarHeight);
@@ -97,7 +97,7 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   }
 
   // Reinforce the inner edge with a subtle highlight for a cylindrical feel
-  const lipHeight = Math.max(2, Math.round(RIM_THICKNESS / 2));
+  const lipHeight = Math.max(2, Math.round(WELL_RIM_THICKNESS / 2));
   ctx.fillRect(innerLeft, screenGroundY - lipHeight, normalizedOpeningWidth, 1);
 
   ctx.restore();
