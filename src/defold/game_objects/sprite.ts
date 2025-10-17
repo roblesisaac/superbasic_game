@@ -18,7 +18,7 @@ import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
-import { getWellBounds, getWellRimTopY } from '../runtime/environment/well_layout.js';
+import { getWellBounds, getWellRimTopY, getWellShaftSpan } from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -795,9 +795,9 @@ export class Sprite {
       this.gliding = false;
     };
 
-    const spriteLeft = this.x - hs;
-    const spriteRight = this.x + hs;
-    const spriteBottom = this.y + hs;
+    let spriteLeft = this.x - hs;
+    let spriteRight = this.x + hs;
+    let spriteBottom = this.y + hs;
     const well = getWellBounds(canvasWidth);
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
@@ -810,6 +810,33 @@ export class Sprite {
         applyStaticLanding(rimTopY);
       } else if (spriteBottom >= groundY && !centerOverOpening) {
         applyStaticLanding(groundY);
+      }
+    }
+
+    spriteLeft = this.x - hs;
+    spriteRight = this.x + hs;
+    spriteBottom = this.y + hs;
+
+    if (spriteBottom > rimTopY && spriteRight > well.left && spriteLeft < well.right) {
+      const { interiorLeft, interiorRight } = getWellShaftSpan(well);
+      const spanWidth = interiorRight - interiorLeft;
+
+      if (spanWidth > 0) {
+        if (spriteLeft < interiorLeft) {
+          this.x = interiorLeft + hs;
+          spriteLeft = this.x - hs;
+          spriteRight = this.x + hs;
+          blockedHorizontally = true;
+          if (this.vx < 0) this.vx = 0;
+        }
+
+        if (spriteRight > interiorRight) {
+          this.x = interiorRight - hs;
+          spriteLeft = this.x - hs;
+          spriteRight = this.x + hs;
+          blockedHorizontally = true;
+          if (this.vx > 0) this.vx = 0;
+        }
       }
     }
 

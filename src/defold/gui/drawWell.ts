@@ -1,7 +1,9 @@
 import {
   WELL_COLLAR_HEIGHT,
   WELL_OPENING_WIDTH,
-  WELL_RIM_THICKNESS
+  WELL_RIM_THICKNESS,
+  WELL_SHAFT_COLUMN_INSET,
+  WELL_SHAFT_COLUMN_WIDTH
 } from '../runtime/environment/well_layout.js';
 
 interface DrawWellOptions {
@@ -85,9 +87,9 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   // Draw shaft guide bricks extending downward
   const shaftBottom = canvasHeight;
   const lineTop = Math.min(screenGroundY, shaftBottom);
-  const brickSize = 4;
+  const brickSize = WELL_SHAFT_COLUMN_WIDTH;
   const brickGap = 1;
-  const columnInset = 2;
+  const columnInset = WELL_SHAFT_COLUMN_INSET;
   const brickColumns = [
     innerLeft + columnInset,
     innerLeft + normalizedOpeningWidth - columnInset - brickSize

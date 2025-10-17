@@ -7,6 +7,8 @@ const EDGE_MARGIN = 4;
 export const WELL_OPENING_WIDTH = SPRITE_SIZE * 2;
 export const WELL_RIM_THICKNESS = 4;
 export const WELL_COLLAR_HEIGHT = 8;
+export const WELL_SHAFT_COLUMN_INSET = 2;
+export const WELL_SHAFT_COLUMN_WIDTH = 4;
 export const WELL_RIM_TOP_OFFSET = WELL_RIM_THICKNESS * 2 + 1;
 
 export interface WellBounds {
@@ -53,4 +55,21 @@ export function getWellBounds(canvasWidth: number): WellBounds {
 
 export function getWellRimTopY(groundY: number): number {
   return groundY - WELL_RIM_TOP_OFFSET;
+}
+
+export interface WellShaftSpan {
+  interiorLeft: number;
+  interiorRight: number;
+}
+
+export function getWellShaftSpan(bounds: WellBounds): WellShaftSpan {
+  const interiorLeft = bounds.left + WELL_SHAFT_COLUMN_INSET + WELL_SHAFT_COLUMN_WIDTH;
+  const interiorRight = bounds.right - WELL_SHAFT_COLUMN_INSET - WELL_SHAFT_COLUMN_WIDTH;
+
+  if (interiorLeft > interiorRight) {
+    const center = (bounds.left + bounds.right) / 2;
+    return { interiorLeft: center, interiorRight: center };
+  }
+
+  return { interiorLeft, interiorRight };
 }
