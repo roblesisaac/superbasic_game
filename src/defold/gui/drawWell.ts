@@ -68,22 +68,65 @@ function drawShaft(
 ): void {
   const openingLeft = Math.round(x - openingWidth / 2);
   const openingTop = Math.round(rimBottomY);
-  const shaftDepth = Math.round(openingDepth);
+  const shaftDepth = Math.max(1, Math.round(openingDepth));
   const shaftBottom = Math.round(rimBottomY + shaftHeight);
+  const interiorWidth = Math.max(1, Math.round(openingWidth));
+  const interiorHeight = Math.max(1, shaftBottom - openingTop);
 
-  ctx.fillStyle = '#21213d';
-  ctx.fillRect(openingLeft, openingTop, Math.round(openingWidth), shaftBottom - openingTop);
+  ctx.fillStyle = '#191934';
+  ctx.fillRect(openingLeft, openingTop, interiorWidth, interiorHeight);
 
-  const sideInset = Math.max(1, Math.round(openingWidth * 0.04));
-  const sideWidth = Math.max(1, Math.round(openingWidth * 0.08));
-  const sideHeight = Math.max(0, shaftBottom - openingTop - 4);
+  const lipHeight = Math.min(shaftDepth, interiorHeight);
+  ctx.fillStyle = '#303057';
+  ctx.fillRect(openingLeft, openingTop, interiorWidth, lipHeight);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(openingLeft + sideInset, openingTop + 2, sideWidth, sideHeight);
-  ctx.fillRect(openingLeft + openingWidth - sideInset - sideWidth, openingTop + 2, sideWidth, sideHeight);
+  const sideEdgeWidth = Math.max(1, Math.round(interiorWidth * 0.08));
+  const shaftStartY = openingTop + lipHeight;
+  const shaftBodyHeight = Math.max(0, interiorHeight - lipHeight);
 
-  ctx.fillStyle = '#35355d';
-  ctx.fillRect(openingLeft, openingTop, Math.round(openingWidth), shaftDepth);
+  if (shaftBodyHeight > 0) {
+    ctx.fillStyle = '#121228';
+    ctx.fillRect(openingLeft, shaftStartY, sideEdgeWidth, shaftBodyHeight);
+    ctx.fillRect(openingLeft + interiorWidth - sideEdgeWidth, shaftStartY, sideEdgeWidth, shaftBodyHeight);
+
+    const centerWidth = Math.max(0, interiorWidth - sideEdgeWidth * 2);
+    if (centerWidth > 0) {
+      ctx.fillStyle = '#1f1f3f';
+      ctx.fillRect(openingLeft + sideEdgeWidth, shaftStartY, centerWidth, shaftBodyHeight);
+
+      ctx.fillStyle = '#101022';
+      const bottomShadeHeight = Math.max(2, Math.round(shaftBodyHeight * 0.18));
+      const clampedShadeHeight = Math.min(bottomShadeHeight, shaftBodyHeight);
+      ctx.fillRect(
+        openingLeft + sideEdgeWidth,
+        shaftBottom - clampedShadeHeight,
+        centerWidth,
+        clampedShadeHeight
+      );
+    }
+  }
+
+  const highlightWidth = Math.max(1, Math.round(interiorWidth * 0.06));
+  const minInset = Math.max(1, sideEdgeWidth);
+  const maxInset = Math.floor((interiorWidth - highlightWidth) / 2);
+
+  if (maxInset >= minInset) {
+    const preferredInset = Math.max(minInset, Math.round(interiorWidth * 0.14));
+    const highlightInset = Math.min(preferredInset, maxInset);
+    const highlightTop = shaftStartY + 1;
+    const highlightHeight = Math.max(0, shaftBottom - highlightTop - 1);
+
+    if (highlightHeight > 0) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(openingLeft + highlightInset, highlightTop, highlightWidth, highlightHeight);
+      ctx.fillRect(
+        openingLeft + interiorWidth - highlightInset - highlightWidth,
+        highlightTop,
+        highlightWidth,
+        highlightHeight
+      );
+    }
+  }
 }
 
 function drawSupport(ctx: DrawContext, x: number, groundY: number, rimWidth: number, shaftHeight: number): void {
@@ -106,7 +149,6 @@ export function drawWell(ctx: DrawContext, options: DrawWellOptions): void {
   const rimBottom = rimTop + normalized.rimThickness;
 
   drawSupport(ctx, normalized.x, screenGroundY, normalized.rimWidth, normalized.shaftHeight);
-  drawRim(ctx, normalized.x, rimTop, normalized.rimWidth, normalized.rimThickness);
   drawShaft(
     ctx,
     normalized.x,
@@ -115,4 +157,5 @@ export function drawWell(ctx: DrawContext, options: DrawWellOptions): void {
     normalized.openingDepth,
     normalized.shaftHeight
   );
+  drawRim(ctx, normalized.x, rimTop, normalized.rimWidth, normalized.rimThickness);
 }
