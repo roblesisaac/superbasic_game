@@ -48,7 +48,7 @@ const LARGE_BUBBLE_RADIUS = 26;
 const LARGE_BUBBLE_CHANCE = 0.05;
 const MAX_RISING_BUBBLES = 20;
 const INITIAL_RISING_BUBBLES = 8;
-const BUBBLE_SPAWN_RATE = 0.017 * 60; // convert frame chance to per-second rate
+const RISING_BUBBLE_SPAWNS_PER_SECOND = 0.6; // Tunable spawn cadence for rising bubbles
 const BUBBLE_MIN_SPEED = 0.5 * 1.5 * 60;
 const BUBBLE_MAX_SPEED = 1.5 * 1.5 * 60;
 const TRAIL_PIXEL_SIZE = 4;
@@ -174,7 +174,7 @@ function seedInitialRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number)
 function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: number): void {
   const viewBottom = env.cameraY + env.canvasHeight;
 
-  spawnAccumulator += dt * BUBBLE_SPAWN_RATE;
+  spawnAccumulator += dt * RISING_BUBBLE_SPAWNS_PER_SECOND;
   while (spawnAccumulator >= 1) {
     createRisingBubble(env, waterSurfaceY, viewBottom);
     spawnAccumulator -= 1;
