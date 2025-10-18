@@ -645,7 +645,13 @@ export class InputHandler {
   }
 
   spawnRideFromGesture(dx: number, totalTimeMs: number, screenY: number) {
-    if (!this.game.sprite || this.game.sprite.onGround || this.game.sprite.inWater) {
+    const sprite = this.game.sprite;
+    if (!sprite) {
+      return;
+    }
+
+    const isAirborne = !sprite.onGround || Math.abs(sprite.vy) > 0.01;
+    if (!isAirborne || sprite.inWater) {
       return;
     }
 

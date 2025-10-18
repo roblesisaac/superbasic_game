@@ -7,7 +7,8 @@ import {
   getWellExpansionBottomY,
   getWellExpansionTopY,
   getWellShaftBottomY,
-  getWellWaterSurfaceY
+  getWellWaterSurfaceY,
+  ensureWellDepth
 } from '../runtime/environment/well_layout.js';
 
 interface DrawWellOptions {
@@ -23,6 +24,8 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
 
   if (!Number.isFinite(centerX) || !Number.isFinite(groundY) || !Number.isFinite(cameraY)) return;
   if (!Number.isFinite(canvasHeight) || canvasHeight <= 0) return;
+
+  ensureWellDepth(groundY, canvasHeight, cameraY + canvasHeight * 1.5);
 
   const normalizedOpeningWidth = Math.max(24, Math.round(openingWidth));
   const screenGroundY = Math.round(groundY - cameraY);
@@ -60,6 +63,15 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.restore();
 
   ctx.save();
+  ctx.fillStyle = '#fff';
+
+  const shaftFillTop = Math.max(rimTop - WELL_RIM_THICKNESS, 0);
+  const shaftFillBottom = Math.min(shaftBottomScreen, canvasHeight);
+  if (shaftFillBottom > shaftFillTop) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(innerLeft, shaftFillTop, normalizedOpeningWidth, shaftFillBottom - shaftFillTop);
+  }
+
   ctx.fillStyle = '#fff';
 
   // Draw the rim cap
@@ -107,14 +119,8 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     const cavernDrawTop = Math.max(expansionTopScreen, 0);
     const cavernDrawBottom = Math.min(expansionBottomScreen, canvasHeight);
     if (cavernDrawBottom > cavernDrawTop) {
-      ctx.fillStyle = '#050505';
+      ctx.fillStyle = '#000';
       ctx.fillRect(0, cavernDrawTop, canvasWidth, cavernDrawBottom - cavernDrawTop);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      const mortarSpacing = WELL_SHAFT_COLUMN_WIDTH + 2;
-      for (let y = cavernDrawTop + mortarSpacing; y < cavernDrawBottom; y += mortarSpacing) {
-        ctx.fillRect(0, y, canvasWidth, 1);
-      }
     }
   }
 
