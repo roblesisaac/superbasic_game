@@ -11,7 +11,10 @@ import {
   SPRITE_SIZE,
   MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
   RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
-  RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
+  RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS,
+  WATER_GRAVITY_FACTOR, WATER_BUOYANCY_ACCEL, WATER_LINEAR_DAMPING,
+  WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
+  WATER_MAX_SINK_SPEED
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
@@ -24,7 +27,8 @@ import {
   getWellExpansionTopY,
   getWellRimTopY,
   getWellShaftBottomY,
-  getWellShaftSpan
+  getWellShaftSpan,
+  getWellWaterSurfaceY
 } from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
@@ -82,6 +86,7 @@ export class Sprite {
   prevX: number;
   prevY: number;
   prevVy: number;
+  inWater: boolean;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -121,6 +126,7 @@ export class Sprite {
     this.prevX = x;
     this.prevY = y;
     this.prevVy = 0;
+    this.inWater = false;
   }
 
   startCharging() {
@@ -182,14 +188,20 @@ export class Sprite {
     if (this.movementCharging) {
       if (this.hooks.energyBar.state === 'cooldown') {
         // Small movement during cooldown
-        const force = MOVEMENT_MIN * 0.5;
+        let force = MOVEMENT_MIN * 0.5;
+        if (this.inWater && !this.onGround) {
+          force *= WATER_STROKE_FORCE_SCALE;
+        }
         this.vx += -this.movementDirection.x * force;
         this.vy += -this.movementDirection.y * force;
         this.hooks.energyBar.extendCooldown(0.15);
       } else {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
-        const force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        let force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        if (this.inWater && !this.onGround) {
+          force *= WATER_STROKE_FORCE_SCALE;
+        }
 
         // Apply movement in opposite direction of drag
         this.vx += -this.movementDirection.x * force;
@@ -572,6 +584,7 @@ export class Sprite {
     this.prevX = this.x;
     this.prevY = this.y;
     this.prevVy = this.vy;
+    const wasInWater = this.inWater;
 
     this._updateVelocityStretch();
     this._updateImpactSquash(dt);
@@ -595,6 +608,11 @@ export class Sprite {
     const hs = SPRITE_SIZE / 2;
     const wasOnGround = this.onGround;
     const wasOnPlatform = this.onPlatform;
+    const well = getWellBounds(canvasWidth);
+    const cavernSpan = getWellExpansionSpan(canvasWidth);
+    const expansionTopY = getWellExpansionTopY(groundY, canvasHeight);
+    const waterSurfaceY = getWellWaterSurfaceY(groundY, canvasHeight);
+    const shaftBottomY = getWellShaftBottomY(groundY, canvasHeight);
 
     // Handle charging
     if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
@@ -613,13 +631,39 @@ export class Sprite {
       else this.gliding = false;
     }
 
+    const prevBottom = prevY + hs;
+    const prevHorizInCavern =
+      (prevX + hs) > cavernSpan.interiorLeft &&
+      (prevX - hs) < cavernSpan.interiorRight;
+    const preUpdateInWater =
+      prevBottom >= waterSurfaceY &&
+      prevBottom >= expansionTopY &&
+      prevHorizInCavern;
+
     let g = GRAVITY;
     if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
+    if (preUpdateInWater) {
+      g *= WATER_GRAVITY_FACTOR;
+      this.vy -= WATER_BUOYANCY_ACCEL * dt;
+    }
     this.vy += g * dt;
+
+    if (preUpdateInWater) {
+      const damping = Math.exp(-WATER_LINEAR_DAMPING * dt);
+      this.vx *= damping;
+      this.vy *= damping;
+      if (this.vy > WATER_MAX_SINK_SPEED) this.vy = WATER_MAX_SINK_SPEED;
+      const speed = Math.hypot(this.vx, this.vy);
+      if (speed > WATER_MAX_SPEED) {
+        const scale = WATER_MAX_SPEED / speed;
+        this.vx *= scale;
+        this.vy *= scale;
+      }
+    }
 
     if (this.onGround && Math.abs(this.vx) > 0) {
       const fr = GROUND_FRICTION * dt;
-      if (Math.abs(this.vx) <= fr) this.vx = 0; 
+      if (Math.abs(this.vx) <= fr) this.vx = 0;
       else this.vx -= Math.sign(this.vx) * fr;
     }
 
@@ -628,12 +672,12 @@ export class Sprite {
     this.x = clamp(this.x, hs, canvasWidth - hs);
 
     const prevTop = prevY - hs;
-    const prevBottom = prevY + hs;
     const prevLeft = prevX - hs;
     const prevRight = prevX + hs;
 
     this.onGround = false;
     this.onPlatform = false;
+    this.inWater = false;
 
     const previousPlatform = this.platformSurface;
     let newPlatformSurface = null;
@@ -800,14 +844,12 @@ export class Sprite {
       this.onGround = true;
       this.vy = 0;
       this.gliding = false;
+      this.inWater = false;
     };
 
     let spriteLeft = this.x - hs;
     let spriteRight = this.x + hs;
     let spriteBottom = this.y + hs;
-    const well = getWellBounds(canvasWidth);
-    const shaftBottomY = getWellShaftBottomY(groundY, canvasHeight);
-    const expansionTopY = getWellExpansionTopY(groundY, canvasHeight);
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
     const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
@@ -839,7 +881,7 @@ export class Sprite {
     if (spriteBottom > rimTopY && spriteRight > well.left && spriteLeft < well.right) {
       const inExpansionZone = spriteBottom >= expansionTopY;
       const { interiorLeft, interiorRight } = inExpansionZone
-        ? getWellExpansionSpan(canvasWidth)
+        ? cavernSpan
         : getWellShaftSpan(well);
       const spanWidth = interiorRight - interiorLeft;
 
@@ -862,8 +904,31 @@ export class Sprite {
       }
     }
 
-    if (spriteBottom >= shaftBottomY && this.vy >= 0) {
-      const cavernSpan = getWellExpansionSpan(canvasWidth);
+    let submergedInWater = false;
+    if (
+      spriteBottom >= expansionTopY &&
+      spriteRight > cavernSpan.interiorLeft &&
+      spriteLeft < cavernSpan.interiorRight
+    ) {
+      if (spriteBottom >= waterSurfaceY) {
+        submergedInWater = true;
+        this.inWater = true;
+        this.onGround = false;
+        if (!wasInWater) {
+          this.vx *= WATER_ENTRY_DAMPING;
+          this.vy *= WATER_ENTRY_DAMPING;
+        }
+        if (spriteBottom > shaftBottomY) {
+          this.y = shaftBottomY - hs;
+          spriteBottom = this.y + hs;
+          if (this.vy > 0) this.vy = 0;
+        }
+        spriteLeft = this.x - hs;
+        spriteRight = this.x + hs;
+      }
+    }
+
+    if (!submergedInWater && spriteBottom >= shaftBottomY && this.vy >= 0) {
       if (spriteRight > cavernSpan.interiorLeft && spriteLeft < cavernSpan.interiorRight) {
         applyStaticLanding(shaftBottomY);
       }

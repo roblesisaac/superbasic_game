@@ -11,6 +11,7 @@ export const WELL_SHAFT_COLUMN_INSET = 2;
 export const WELL_SHAFT_COLUMN_WIDTH = 4;
 export const WELL_NARROW_SHAFT_DEPTH_MULTIPLIER = 3;
 export const WELL_CAVERN_DEPTH_MULTIPLIER = 1;
+export const WELL_WATER_OFFSET_MULTIPLIER = 0.1;
 export const WELL_RIM_TOP_OFFSET = WELL_RIM_THICKNESS * 2 + 1;
 
 export interface WellBounds {
@@ -102,4 +103,11 @@ export function getWellExpansionTopY(groundY: number, canvasHeight: number): num
 
 export function getWellExpansionBottomY(groundY: number, canvasHeight: number): number {
   return getWellExpansionTopY(groundY, canvasHeight) + getWellCavernDepth(canvasHeight);
+}
+
+export function getWellWaterSurfaceY(groundY: number, canvasHeight: number): number {
+  const expansionTop = getWellExpansionTopY(groundY, canvasHeight);
+  const expansionBottom = getWellExpansionBottomY(groundY, canvasHeight);
+  const offset = Math.max(0, Math.round(canvasHeight * WELL_WATER_OFFSET_MULTIPLIER));
+  return Math.min(expansionBottom, expansionTop + offset);
 }

@@ -287,7 +287,12 @@ export class InputHandler {
         this.startJoystick(x, y);
 
         this.game.sprite?.startCharging();
-        if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
+        if (
+          this.game.sprite &&
+          !this.game.sprite.onGround &&
+          !this.game.sprite.inWater &&
+          this.game.sprite.vy > 0
+        ) {
           this.game.sprite.startGliding();
         }
       },
@@ -320,33 +325,38 @@ export class InputHandler {
         );
         const dt = sample.time - this.touchStart.time;
 
+        const sprite = this.game.sprite;
+        const spriteAirborne = !!(sprite && !sprite.onGround);
+        const spriteSwimming = !!(sprite && sprite.inWater);
+
         if (
           !this.touchSwipe &&
           !this.isJoystickMode &&
           direction.distance >= MIN_SWIPE_DISTANCE &&
           dt >= MIN_SWIPE_TIME
         ) {
-          if (this.game.sprite && !this.game.sprite.onGround) {
+          if (spriteAirborne && !spriteSwimming && sprite) {
             this.touchSwipe = true;
-            this.game.sprite.charging = false;
-            this.game.sprite.movementCharging = false;
-          } else if (this.game.sprite) {
+            sprite.charging = false;
+            sprite.movementCharging = false;
+          } else if (sprite) {
             this.isJoystickMode = true;
-            this.game.sprite.charging = false;
-            this.game.sprite.startMovementCharging(direction);
+            sprite.charging = false;
+            sprite.startMovementCharging(direction);
           }
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.updateMovementCharging(direction);
         }
 
         if (
-          this.game.sprite &&
-          !this.game.sprite.onGround &&
-          this.game.sprite.vy > 0 &&
-          !this.game.sprite.gliding &&
+          sprite &&
+          spriteAirborne &&
+          !spriteSwimming &&
+          sprite.vy > 0 &&
+          !sprite.gliding &&
           this.game.energyBar?.canUse()
         ) {
-          this.game.sprite.startGliding();
+          sprite.startGliding();
         }
       },
       { passive: false }
@@ -366,7 +376,12 @@ export class InputHandler {
         const dx = last.x - this.touchStart.x;
         const total = Math.max(1, endTime - this.touchStart.time);
 
-        if (this.touchSwipe && this.game.sprite && !this.game.sprite.onGround) {
+        if (
+          this.touchSwipe &&
+          sprite &&
+          spriteAirborne &&
+          !spriteSwimming
+        ) {
           this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
@@ -409,7 +424,12 @@ export class InputHandler {
       this.startJoystick(x, y);
 
       this.game.sprite?.startCharging();
-      if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
+      if (
+        this.game.sprite &&
+        !this.game.sprite.onGround &&
+        !this.game.sprite.inWater &&
+        this.game.sprite.vy > 0
+      ) {
         this.game.sprite.startGliding();
       }
     });
@@ -436,33 +456,38 @@ export class InputHandler {
       );
       const dt = sample.time - this.mouseStart.time;
 
+      const sprite = this.game.sprite;
+      const spriteAirborne = !!(sprite && !sprite.onGround);
+      const spriteSwimming = !!(sprite && sprite.inWater);
+
       if (
         !this.mouseSwipe &&
         !this.isMouseJoystickMode &&
         direction.distance >= MIN_SWIPE_DISTANCE &&
         dt >= MIN_SWIPE_TIME
       ) {
-        if (this.game.sprite && !this.game.sprite.onGround) {
+        if (spriteAirborne && !spriteSwimming && sprite) {
           this.mouseSwipe = true;
-          this.game.sprite.charging = false;
-          this.game.sprite.movementCharging = false;
-        } else if (this.game.sprite) {
+          sprite.charging = false;
+          sprite.movementCharging = false;
+        } else if (sprite) {
           this.isMouseJoystickMode = true;
-          this.game.sprite.charging = false;
-          this.game.sprite.startMovementCharging(direction);
+          sprite.charging = false;
+          sprite.startMovementCharging(direction);
         }
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.updateMovementCharging(direction);
       }
 
       if (
-        this.game.sprite &&
-        !this.game.sprite.onGround &&
-        this.game.sprite.vy > 0 &&
-        !this.game.sprite.gliding &&
+        sprite &&
+        spriteAirborne &&
+        !spriteSwimming &&
+        sprite.vy > 0 &&
+        !sprite.gliding &&
         this.game.energyBar?.canUse()
       ) {
-        this.game.sprite.startGliding();
+        sprite.startGliding();
       }
     });
 
@@ -477,7 +502,12 @@ export class InputHandler {
       const dx = last.x - this.mouseStart.x;
       const total = Math.max(1, endTime - this.mouseStart.time);
 
-      if (this.mouseSwipe && this.game.sprite && !this.game.sprite.onGround) {
+      if (
+        this.mouseSwipe &&
+        sprite &&
+        spriteAirborne &&
+        !spriteSwimming
+      ) {
         this.spawnRideFromGesture(dx, total, last.y);
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
@@ -517,7 +547,8 @@ export class InputHandler {
             Math.abs(totalDeltaX) > 50 &&
             totalTime > 100 &&
             this.game.sprite &&
-            !this.game.sprite.onGround
+            !this.game.sprite.onGround &&
+            !this.game.sprite.inWater
           ) {
             const rect = canvas.getBoundingClientRect();
             const mouseY = e.clientY - rect.top;
@@ -541,7 +572,12 @@ export class InputHandler {
         this.keyboardCharging = true;
         this.keyboardChargeStart = Date.now();
         this.game.sprite?.startCharging();
-        if (this.game.sprite && !this.game.sprite.onGround && this.game.sprite.vy > 0) {
+        if (
+          this.game.sprite &&
+          !this.game.sprite.onGround &&
+          !this.game.sprite.inWater &&
+          this.game.sprite.vy > 0
+        ) {
           this.game.sprite.startGliding();
         }
       }
@@ -609,7 +645,9 @@ export class InputHandler {
   }
 
   spawnRideFromGesture(dx: number, totalTimeMs: number, screenY: number) {
-    if (!this.game.sprite || this.game.sprite.onGround) return;
+    if (!this.game.sprite || this.game.sprite.onGround || this.game.sprite.inWater) {
+      return;
+    }
 
     const activeMovers = countActiveMovingRides(this.game.rides);
     if (activeMovers >= MAX_RIDES) return;
