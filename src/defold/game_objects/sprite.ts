@@ -1058,19 +1058,51 @@ export class Sprite {
     const SWIM_INPUT_ROTATE_SPEED = 18;
     const SWIM_RETURN_SPEED = 16;
     const MIN_SPEED_FOR_UPDATE = 20;
+    const SMALL_SPEED_FOR_BLEND = 5;
+    const SPEED_BLEND_RANGE = 160;
 
     if (this.inWater) {
       const inputMagnitude = Math.hypot(this.movementDirection.x, this.movementDirection.y);
-      if (this.movementCharging && inputMagnitude > 0.1) {
-        const targetAngle = Math.atan2(-this.movementDirection.y, -this.movementDirection.x);
-        this.waterFacingAngle = this._normalizeAngle(targetAngle);
-      } else {
-        const speed = Math.hypot(this.vx, this.vy);
-        if (speed > MIN_SPEED_FOR_UPDATE) {
-          const targetAngle = Math.atan2(this.vy, this.vx);
-          const factor = 1 - Math.exp(-SWIM_ROTATE_SPEED * dt);
+      const hasInput = this.movementCharging && inputMagnitude > 0.1;
+      const speed = Math.hypot(this.vx, this.vy);
+
+      if (hasInput) {
+        const desiredDir = this._normalizedVector(
+          -this.movementDirection.x,
+          -this.movementDirection.y
+        );
+
+        if (desiredDir) {
+          let targetDir = { ...desiredDir };
+
+          if (speed > SMALL_SPEED_FOR_BLEND) {
+            const velocityDir = this._normalizedVector(this.vx, this.vy);
+            if (velocityDir) {
+              let velocityInfluence = clamp(
+                (speed - MIN_SPEED_FOR_UPDATE) / SPEED_BLEND_RANGE,
+                0,
+                1
+              );
+
+              const alignment = desiredDir.x * velocityDir.x + desiredDir.y * velocityDir.y;
+              if (alignment < 0) velocityInfluence *= 0.35;
+              else if (alignment < 0.4) velocityInfluence *= 0.6;
+
+              const mixX = desiredDir.x * (1 - velocityInfluence) + velocityDir.x * velocityInfluence;
+              const mixY = desiredDir.y * (1 - velocityInfluence) + velocityDir.y * velocityInfluence;
+              const blended = this._normalizedVector(mixX, mixY);
+              if (blended) targetDir = blended;
+            }
+          }
+
+          const targetAngle = Math.atan2(targetDir.y, targetDir.x);
+          const factor = 1 - Math.exp(-SWIM_INPUT_ROTATE_SPEED * dt);
           this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, targetAngle, factor);
         }
+      } else if (speed > MIN_SPEED_FOR_UPDATE) {
+        const targetAngle = Math.atan2(this.vy, this.vx);
+        const factor = 1 - Math.exp(-SWIM_ROTATE_SPEED * dt);
+        this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, targetAngle, factor);
       }
     } else {
       const factor = 1 - Math.exp(-SWIM_RETURN_SPEED * dt);
@@ -1086,5 +1118,11 @@ export class Sprite {
 
   _normalizeAngle(angle: number) {
     return Math.atan2(Math.sin(angle), Math.cos(angle));
+  }
+
+  _normalizedVector(x: number, y: number): { x: number; y: number } | null {
+    const length = Math.hypot(x, y);
+    if (length < 1e-5) return null;
+    return { x: x / length, y: y / length };
   }
 }
