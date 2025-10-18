@@ -811,13 +811,23 @@ export class Sprite {
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
     const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
-    const eligibleForRimLanding = overlapsRimSpan && !centerOverOpening && spriteBottom >= rimTopY;
+    const cameFromAboveRim = prevBottom <= rimTopY;
+    const eligibleForRimLanding =
+      overlapsRimSpan &&
+      !centerOverOpening &&
+      spriteBottom >= rimTopY &&
+      cameFromAboveRim;
 
     // ground and well rim collisions
     if (!this.onPlatform) {
       if (eligibleForRimLanding) {
         applyStaticLanding(rimTopY);
-      } else if (spriteBottom >= groundY && !centerOverOpening) {
+      } else if (
+        spriteBottom >= groundY &&
+        !centerOverOpening &&
+        spriteBottom < expansionTopY &&
+        (prevBottom <= groundY || wasOnGround)
+      ) {
         applyStaticLanding(groundY);
       }
     }
@@ -852,13 +862,11 @@ export class Sprite {
       }
     }
 
-    if (
-      spriteRight > well.left &&
-      spriteLeft < well.right &&
-      spriteBottom >= shaftBottomY &&
-      this.vy >= 0
-    ) {
-      applyStaticLanding(shaftBottomY);
+    if (spriteBottom >= shaftBottomY && this.vy >= 0) {
+      const cavernSpan = getWellExpansionSpan(canvasWidth);
+      if (spriteRight > cavernSpan.interiorLeft && spriteLeft < cavernSpan.interiorRight) {
+        applyStaticLanding(shaftBottomY);
+      }
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
