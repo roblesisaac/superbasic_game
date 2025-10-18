@@ -101,3 +101,12 @@ export const CAM_BOTTOM = 0.65;
 
 export const MOVEMENT_MIN = 300;
 export const MOVEMENT_MAX = 1000;
+
+// Water physics
+export const WATER_GRAVITY_FACTOR = 0.15;
+export const WATER_BUOYANCY_ACCEL = 360;
+export const WATER_LINEAR_DAMPING = 3.0;
+export const WATER_MAX_SPEED = 420;
+export const WATER_STROKE_FORCE_SCALE = 0.55;
+export const WATER_ENTRY_DAMPING = 0.45;
+export const WATER_MAX_SINK_SPEED = 260;
