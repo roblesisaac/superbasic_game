@@ -27,7 +27,6 @@ export const ENERGY_DRAIN_GLIDE  = 10;
 export const ENERGY_REGEN_RATE   = 80;
 export const COOLDOWN_TIME = 1.1;
 export const COOLDOWN_PENALTY_PER_PRESS = 0.22;
-export const ENERGY_REGEN_STATIONARY_SPEED = 18;
 export const ENERGY_REGEN_STATIONARY_DELAY = 0.25;
 
 export const SAFE_FALL_VY = 700;

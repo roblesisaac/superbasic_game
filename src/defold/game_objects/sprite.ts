@@ -15,7 +15,7 @@ import {
   WATER_GRAVITY_FACTOR, WATER_BUOYANCY_ACCEL, WATER_LINEAR_DAMPING,
   WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
   WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
-  ENERGY_REGEN_STATIONARY_SPEED, ENERGY_REGEN_STATIONARY_DELAY,
+  ENERGY_REGEN_STATIONARY_DELAY,
   OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
@@ -95,6 +95,7 @@ export class Sprite {
   stationaryTimer: number;
   oxygen: number;
   maxOxygen: number;
+  isSwimmingInputActive: boolean;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -141,6 +142,26 @@ export class Sprite {
     this.stationaryTimer = 0;
     this.maxOxygen = OXYGEN_MAX;
     this.oxygen = this.maxOxygen;
+    this.isSwimmingInputActive = false;
+  }
+
+  private setSwimmingInputActive(active: boolean) {
+    if (active) {
+      this.isSwimmingInputActive = true;
+      this.stationaryTimer = 0;
+    } else if (this.isSwimmingInputActive) {
+      this.isSwimmingInputActive = false;
+      this.stationaryTimer = 0;
+    }
+  }
+
+  cancelMovementCharging() {
+    if (this.movementCharging) {
+      this.movementCharging = false;
+      this.movementChargeTime = 0;
+      this.movementDirection = { x: 0, y: 0 };
+    }
+    this.setSwimmingInputActive(false);
   }
 
   startCharging() {
@@ -156,6 +177,7 @@ export class Sprite {
   }
 
   startMovementCharging(direction) {
+    this.setSwimmingInputActive(true);
     if (this.hooks.energyBar.state === 'cooldown') {
       this.movementCharging = true;
       this.movementChargeTime = 0;
@@ -238,10 +260,7 @@ export class Sprite {
       };
       this._doFollowThroughStretch(this.lastMovementDirection);
     }
-
-    this.movementCharging = false;
-    this.movementChargeTime = 0;
-    this.movementDirection = { x: 0, y: 0 };
+    this.cancelMovementCharging();
   }
 
   startGliding() {
@@ -979,11 +998,10 @@ export class Sprite {
       this.oxygen = this.maxOxygen;
     }
 
-    const speed = Math.hypot(this.vx, this.vy);
-    if (speed < ENERGY_REGEN_STATIONARY_SPEED) {
-      this.stationaryTimer += dt;
-    } else {
+    if (this.isSwimmingInputActive) {
       this.stationaryTimer = 0;
+    } else {
+      this.stationaryTimer += dt;
     }
     this.isStationary = this.stationaryTimer >= ENERGY_REGEN_STATIONARY_DELAY;
 

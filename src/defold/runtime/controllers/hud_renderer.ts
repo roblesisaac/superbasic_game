@@ -46,7 +46,6 @@ export function drawHUD(): void {
   if (!sprite || !energyBar || !hearts) return;
 
   energyBar.draw(ctx);
-  drawOxygenBar(sprite, energyBar);
   hearts.draw(ctx, gameWorld.lastTime);
   // drawCurrentCardTitle();
   drawSettingsIcon(ctx);
@@ -61,50 +60,65 @@ export function drawHUD(): void {
   ctx.restore();
 
   if (sprite.inWater) {
-    const depthMeters = Math.max(0, Math.round(sprite.waterDepthMeters));
-    const label = 'DEPTH';
-    const text = `${depthMeters.toString().padStart(2, '0')} M`;
-
-    ctx.save();
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.font = '10px LocalPressStart, monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    const baseX = 12;
-    const baseY = canvasHeight - 28;
-    ctx.fillText(label, baseX, baseY - 20);
-    ctx.font = '16px LocalPressStart, monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, baseX, baseY);
-    ctx.restore();
+    drawDepthAndOxygenMeters(sprite, energyBar);
   }
 }
 
-function drawOxygenBar(sprite: typeof gameWorld.sprite, energyBar: typeof gameWorld.energyBar) {
+function drawDepthAndOxygenMeters(
+  sprite: typeof gameWorld.sprite,
+  energyBar: typeof gameWorld.energyBar
+) {
   if (!sprite || !energyBar) return;
+
+  const depthMeters = Math.max(0, Math.round(sprite.waterDepthMeters));
+  const depthLabel = 'DEPTH';
+  const depthText = `${depthMeters.toString().padStart(2, '0')} M`;
+  const anchorX = 12;
+  const depthLabelY = canvasHeight - 96;
+  const depthValueY = depthLabelY + 18;
+
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.font = '10px LocalPressStart, monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillText(depthLabel, anchorX, depthLabelY);
+
+  ctx.font = '16px LocalPressStart, monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(depthText, anchorX, depthValueY);
+  ctx.restore();
+
   const bounds = energyBar.getBounds();
-  const barPadding = 6;
+  const oxygenTop = depthValueY + 26;
+  drawOxygenMeter(sprite, anchorX, oxygenTop, bounds.width);
+}
+
+function drawOxygenMeter(
+  sprite: typeof gameWorld.sprite,
+  x: number,
+  top: number,
+  width: number
+) {
   const barHeight = 8;
-  const barX = bounds.x;
-  const barY = bounds.y + bounds.height + barPadding;
-  const ratio = sprite.maxOxygen > 0 ? Math.min(Math.max(sprite.oxygen / sprite.maxOxygen, 0), 1) : 0;
-  const barWidth = bounds.width;
+  const ratio =
+    sprite.maxOxygen > 0 ? Math.min(Math.max(sprite.oxygen / sprite.maxOxygen, 0), 1) : 0;
 
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(barX, barY, barWidth, barHeight);
+  ctx.fillRect(x, top, width, barHeight);
   ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-  ctx.strokeRect(barX, barY, barWidth, barHeight);
+  ctx.strokeRect(x, top, width, barHeight);
 
   if (ratio > 0) {
     ctx.fillStyle = '#6fd6ff';
-    ctx.fillRect(barX, barY, barWidth * ratio, barHeight);
+    ctx.fillRect(x, top, width * ratio, barHeight);
   }
 
   ctx.font = '9px LocalPressStart, monospace';
   ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
+  ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.fillText('O2', barX + barWidth + 8, barY + barHeight);
+  ctx.fillText('O2', x, top + barHeight + 4);
   ctx.restore();
 }
