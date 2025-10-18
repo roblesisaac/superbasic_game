@@ -817,7 +817,11 @@ export class Sprite {
     if (!this.onPlatform) {
       if (eligibleForRimLanding) {
         applyStaticLanding(rimTopY);
-      } else if (spriteBottom >= groundY && !centerOverOpening) {
+      } else if (
+        spriteBottom >= groundY &&
+        !centerOverOpening &&
+        spriteBottom < expansionTopY
+      ) {
         applyStaticLanding(groundY);
       }
     }
