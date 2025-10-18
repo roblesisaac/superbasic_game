@@ -65,7 +65,7 @@ const LARGE_BUBBLE_RADIUS = 26;
 const LARGE_BUBBLE_CHANCE = 0.05;
 const MAX_RISING_BUBBLES = 20;
 const INITIAL_RISING_BUBBLES = 8;
-const RISING_BUBBLE_SPAWNS_PER_SECOND = 0.25; // Tunable spawn cadence for rising bubbles
+const RISING_BUBBLE_SPAWNS_PER_SECOND = 1; // Number of rising bubbles to spawn each second
 const BUBBLE_MIN_SPEED = 0.5 * 1.5 * 60;
 const BUBBLE_MAX_SPEED = 1.5 * 1.5 * 60;
 const TRAIL_PIXEL_SIZE = 4;
@@ -90,7 +90,7 @@ let staticBubbles: StaticBubble[] = [];
 let risingBubbles: RisingBubble[] = [];
 let lastStaticSegmentBottom = 0;
 let lastTimestamp = 0;
-let spawnAccumulator = 0;
+let spawnTimer = 0;
 let seededInitialBubbles = false;
 
 function randomInRange(min: number, max: number): number {
@@ -191,14 +191,15 @@ function seedInitialRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number)
 function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: number): void {
   const viewBottom = env.cameraY + env.canvasHeight;
 
-  spawnAccumulator += dt * RISING_BUBBLE_SPAWNS_PER_SECOND;
-  while (spawnAccumulator >= 1) {
-    createRisingBubble(env, waterSurfaceY, viewBottom);
-    spawnAccumulator -= 1;
-  }
-  if (spawnAccumulator > 0 && Math.random() < spawnAccumulator) {
-    createRisingBubble(env, waterSurfaceY, viewBottom);
-    spawnAccumulator = 0;
+  if (RISING_BUBBLE_SPAWNS_PER_SECOND > 0) {
+    const spawnInterval = 1 / RISING_BUBBLE_SPAWNS_PER_SECOND;
+    spawnTimer += dt;
+    while (spawnTimer >= spawnInterval) {
+      createRisingBubble(env, waterSurfaceY, viewBottom);
+      spawnTimer -= spawnInterval;
+    }
+  } else {
+    spawnTimer = 0;
   }
 
   for (let i = risingBubbles.length - 1; i >= 0; i--) {
@@ -456,6 +457,6 @@ export function resetBubbleField(): void {
   risingBubbles = [];
   lastStaticSegmentBottom = 0;
   lastTimestamp = 0;
-  spawnAccumulator = 0;
+  spawnTimer = 0;
   seededInitialBubbles = false;
 }
