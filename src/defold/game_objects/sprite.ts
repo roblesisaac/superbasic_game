@@ -811,7 +811,12 @@ export class Sprite {
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
     const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
-    const eligibleForRimLanding = overlapsRimSpan && !centerOverOpening && spriteBottom >= rimTopY;
+    const cameFromAboveRim = prevBottom <= rimTopY;
+    const eligibleForRimLanding =
+      overlapsRimSpan &&
+      !centerOverOpening &&
+      spriteBottom >= rimTopY &&
+      cameFromAboveRim;
 
     // ground and well rim collisions
     if (!this.onPlatform) {
@@ -820,7 +825,8 @@ export class Sprite {
       } else if (
         spriteBottom >= groundY &&
         !centerOverOpening &&
-        spriteBottom < expansionTopY
+        spriteBottom < expansionTopY &&
+        prevBottom <= groundY
       ) {
         applyStaticLanding(groundY);
       }
