@@ -163,8 +163,7 @@ function updateWorld(dt: number): void {
     // Continue merging until all overlapping rides are resolved
   }
 
-  const canRecharge = sprite.onGround || sprite.onPlatform || sprite.isAtWaterSurface;
-  gameWorld.energyBar?.update(dt, canRecharge);
+  gameWorld.energyBar?.update(dt, sprite.isStationary);
 
   updateCameraForSprite(sprite);
   ensureSettingsOverlay();

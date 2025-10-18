@@ -1,5 +1,5 @@
 import { PIXELS_PER_FOOT } from '../../../config/constants.js';
-import { ctx, canvasWidth, groundY } from '../state/rendering_state.js';
+import { ctx, canvasWidth, canvasHeight, groundY } from '../state/rendering_state.js';
 import { gameWorld } from '../state/game_state.js';
 import { drawSettingsIcon } from '../../gui/settings_overlay.js';
 import { getCurrentCard } from './card_controller.js';
@@ -46,6 +46,7 @@ export function drawHUD(): void {
   if (!sprite || !energyBar || !hearts) return;
 
   energyBar.draw(ctx);
+  drawOxygenBar(sprite, energyBar);
   hearts.draw(ctx, gameWorld.lastTime);
   // drawCurrentCardTitle();
   drawSettingsIcon(ctx);
@@ -65,16 +66,45 @@ export function drawHUD(): void {
     const text = `${depthMeters.toString().padStart(2, '0')} M`;
 
     ctx.save();
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
     ctx.font = '10px LocalPressStart, monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    const baseX = canvasWidth - 12;
-    const baseY = 12;
-    ctx.fillText(label, baseX, baseY);
+    const baseX = 12;
+    const baseY = canvasHeight - 28;
+    ctx.fillText(label, baseX, baseY - 20);
     ctx.font = '16px LocalPressStart, monospace';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, baseX, baseY + 12);
+    ctx.fillText(text, baseX, baseY);
     ctx.restore();
   }
+}
+
+function drawOxygenBar(sprite: typeof gameWorld.sprite, energyBar: typeof gameWorld.energyBar) {
+  if (!sprite || !energyBar) return;
+  const bounds = energyBar.getBounds();
+  const barPadding = 6;
+  const barHeight = 8;
+  const barX = bounds.x;
+  const barY = bounds.y + bounds.height + barPadding;
+  const ratio = sprite.maxOxygen > 0 ? Math.min(Math.max(sprite.oxygen / sprite.maxOxygen, 0), 1) : 0;
+  const barWidth = bounds.width;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(barX, barY, barWidth, barHeight);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+  if (ratio > 0) {
+    ctx.fillStyle = '#6fd6ff';
+    ctx.fillRect(barX, barY, barWidth * ratio, barHeight);
+  }
+
+  ctx.font = '9px LocalPressStart, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText('O2', barX + barWidth + 8, barY + barHeight);
+  ctx.restore();
 }

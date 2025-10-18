@@ -27,6 +27,8 @@ export const ENERGY_DRAIN_GLIDE  = 10;
 export const ENERGY_REGEN_RATE   = 80;
 export const COOLDOWN_TIME = 1.1;
 export const COOLDOWN_PENALTY_PER_PRESS = 0.22;
+export const ENERGY_REGEN_STATIONARY_SPEED = 18;
+export const ENERGY_REGEN_STATIONARY_DELAY = 0.25;
 
 export const SAFE_FALL_VY = 700;
 export const SAFE_FALL_HEIGHT = 64;
@@ -112,3 +114,8 @@ export const WATER_ENTRY_DAMPING = 0.45;
 export const WATER_MAX_SINK_SPEED = 260;
 export const WATER_PIXELS_PER_METER = 10;
 export const WATER_SURFACE_TOLERANCE = 2;
+
+// Oxygen system
+export const OXYGEN_MAX = 30;
+export const OXYGEN_DEPLETION_RATE = 1;
+export const OXYGEN_RECHARGE_RATE = 2;

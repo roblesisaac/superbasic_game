@@ -86,6 +86,10 @@ export class EnergyBar {
     this.syncSegmentsToEnergy();
   }
 
+  getBounds(): { x: number; y: number; width: number; height: number } {
+    return { x: this.x, y: this.y, width: this.barWidth, height: ENERGY_BAR_HEIGHT };
+  }
+
   draw(ctx: CanvasRenderingContext2D) {
     const barX = this.x;
     const barY = this.y;
