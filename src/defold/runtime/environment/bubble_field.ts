@@ -10,21 +10,23 @@ import {
 interface StaticBubble {
   x: number;
   worldY: number;
-  radius: number;
-  baseAlpha: number;
-  twinkleSpeed: number;
-  twinklePhase: number;
+  brightness: number;
+}
+
+interface BubbleTrail {
+  x: number;
+  worldY: number;
+  life: number;
 }
 
 interface RisingBubble {
-  baseX: number;
+  x: number;
   worldY: number;
   radius: number;
   speed: number;
-  wobbleAmplitude: number;
-  wobbleSpeed: number;
-  wobblePhase: number;
-  opacity: number;
+  trailSpacingFrames: number;
+  trailCounter: number;
+  trail: BubbleTrail[];
 }
 
 export interface BubbleEnvironment {
@@ -36,141 +38,172 @@ export interface BubbleEnvironment {
   wellBounds: WellBounds;
 }
 
-const STATIC_SEGMENT_HEIGHT = 96;
-const STATIC_DENSITY = 0.00035; // bubbles per pixel in a segment
-const STATIC_MIN_PER_SEGMENT = 6;
+const STATIC_SEGMENT_HEIGHT = 100;
+const STATIC_BUBBLES_PER_SEGMENT = 5;
+const STATIC_PIXEL_SIZE = 4;
 
-const RISING_SPAWN_RATE = 2.4; // bubbles per second
-const MAX_RISING_BUBBLES = 24;
-const RISING_BASE_SPEED = 28; // pixels per second
-const RISING_SPEED_VARIANCE = 22;
+const MIN_SMALL_BUBBLE_RADIUS = 10;
+const MAX_SMALL_BUBBLE_RADIUS = 18;
+const LARGE_BUBBLE_RADIUS = 26;
+const LARGE_BUBBLE_CHANCE = 0.05;
+const MAX_RISING_BUBBLES = 20;
+const INITIAL_RISING_BUBBLES = 8;
+const BUBBLE_SPAWN_RATE = 0.02 * 60; // convert frame chance to per-second rate
+const BUBBLE_MIN_SPEED = 0.5 * 1.5 * 60;
+const BUBBLE_MAX_SPEED = 1.5 * 1.5 * 60;
+const TRAIL_PIXEL_SIZE = 4;
 
-const RISING_RADIUS_MIN = 3;
-const RISING_RADIUS_MAX = 7;
+const bubblePattern = [
+  [0, 0, 1, 1, 1, 1, 0, 0],
+  [0, 1, 0, 0, 0, 0, 1, 0],
+  [1, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 1],
+  [0, 1, 0, 0, 0, 0, 1, 0],
+  [0, 0, 1, 1, 1, 1, 0, 0]
+];
 
-const WALL_MARGIN = 6;
+const trailPattern = [
+  [1, 1],
+  [1, 1]
+];
 
 let staticBubbles: StaticBubble[] = [];
 let risingBubbles: RisingBubble[] = [];
-let staticCoverageBottom = 0;
+let lastStaticSegmentBottom = 0;
 let lastTimestamp = 0;
 let spawnAccumulator = 0;
-
-function interiorSpanForY(worldY: number, env: BubbleEnvironment) {
-  const expansionTop = getWellExpansionTopY(env.groundY, env.canvasHeight);
-  let left: number;
-  let right: number;
-  if (worldY <= expansionTop) {
-    const span = getWellShaftSpan(env.wellBounds);
-    left = span.interiorLeft + WALL_MARGIN;
-    right = span.interiorRight - WALL_MARGIN;
-    if (right <= left) {
-      left = span.interiorLeft;
-      right = span.interiorRight;
-    }
-    return { left, right };
-  }
-
-  const span = getWellExpansionSpan(env.canvasWidth);
-  left = span.interiorLeft + WALL_MARGIN;
-  right = span.interiorRight - WALL_MARGIN;
-  if (right <= left) {
-    left = span.interiorLeft;
-    right = span.interiorRight;
-  }
-  return { left, right };
-}
+let seededInitialBubbles = false;
 
 function randomInRange(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-function ensureStaticCoverage(env: BubbleEnvironment, waterSurfaceY: number, requiredBottom: number): void {
-  if (requiredBottom <= waterSurfaceY) return;
-
-  if (staticCoverageBottom <= waterSurfaceY) {
-    staticCoverageBottom = waterSurfaceY;
+function interiorSpanForY(worldY: number, env: BubbleEnvironment) {
+  const expansionTop = getWellExpansionTopY(env.groundY, env.canvasHeight);
+  if (worldY <= expansionTop) {
+    const span = getWellShaftSpan(env.wellBounds);
+    return {
+      left: span.interiorLeft,
+      right: span.interiorRight
+    };
   }
 
-  while (staticCoverageBottom < requiredBottom) {
-    const segmentTop = staticCoverageBottom;
-    const segmentBottom = Math.min(segmentTop + STATIC_SEGMENT_HEIGHT, requiredBottom);
-    const segmentHeight = segmentBottom - segmentTop;
-    const segmentMid = segmentTop + segmentHeight / 2;
-    const { left, right } = interiorSpanForY(segmentMid, env);
-    const width = Math.max(0, right - left);
+  const expansionSpan = getWellExpansionSpan(env.canvasWidth);
+  return {
+    left: expansionSpan.interiorLeft,
+    right: expansionSpan.interiorRight
+  };
+}
 
-    if (width > 4 && segmentHeight > 0) {
-      const area = width * segmentHeight;
-      const bubbleCount = Math.max(
-        STATIC_MIN_PER_SEGMENT,
-        Math.round(area * STATIC_DENSITY)
-      );
+function ensureStaticBubbles(env: BubbleEnvironment, waterSurfaceY: number, viewBottom: number): void {
+  if (viewBottom <= waterSurfaceY) {
+    return;
+  }
 
-      for (let i = 0; i < bubbleCount; i++) {
-        const worldY = segmentTop + Math.random() * segmentHeight;
-        const span = interiorSpanForY(worldY, env);
-        const spanWidth = Math.max(0, span.right - span.left);
-        if (spanWidth <= 2) continue;
+  if (lastStaticSegmentBottom < waterSurfaceY) {
+    lastStaticSegmentBottom = waterSurfaceY;
+  }
 
-        staticBubbles.push({
-          x: span.left + Math.random() * spanWidth,
-          worldY,
-          radius: randomInRange(1.2, 3.2),
-          baseAlpha: randomInRange(0.18, 0.32),
-          twinkleSpeed: randomInRange(0.4, 0.9),
-          twinklePhase: Math.random() * Math.PI * 2
-        });
+  while (lastStaticSegmentBottom < viewBottom) {
+    const segmentTop = lastStaticSegmentBottom;
+    const segmentBottom = segmentTop + STATIC_SEGMENT_HEIGHT;
+    for (let i = 0; i < STATIC_BUBBLES_PER_SEGMENT; i++) {
+      const worldY = segmentTop + Math.random() * STATIC_SEGMENT_HEIGHT;
+      const { left, right } = interiorSpanForY(worldY, env);
+      const width = Math.max(0, right - left);
+      if (width <= 0) {
+        continue;
       }
+
+      staticBubbles.push({
+        x: left + Math.random() * width,
+        worldY,
+        brightness: 0.3 + Math.random() * 0.7
+      });
     }
 
-    staticCoverageBottom = segmentBottom;
+    lastStaticSegmentBottom += STATIC_SEGMENT_HEIGHT;
   }
 }
 
-function spawnRisingBubble(env: BubbleEnvironment, waterSurfaceY: number, viewBottom: number): void {
-  if (risingBubbles.length >= MAX_RISING_BUBBLES) return;
-  if (viewBottom <= waterSurfaceY + 12) return;
+function createRisingBubble(env: BubbleEnvironment, waterSurfaceY: number, viewBottom: number): void {
+  if (risingBubbles.length >= MAX_RISING_BUBBLES) {
+    return;
+  }
+  if (viewBottom <= waterSurfaceY) {
+    return;
+  }
 
-  const spawnY = viewBottom + randomInRange(12, 48);
-  const span = interiorSpanForY(spawnY, env);
-  const spanWidth = Math.max(0, span.right - span.left);
-  if (spanWidth <= 4) return;
+  const isLarge = Math.random() < LARGE_BUBBLE_CHANCE;
+  const radius = isLarge
+    ? LARGE_BUBBLE_RADIUS
+    : randomInRange(MIN_SMALL_BUBBLE_RADIUS, MAX_SMALL_BUBBLE_RADIUS);
 
-  const radius = randomInRange(RISING_RADIUS_MIN, RISING_RADIUS_MAX);
+  const spawnY = viewBottom + radius + 50;
+  const { left, right } = interiorSpanForY(spawnY, env);
+  const width = Math.max(0, right - left);
+  if (width <= 0) {
+    return;
+  }
 
   risingBubbles.push({
-    baseX: span.left + Math.random() * spanWidth,
+    x: left + Math.random() * width,
     worldY: spawnY,
     radius,
-    speed: RISING_BASE_SPEED + Math.random() * RISING_SPEED_VARIANCE,
-    wobbleAmplitude: randomInRange(1.5, 6),
-    wobbleSpeed: randomInRange(0.8, 1.6),
-    wobblePhase: Math.random() * Math.PI * 2,
-    opacity: 0
+    speed: randomInRange(BUBBLE_MIN_SPEED, BUBBLE_MAX_SPEED),
+    trailSpacingFrames: 15 + Math.random() * 10,
+    trailCounter: 0,
+    trail: []
   });
+}
+
+function seedInitialRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number): void {
+  if (seededInitialBubbles) {
+    return;
+  }
+  seededInitialBubbles = true;
+
+  const viewBottom = env.cameraY + env.canvasHeight;
+  for (let i = 0; i < INITIAL_RISING_BUBBLES; i++) {
+    createRisingBubble(env, waterSurfaceY, viewBottom);
+  }
 }
 
 function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: number): void {
   const viewBottom = env.cameraY + env.canvasHeight;
 
-  spawnAccumulator += dt * RISING_SPAWN_RATE;
+  spawnAccumulator += dt * BUBBLE_SPAWN_RATE;
   while (spawnAccumulator >= 1) {
-    spawnRisingBubble(env, waterSurfaceY, viewBottom);
+    createRisingBubble(env, waterSurfaceY, viewBottom);
     spawnAccumulator -= 1;
   }
   if (spawnAccumulator > 0 && Math.random() < spawnAccumulator) {
-    spawnRisingBubble(env, waterSurfaceY, viewBottom);
+    createRisingBubble(env, waterSurfaceY, viewBottom);
     spawnAccumulator = 0;
   }
 
   for (let i = risingBubbles.length - 1; i >= 0; i--) {
     const bubble = risingBubbles[i];
     bubble.worldY -= bubble.speed * dt;
-    bubble.wobblePhase += bubble.wobbleSpeed * dt;
-    bubble.opacity = clamp(bubble.opacity + dt * 1.2, 0, 1);
+    bubble.trailCounter += dt * 60;
 
-    if (bubble.worldY - bubble.radius <= waterSurfaceY) {
+    if (bubble.trailCounter > bubble.trailSpacingFrames) {
+      bubble.trail.push({
+        x: bubble.x,
+        worldY: bubble.worldY + bubble.radius + 5,
+        life: 1
+      });
+      bubble.trailCounter = 0;
+    }
+
+    bubble.trail = bubble.trail.filter((trail) => {
+      trail.life -= dt * 1.2;
+      return trail.life > 0;
+    });
+
+    if (bubble.worldY - bubble.radius < waterSurfaceY) {
       risingBubbles.splice(i, 1);
       continue;
     }
@@ -181,14 +214,70 @@ function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: 
   }
 }
 
+function drawPixelatedBubble(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  drawTrail: boolean,
+  trail: BubbleTrail[],
+  cameraY: number
+): void {
+  const patternSize = bubblePattern.length;
+  const scale = (radius * 2) / (patternSize * STATIC_PIXEL_SIZE);
+  const scaledPixel = STATIC_PIXEL_SIZE * scale;
+
+  ctx.fillStyle = '#ffffff';
+  for (let row = 0; row < patternSize; row++) {
+    for (let col = 0; col < patternSize; col++) {
+      if (bubblePattern[row][col] === 1) {
+        ctx.fillRect(
+          x - radius + col * scaledPixel,
+          y - radius + row * scaledPixel,
+          scaledPixel,
+          scaledPixel
+        );
+      }
+    }
+  }
+
+  if (!drawTrail) {
+    return;
+  }
+
+  const trailSize = trailPattern.length;
+  for (const t of trail) {
+    const screenY = t.worldY - cameraY;
+    ctx.fillStyle = `rgba(255, 255, 255, ${t.life})`;
+    const trailScale = scale * 0.5;
+    const trailPixel = TRAIL_PIXEL_SIZE * trailScale;
+
+    for (let row = 0; row < trailSize; row++) {
+      for (let col = 0; col < trailSize; col++) {
+        if (trailPattern[row][col] === 1) {
+          ctx.fillRect(
+            t.x - (trailSize * trailPixel) / 2 + col * trailPixel,
+            screenY + row * trailPixel,
+            trailPixel,
+            trailPixel
+          );
+        }
+      }
+    }
+  }
+}
+
 export function updateBubbleField(env: BubbleEnvironment): void {
   const waterSurfaceY = getWellWaterSurfaceY(env.groundY, env.canvasHeight);
-  const requiredBottom = env.cameraY + env.canvasHeight * 1.5;
+  const viewBottom = env.cameraY + env.canvasHeight * 2;
 
-  ensureStaticCoverage(env, waterSurfaceY, requiredBottom);
+  ensureStaticBubbles(env, waterSurfaceY, viewBottom);
+  seedInitialRisingBubbles(env, waterSurfaceY);
 
   const timestamp = env.timestamp;
-  if (!Number.isFinite(timestamp)) return;
+  if (!Number.isFinite(timestamp)) {
+    return;
+  }
 
   if (lastTimestamp === 0) {
     lastTimestamp = timestamp;
@@ -203,48 +292,41 @@ export function updateBubbleField(env: BubbleEnvironment): void {
 
 export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnvironment): void {
   const waterSurfaceY = getWellWaterSurfaceY(env.groundY, env.canvasHeight);
-  const timestamp = env.timestamp;
-  const timeSeconds = Number.isFinite(timestamp) ? timestamp / 1000 : 0;
 
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
 
   for (const bubble of staticBubbles) {
-    if (bubble.worldY <= waterSurfaceY) continue;
+    if (bubble.worldY <= waterSurfaceY) {
+      continue;
+    }
     const screenY = bubble.worldY - env.cameraY;
-    if (screenY < -32 || screenY > env.canvasHeight + 32) continue;
+    if (screenY < -STATIC_PIXEL_SIZE || screenY > env.canvasHeight + STATIC_PIXEL_SIZE) {
+      continue;
+    }
 
-    const twinkle = 1 + Math.sin(timeSeconds * bubble.twinkleSpeed + bubble.twinklePhase) * 0.35;
-    const alpha = clamp(bubble.baseAlpha * twinkle, 0.05, 0.45);
-    const size = Math.max(1, Math.round(bubble.radius * 2));
-    const screenX = Math.round(bubble.x - size / 2);
-    const screenTop = Math.round(screenY - size / 2);
-
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#7fc8ff';
-    ctx.fillRect(screenX, screenTop, size, size);
+    ctx.fillStyle = `rgba(255, 255, 255, ${bubble.brightness})`;
+    ctx.fillRect(bubble.x, screenY, STATIC_PIXEL_SIZE, STATIC_PIXEL_SIZE);
   }
 
-  ctx.globalAlpha = 1;
-
   for (const bubble of risingBubbles) {
-    if (bubble.worldY <= waterSurfaceY) continue;
+    if (bubble.worldY <= waterSurfaceY) {
+      continue;
+    }
     const screenY = bubble.worldY - env.cameraY;
-    if (screenY < -32 || screenY > env.canvasHeight + 64) continue;
+    if (screenY < -bubble.radius || screenY > env.canvasHeight + bubble.radius + 64) {
+      continue;
+    }
 
-    const wobble = Math.sin(bubble.wobblePhase) * bubble.wobbleAmplitude;
-    const drawX = Math.round(bubble.baseX + wobble);
-    const size = Math.max(3, Math.round(bubble.radius * 2));
-    const half = Math.round(size / 2);
-    const drawY = Math.round(screenY);
-
-    ctx.globalAlpha = 0.55 * bubble.opacity;
-    ctx.fillStyle = '#9cd8ff';
-    ctx.fillRect(drawX - half, drawY - half, size, size);
-
-    const innerSize = Math.max(1, size - 2);
-    ctx.globalAlpha = 0.85 * bubble.opacity;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(drawX - Math.floor(innerSize / 2), drawY - Math.floor(innerSize / 2), innerSize, innerSize);
+    drawPixelatedBubble(
+      ctx,
+      Math.round(bubble.x),
+      Math.round(screenY),
+      bubble.radius,
+      true,
+      bubble.trail,
+      env.cameraY
+    );
   }
 
   ctx.restore();
@@ -253,7 +335,8 @@ export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnviro
 export function resetBubbleField(): void {
   staticBubbles = [];
   risingBubbles = [];
-  staticCoverageBottom = 0;
+  lastStaticSegmentBottom = 0;
   lastTimestamp = 0;
   spawnAccumulator = 0;
+  seededInitialBubbles = false;
 }
