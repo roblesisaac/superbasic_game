@@ -338,7 +338,7 @@ export class InputHandler {
           if (spriteAirborne && !spriteSwimming && sprite) {
             this.touchSwipe = true;
             sprite.charging = false;
-            sprite.movementCharging = false;
+            sprite.cancelMovementCharging();
           } else if (sprite) {
             this.isJoystickMode = true;
             sprite.charging = false;
@@ -469,7 +469,7 @@ export class InputHandler {
         if (spriteAirborne && !spriteSwimming && sprite) {
           this.mouseSwipe = true;
           sprite.charging = false;
-          sprite.movementCharging = false;
+          sprite.cancelMovementCharging();
         } else if (sprite) {
           this.isMouseJoystickMode = true;
           sprite.charging = false;

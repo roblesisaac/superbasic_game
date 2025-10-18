@@ -1,5 +1,5 @@
 import { PIXELS_PER_FOOT } from '../../../config/constants.js';
-import { ctx, canvasWidth, groundY } from '../state/rendering_state.js';
+import { ctx, canvasWidth, canvasHeight, groundY } from '../state/rendering_state.js';
 import { gameWorld } from '../state/game_state.js';
 import { drawSettingsIcon } from '../../gui/settings_overlay.js';
 import { getCurrentCard } from './card_controller.js';
@@ -57,5 +57,68 @@ export function drawHUD(): void {
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#eaeaea';
   ctx.fillText(`${ft} FT`, canvasWidth / 2, 10);
+  ctx.restore();
+
+  if (sprite.inWater) {
+    drawDepthAndOxygenMeters(sprite, energyBar);
+  }
+}
+
+function drawDepthAndOxygenMeters(
+  sprite: typeof gameWorld.sprite,
+  energyBar: typeof gameWorld.energyBar
+) {
+  if (!sprite || !energyBar) return;
+
+  const depthMeters = Math.max(0, Math.round(sprite.waterDepthMeters));
+  const depthLabel = 'DEPTH';
+  const depthText = `${depthMeters.toString().padStart(2, '0')} M`;
+  const anchorX = 12;
+  const depthLabelY = canvasHeight - 96;
+  const depthValueY = depthLabelY + 18;
+
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.font = '10px LocalPressStart, monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillText(depthLabel, anchorX, depthLabelY);
+
+  ctx.font = '16px LocalPressStart, monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(depthText, anchorX, depthValueY);
+  ctx.restore();
+
+  const bounds = energyBar.getBounds();
+  const oxygenTop = depthValueY + 26;
+  drawOxygenMeter(sprite, anchorX, oxygenTop, bounds.width);
+}
+
+function drawOxygenMeter(
+  sprite: typeof gameWorld.sprite,
+  x: number,
+  top: number,
+  width: number
+) {
+  const barHeight = 8;
+  const ratio =
+    sprite.maxOxygen > 0 ? Math.min(Math.max(sprite.oxygen / sprite.maxOxygen, 0), 1) : 0;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(x, top, width, barHeight);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.strokeRect(x, top, width, barHeight);
+
+  if (ratio > 0) {
+    ctx.fillStyle = '#6fd6ff';
+    ctx.fillRect(x, top, width * ratio, barHeight);
+  }
+
+  ctx.font = '9px LocalPressStart, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText('O2', x, top + barHeight + 4);
   ctx.restore();
 }

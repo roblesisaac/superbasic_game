@@ -14,7 +14,10 @@ import {
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS,
   WATER_GRAVITY_FACTOR, WATER_BUOYANCY_ACCEL, WATER_LINEAR_DAMPING,
   WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
-  WATER_MAX_SINK_SPEED
+  WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
+  ENERGY_REGEN_STATIONARY_DELAY,
+  OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE,
+  OXYGEN_DAMAGE_INTERVAL
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
@@ -87,6 +90,14 @@ export class Sprite {
   prevY: number;
   prevVy: number;
   inWater: boolean;
+  waterDepthMeters: number;
+  isAtWaterSurface: boolean;
+  isStationary: boolean;
+  stationaryTimer: number;
+  oxygen: number;
+  maxOxygen: number;
+  isSwimmingInputActive: boolean;
+  oxygenDamageTimer: number;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -127,6 +138,33 @@ export class Sprite {
     this.prevY = y;
     this.prevVy = 0;
     this.inWater = false;
+    this.waterDepthMeters = 0;
+    this.isAtWaterSurface = false;
+    this.isStationary = false;
+    this.stationaryTimer = 0;
+    this.maxOxygen = OXYGEN_MAX;
+    this.oxygen = this.maxOxygen;
+    this.isSwimmingInputActive = false;
+    this.oxygenDamageTimer = 0;
+  }
+
+  private setSwimmingInputActive(active: boolean) {
+    if (active) {
+      this.isSwimmingInputActive = true;
+      this.stationaryTimer = 0;
+    } else if (this.isSwimmingInputActive) {
+      this.isSwimmingInputActive = false;
+      this.stationaryTimer = 0;
+    }
+  }
+
+  cancelMovementCharging() {
+    if (this.movementCharging) {
+      this.movementCharging = false;
+      this.movementChargeTime = 0;
+      this.movementDirection = { x: 0, y: 0 };
+    }
+    this.setSwimmingInputActive(false);
   }
 
   startCharging() {
@@ -142,6 +180,7 @@ export class Sprite {
   }
 
   startMovementCharging(direction) {
+    this.setSwimmingInputActive(true);
     if (this.hooks.energyBar.state === 'cooldown') {
       this.movementCharging = true;
       this.movementChargeTime = 0;
@@ -224,10 +263,7 @@ export class Sprite {
       };
       this._doFollowThroughStretch(this.lastMovementDirection);
     }
-
-    this.movementCharging = false;
-    this.movementChargeTime = 0;
-    this.movementDirection = { x: 0, y: 0 };
+    this.cancelMovementCharging();
   }
 
   startGliding() {
@@ -678,6 +714,8 @@ export class Sprite {
     this.onGround = false;
     this.onPlatform = false;
     this.inWater = false;
+    this.isAtWaterSurface = false;
+    this.waterDepthMeters = 0;
 
     const previousPlatform = this.platformSurface;
     let newPlatformSurface = null;
@@ -925,6 +963,16 @@ export class Sprite {
         }
         spriteLeft = this.x - hs;
         spriteRight = this.x + hs;
+        spriteBottom = this.y + hs;
+
+        const depthPixels = Math.max(0, spriteBottom - waterSurfaceY);
+        if (depthPixels <= WATER_SURFACE_TOLERANCE) {
+          this.waterDepthMeters = 0;
+          this.isAtWaterSurface = true;
+        } else {
+          this.waterDepthMeters = depthPixels / WATER_PIXELS_PER_METER;
+          this.isAtWaterSurface = false;
+        }
       }
     }
 
@@ -933,6 +981,46 @@ export class Sprite {
         applyStaticLanding(shaftBottomY);
       }
     }
+
+    const canReplenishOxygen = this.waterDepthMeters <= 0;
+    if (this.waterDepthMeters > 0) {
+      this.oxygen = clamp(
+        this.oxygen - OXYGEN_DEPLETION_RATE * dt,
+        0,
+        this.maxOxygen
+      );
+    } else if (canReplenishOxygen) {
+      this.oxygen = clamp(
+        this.oxygen + OXYGEN_RECHARGE_RATE * dt,
+        0,
+        this.maxOxygen
+      );
+    }
+
+    if (!this.inWater && canReplenishOxygen) {
+      this.oxygen = this.maxOxygen;
+    }
+
+    const hearts = this.hooks?.hearts;
+    const hasHearts = hearts && typeof hearts.takeDamage === 'function';
+    const hasLifeRemaining = hasHearts && typeof hearts.value === 'number' && hearts.value > 0;
+    const oxygenDepleted = this.oxygen <= 0;
+    if (oxygenDepleted && hasLifeRemaining) {
+      this.oxygenDamageTimer += dt;
+      if (this.oxygenDamageTimer >= OXYGEN_DAMAGE_INTERVAL) {
+        this.oxygenDamageTimer -= OXYGEN_DAMAGE_INTERVAL;
+        hearts.takeDamage(() => this.hooks.onGameOver());
+      }
+    } else {
+      this.oxygenDamageTimer = 0;
+    }
+
+    if (this.isSwimmingInputActive) {
+      this.stationaryTimer = 0;
+    } else {
+      this.stationaryTimer += dt;
+    }
+    this.isStationary = this.stationaryTimer >= ENERGY_REGEN_STATIONARY_DELAY;
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
     const currRect = {
