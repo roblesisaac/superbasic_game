@@ -14,7 +14,7 @@ import {
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS,
   WATER_GRAVITY_FACTOR, WATER_BUOYANCY_ACCEL, WATER_LINEAR_DAMPING,
   WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
-  WATER_MAX_SINK_SPEED
+  WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
@@ -87,6 +87,8 @@ export class Sprite {
   prevY: number;
   prevVy: number;
   inWater: boolean;
+  waterDepthMeters: number;
+  isAtWaterSurface: boolean;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -127,6 +129,8 @@ export class Sprite {
     this.prevY = y;
     this.prevVy = 0;
     this.inWater = false;
+    this.waterDepthMeters = 0;
+    this.isAtWaterSurface = false;
   }
 
   startCharging() {
@@ -678,6 +682,8 @@ export class Sprite {
     this.onGround = false;
     this.onPlatform = false;
     this.inWater = false;
+    this.isAtWaterSurface = false;
+    this.waterDepthMeters = 0;
 
     const previousPlatform = this.platformSurface;
     let newPlatformSurface = null;
@@ -925,6 +931,16 @@ export class Sprite {
         }
         spriteLeft = this.x - hs;
         spriteRight = this.x + hs;
+        spriteBottom = this.y + hs;
+
+        const depthPixels = Math.max(0, spriteBottom - waterSurfaceY);
+        if (depthPixels <= WATER_SURFACE_TOLERANCE) {
+          this.waterDepthMeters = 0;
+          this.isAtWaterSurface = true;
+        } else {
+          this.waterDepthMeters = depthPixels / WATER_PIXELS_PER_METER;
+          this.isAtWaterSurface = false;
+        }
       }
     }
 

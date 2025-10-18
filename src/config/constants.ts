@@ -110,3 +110,5 @@ export const WATER_MAX_SPEED = 420;
 export const WATER_STROKE_FORCE_SCALE = 0.55;
 export const WATER_ENTRY_DAMPING = 0.45;
 export const WATER_MAX_SINK_SPEED = 260;
+export const WATER_PIXELS_PER_METER = 10;
+export const WATER_SURFACE_TOLERANCE = 2;

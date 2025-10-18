@@ -58,4 +58,23 @@ export function drawHUD(): void {
   ctx.fillStyle = '#eaeaea';
   ctx.fillText(`${ft} FT`, canvasWidth / 2, 10);
   ctx.restore();
+
+  if (sprite.inWater) {
+    const depthMeters = Math.max(0, Math.round(sprite.waterDepthMeters));
+    const label = 'DEPTH';
+    const text = `${depthMeters.toString().padStart(2, '0')} M`;
+
+    ctx.save();
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.font = '10px LocalPressStart, monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    const baseX = canvasWidth - 12;
+    const baseY = 12;
+    ctx.fillText(label, baseX, baseY);
+    ctx.font = '16px LocalPressStart, monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, baseX, baseY + 12);
+    ctx.restore();
+  }
 }
