@@ -18,6 +18,8 @@ interface BubbleTrail {
   x: number;
   worldY: number;
   life: number;
+  patternIndex: number;
+  offsetX: number;
 }
 
 interface RisingBubble {
@@ -69,22 +71,38 @@ const RISING_BUBBLE_SPAWNS_PER_SECOND = 1; // Number of rising bubbles to spawn 
 const BUBBLE_MIN_SPEED = 0.5 * 1.5 * 60;
 const BUBBLE_MAX_SPEED = 1.5 * 1.5 * 60;
 const TRAIL_PIXEL_SIZE = 4;
+const TRAIL_HORIZONTAL_JITTER = 8;
 
-const bubblePattern = [
-  [0, 0, 1, 1, 1, 1, 0, 0],
-  [0, 1, 0, 0, 0, 0, 1, 0],
-  [1, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1],
-  [0, 1, 0, 0, 0, 0, 1, 0],
-  [0, 0, 1, 1, 1, 1, 0, 0]
+type BubblePatternCell = 0 | 1 | 2;
+
+const bubblePattern: ReadonlyArray<ReadonlyArray<BubblePatternCell>> = [
+  [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+  [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+  [0, 1, 2, 2, 0, 0, 0, 0, 1, 0],
+  [1, 0, 2, 2, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+  [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+  [0, 0, 0, 1, 1, 1, 1, 0, 0, 0]
 ];
 
-const trailPattern = [
-  [1, 1],
-  [1, 1]
+const trailPatterns: ReadonlyArray<ReadonlyArray<ReadonlyArray<number>>> = [
+  [
+    [0, 1, 0],
+    [1, 0, 1],
+    [0, 1, 0]
+  ],
+  [
+    [1, 1],
+    [1, 1]
+  ],
+  [[1]]
 ];
+
+const BUBBLE_BASE_COLOR = '#ffffff';
+const BUBBLE_HIGHLIGHT_COLOR = 'rgba(255, 255, 255, 0.6)';
 
 let staticBubbles: StaticBubble[] = [];
 let risingBubbles: RisingBubble[] = [];
@@ -211,7 +229,9 @@ function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: 
       bubble.trail.push({
         x: bubble.x,
         worldY: bubble.worldY + bubble.radius + 5,
-        life: 1
+        life: 1,
+        patternIndex: Math.floor(Math.random() * trailPatterns.length),
+        offsetX: randomInRange(-TRAIL_HORIZONTAL_JITTER, TRAIL_HORIZONTAL_JITTER)
       });
       bubble.trailCounter = 0;
     }
@@ -290,17 +310,20 @@ function drawPixelatedBubble(
   const scale = (radius * 2) / (patternSize * STATIC_PIXEL_SIZE);
   const scaledPixel = STATIC_PIXEL_SIZE * scale;
 
-  ctx.fillStyle = '#ffffff';
   for (let row = 0; row < patternSize; row++) {
     for (let col = 0; col < patternSize; col++) {
-      if (bubblePattern[row][col] === 1) {
-        ctx.fillRect(
-          x - radius + col * scaledPixel,
-          y - radius + row * scaledPixel,
-          scaledPixel,
-          scaledPixel
-        );
+      const cell = bubblePattern[row][col];
+      if (cell === 0) {
+        continue;
       }
+
+      ctx.fillStyle = cell === 2 ? BUBBLE_HIGHLIGHT_COLOR : BUBBLE_BASE_COLOR;
+      ctx.fillRect(
+        x - radius + col * scaledPixel,
+        y - radius + row * scaledPixel,
+        scaledPixel,
+        scaledPixel
+      );
     }
   }
 
@@ -308,23 +331,29 @@ function drawPixelatedBubble(
     return;
   }
 
-  const trailSize = trailPattern.length;
   for (const t of trail) {
     const screenY = t.worldY - cameraY;
     ctx.fillStyle = `rgba(255, 255, 255, ${t.life})`;
     const trailScale = scale * 0.5;
     const trailPixel = TRAIL_PIXEL_SIZE * trailScale;
 
-    for (let row = 0; row < trailSize; row++) {
-      for (let col = 0; col < trailSize; col++) {
-        if (trailPattern[row][col] === 1) {
-          ctx.fillRect(
-            t.x - (trailSize * trailPixel) / 2 + col * trailPixel,
-            screenY + row * trailPixel,
-            trailPixel,
-            trailPixel
-          );
+    const pattern = trailPatterns[t.patternIndex] ?? trailPatterns[0];
+    const patternHeight = pattern.length;
+    const patternWidth = pattern[0]?.length ?? 0;
+    const originX = t.x + t.offsetX - (patternWidth * trailPixel) / 2;
+
+    for (let row = 0; row < patternHeight; row++) {
+      for (let col = 0; col < pattern[row].length; col++) {
+        if (pattern[row][col] !== 1) {
+          continue;
         }
+
+        ctx.fillRect(
+          originX + col * trailPixel,
+          screenY + row * trailPixel,
+          trailPixel,
+          trailPixel
+        );
       }
     }
   }
