@@ -48,7 +48,7 @@ const LARGE_BUBBLE_RADIUS = 26;
 const LARGE_BUBBLE_CHANCE = 0.05;
 const MAX_RISING_BUBBLES = 20;
 const INITIAL_RISING_BUBBLES = 8;
-const BUBBLE_SPAWN_RATE = 0.02 * 60; // convert frame chance to per-second rate
+const BUBBLE_SPAWN_RATE = 0.017 * 60; // convert frame chance to per-second rate
 const BUBBLE_MIN_SPEED = 0.5 * 1.5 * 60;
 const BUBBLE_MAX_SPEED = 1.5 * 1.5 * 60;
 const TRAIL_PIXEL_SIZE = 4;
@@ -210,6 +210,51 @@ function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: 
 
     if (bubble.worldY + bubble.radius < env.cameraY - 64) {
       risingBubbles.splice(i, 1);
+    }
+  }
+
+  for (let i = 0; i < risingBubbles.length; i++) {
+    const bubble = risingBubbles[i];
+    for (let j = i + 1; j < risingBubbles.length; j++) {
+      const other = risingBubbles[j];
+      const dx = bubble.x - other.x;
+      const dy = bubble.worldY - other.worldY;
+      const dist = Math.hypot(dx, dy);
+      if (dist >= bubble.radius + other.radius) {
+        continue;
+      }
+
+      if (bubble.radius === other.radius) {
+        continue;
+      }
+
+      let absorber: RisingBubble;
+      let absorbedIndex: number;
+      if (bubble.radius > other.radius) {
+        absorber = bubble;
+        absorbedIndex = j;
+      } else {
+        absorber = other;
+        absorbedIndex = i;
+      }
+
+      const absorbed = risingBubbles[absorbedIndex];
+      const volumeIncrease =
+        (absorbed.radius * absorbed.radius) / (absorber.radius * absorber.radius);
+      absorber.radius += absorbed.radius * 0.4 * volumeIncrease;
+      risingBubbles.splice(absorbedIndex, 1);
+
+      if (absorbedIndex === i) {
+        i--;
+        break;
+      }
+
+      if (absorbedIndex < i) {
+        i--;
+        break;
+      }
+
+      j--;
     }
   }
 }
