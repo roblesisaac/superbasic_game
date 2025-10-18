@@ -101,8 +101,8 @@ const trailPatterns: ReadonlyArray<ReadonlyArray<ReadonlyArray<number>>> = [
   [[1]]
 ];
 
-const BUBBLE_BASE_COLOR = '#ffffff';
-const BUBBLE_HIGHLIGHT_COLOR = 'rgba(255, 255, 255, 0.6)';
+const BUBBLE_BASE_COLOR = '#689fda';
+const BUBBLE_HIGHLIGHT_COLOR = 'rgba(104, 159, 218, 0.6)';
 
 let staticBubbles: StaticBubble[] = [];
 let risingBubbles: RisingBubble[] = [];
@@ -333,7 +333,7 @@ function drawPixelatedBubble(
 
   for (const t of trail) {
     const screenY = t.worldY - cameraY;
-    ctx.fillStyle = `rgba(255, 255, 255, ${t.life})`;
+    ctx.fillStyle = `rgba(104, 159, 218, ${t.life})`;
     const trailScale = scale * 0.5;
     const trailPixel = TRAIL_PIXEL_SIZE * trailScale;
 
@@ -445,7 +445,7 @@ export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnviro
       continue;
     }
 
-    ctx.fillStyle = `rgba(255, 255, 255, ${bubble.brightness})`;
+    ctx.fillStyle = `rgba(104, 159, 218, ${bubble.brightness})`;
     ctx.fillRect(bubble.x, screenY, STATIC_PIXEL_SIZE, STATIC_PIXEL_SIZE);
   }
 
