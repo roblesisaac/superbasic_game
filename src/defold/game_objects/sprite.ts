@@ -31,7 +31,8 @@ import {
   getWellRimTopY,
   getWellShaftBottomY,
   getWellShaftSpan,
-  getWellWaterSurfaceY
+  getWellWaterSurfaceY,
+  ensureWellDepth
 } from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
@@ -644,6 +645,10 @@ export class Sprite {
     const hs = SPRITE_SIZE / 2;
     const wasOnGround = this.onGround;
     const wasOnPlatform = this.onPlatform;
+    const prevBottom = prevY + hs;
+
+    ensureWellDepth(groundY, canvasHeight, prevBottom + canvasHeight * 2);
+
     const well = getWellBounds(canvasWidth);
     const cavernSpan = getWellExpansionSpan(canvasWidth);
     const expansionTopY = getWellExpansionTopY(groundY, canvasHeight);
@@ -667,7 +672,6 @@ export class Sprite {
       else this.gliding = false;
     }
 
-    const prevBottom = prevY + hs;
     const prevHorizInCavern =
       (prevX + hs) > cavernSpan.interiorLeft &&
       (prevX - hs) < cavernSpan.interiorRight;

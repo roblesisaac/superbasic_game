@@ -1,4 +1,5 @@
 import { CANVAS_MAX_WIDTH } from '../../../config/constants.js';
+import { resetWellDepth } from '../environment/well_layout.js';
 
 const canvasElement = document.getElementById('gameCanvas');
 if (!(canvasElement instanceof HTMLCanvasElement)) {
@@ -25,6 +26,7 @@ export function updateCanvasSize(): void {
   canvasWidth = canvas.width;
   canvasHeight = canvas.height;
   groundY = canvasHeight - 116;
+  resetWellDepth(canvasHeight);
 }
 
 window.addEventListener('resize', updateCanvasSize);
