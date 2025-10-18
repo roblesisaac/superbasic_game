@@ -14,11 +14,18 @@ import {
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
-import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
+import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
-import { getWellBounds, getWellRimTopY } from '../runtime/environment/well_layout.js';
+import {
+  getWellBounds,
+  getWellExpansionSpan,
+  getWellExpansionTopY,
+  getWellRimTopY,
+  getWellShaftBottomY,
+  getWellShaftSpan
+} from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -795,10 +802,12 @@ export class Sprite {
       this.gliding = false;
     };
 
-    const spriteLeft = this.x - hs;
-    const spriteRight = this.x + hs;
-    const spriteBottom = this.y + hs;
+    let spriteLeft = this.x - hs;
+    let spriteRight = this.x + hs;
+    let spriteBottom = this.y + hs;
     const well = getWellBounds(canvasWidth);
+    const shaftBottomY = getWellShaftBottomY(groundY, canvasHeight);
+    const expansionTopY = getWellExpansionTopY(groundY, canvasHeight);
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
     const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
@@ -811,6 +820,45 @@ export class Sprite {
       } else if (spriteBottom >= groundY && !centerOverOpening) {
         applyStaticLanding(groundY);
       }
+    }
+
+    spriteLeft = this.x - hs;
+    spriteRight = this.x + hs;
+    spriteBottom = this.y + hs;
+
+    if (spriteBottom > rimTopY && spriteRight > well.left && spriteLeft < well.right) {
+      const inExpansionZone = spriteBottom >= expansionTopY;
+      const { interiorLeft, interiorRight } = inExpansionZone
+        ? getWellExpansionSpan(canvasWidth)
+        : getWellShaftSpan(well);
+      const spanWidth = interiorRight - interiorLeft;
+
+      if (spanWidth > 0) {
+        if (spriteLeft < interiorLeft) {
+          this.x = interiorLeft + hs;
+          spriteLeft = this.x - hs;
+          spriteRight = this.x + hs;
+          blockedHorizontally = true;
+          if (this.vx < 0) this.vx = 0;
+        }
+
+        if (spriteRight > interiorRight) {
+          this.x = interiorRight - hs;
+          spriteLeft = this.x - hs;
+          spriteRight = this.x + hs;
+          blockedHorizontally = true;
+          if (this.vx > 0) this.vx = 0;
+        }
+      }
+    }
+
+    if (
+      spriteRight > well.left &&
+      spriteLeft < well.right &&
+      spriteBottom >= shaftBottomY &&
+      this.vy >= 0
+    ) {
+      applyStaticLanding(shaftBottomY);
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };

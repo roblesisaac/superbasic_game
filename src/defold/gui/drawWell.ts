@@ -1,7 +1,12 @@
 import {
   WELL_COLLAR_HEIGHT,
   WELL_OPENING_WIDTH,
-  WELL_RIM_THICKNESS
+  WELL_RIM_THICKNESS,
+  WELL_SHAFT_COLUMN_INSET,
+  WELL_SHAFT_COLUMN_WIDTH,
+  getWellExpansionBottomY,
+  getWellExpansionTopY,
+  getWellShaftBottomY
 } from '../runtime/environment/well_layout.js';
 
 interface DrawWellOptions {
@@ -12,21 +17,6 @@ interface DrawWellOptions {
   openingWidth?: number;
 }
 
-function clampToCanvasBounds(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  canvasWidth: number,
-  canvasHeight: number
-): boolean {
-  if (width <= 0 || height <= 0) return false;
-  if (x + width < 0 || x > canvasWidth) return false;
-  if (y > canvasHeight) return false;
-  if (y + height < 0) return false;
-  return true;
-}
-
 export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions): void {
   const { centerX, groundY, cameraY, canvasHeight, openingWidth = WELL_OPENING_WIDTH } = options;
 
@@ -35,15 +25,21 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
 
   const normalizedOpeningWidth = Math.max(24, Math.round(openingWidth));
   const screenGroundY = Math.round(groundY - cameraY);
+  const shaftBottomWorld = getWellShaftBottomY(groundY, canvasHeight);
+  const shaftBottomScreen = Math.round(shaftBottomWorld - cameraY);
+  const expansionTopScreen = Math.round(getWellExpansionTopY(groundY, canvasHeight) - cameraY);
+  const expansionBottomScreen = Math.round(getWellExpansionBottomY(groundY, canvasHeight) - cameraY);
   const canvasWidth = ctx.canvas?.width ?? 0;
-
-  if (!clampToCanvasBounds(centerX - normalizedOpeningWidth, screenGroundY - WELL_COLLAR_HEIGHT - WELL_RIM_THICKNESS, normalizedOpeningWidth * 2, canvasHeight, canvasWidth, canvasHeight)) {
-    return;
-  }
 
   const rimOuterWidth = normalizedOpeningWidth + WELL_RIM_THICKNESS * 2;
   const rimLeft = Math.round(centerX - rimOuterWidth / 2);
   const rimTop = screenGroundY - (WELL_RIM_THICKNESS + 1);
+
+  const verticalTop = Math.min(rimTop - WELL_RIM_THICKNESS, screenGroundY - WELL_COLLAR_HEIGHT - WELL_RIM_THICKNESS);
+  const verticalBottom = Math.max(screenGroundY, shaftBottomScreen);
+  const outsideHorizontal = rimLeft + rimOuterWidth < 0 || rimLeft > canvasWidth;
+  const outsideVertical = verticalBottom < 0 || verticalTop > canvasHeight;
+  if (outsideHorizontal || outsideVertical) return;
 
   const innerLeft = Math.round(centerX - normalizedOpeningWidth / 2);
   const innerTop = screenGroundY - Math.max(2, Math.floor(WELL_RIM_THICKNESS / 2)) - 1;
@@ -82,18 +78,77 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.fillRect(innerLeft, innerTop, normalizedOpeningWidth, Math.ceil(innerHeight * 0.45));
   ctx.globalAlpha = 1;
 
-  // Draw shaft guide lines extending downward
-  const shaftBottom = canvasHeight;
-  const lineTop = Math.min(screenGroundY, shaftBottom);
-  const shaftLines = [
-    innerLeft + 1,
-    innerLeft + normalizedOpeningWidth - 2
+  // Draw shaft guide bricks extending downward
+  const columnTop = Math.max(0, Math.min(screenGroundY, canvasHeight));
+  const columnBottomLimit = Math.min(expansionTopScreen - 1, shaftBottomScreen);
+  const columnBottom = Math.min(Math.max(columnBottomLimit, 0), canvasHeight);
+  const brickSize = WELL_SHAFT_COLUMN_WIDTH;
+  const brickGap = 1;
+  const columnInset = WELL_SHAFT_COLUMN_INSET;
+  const brickColumns = [
+    innerLeft + columnInset,
+    innerLeft + normalizedOpeningWidth - columnInset - brickSize
   ];
 
-  for (const x of shaftLines) {
-    if (x < 0 || x >= canvasWidth) continue;
-    if (lineTop >= shaftBottom) continue;
-    ctx.fillRect(Math.round(x), lineTop, 1, shaftBottom - lineTop);
+  for (const columnX of brickColumns) {
+    if (columnX + brickSize <= 0 || columnX >= canvasWidth) continue;
+    if (columnBottom <= columnTop) continue;
+
+    for (let y = columnTop; y < columnBottom; y += brickSize + brickGap) {
+      const drawHeight = Math.min(brickSize, columnBottom - y);
+      ctx.fillRect(Math.round(columnX), Math.round(y), brickSize, drawHeight);
+    }
+  }
+
+  // Paint the wider cavern section with subtle mortar bands for texture
+  if (expansionBottomScreen > 0 && expansionTopScreen < canvasHeight) {
+    const cavernDrawTop = Math.max(expansionTopScreen, 0);
+    const cavernDrawBottom = Math.min(expansionBottomScreen, canvasHeight);
+    if (cavernDrawBottom > cavernDrawTop) {
+      ctx.fillStyle = '#050505';
+      ctx.fillRect(0, cavernDrawTop, canvasWidth, cavernDrawBottom - cavernDrawTop);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      const mortarSpacing = WELL_SHAFT_COLUMN_WIDTH + 2;
+      for (let y = cavernDrawTop + mortarSpacing; y < cavernDrawBottom; y += mortarSpacing) {
+        ctx.fillRect(0, y, canvasWidth, 1);
+      }
+    }
+  }
+
+  // Cap the shaft where it opens into the wider cavern by bending each guide
+  // column outward so they form retro "L" shapes that frame the opening.
+  ctx.fillStyle = '#fff';
+  if (Number.isFinite(expansionTopScreen)) {
+    const armHeight = brickSize;
+    const armTop = Math.round(expansionTopScreen - armHeight);
+    const drawTop = Math.max(armTop, 0);
+    const drawBottom = Math.min(armTop + armHeight, canvasHeight);
+    if (drawBottom > drawTop) {
+      const height = drawBottom - drawTop;
+      const leftColumnX = Math.round(brickColumns[0] ?? innerLeft + columnInset);
+      const rightColumnX = Math.round(brickColumns[1] ?? innerLeft + normalizedOpeningWidth - columnInset - brickSize);
+
+      const leftArmEnd = Math.max(0, leftColumnX + brickSize);
+      for (let x = leftArmEnd - brickSize; x >= 0; x -= brickSize + brickGap) {
+        const drawX = Math.max(x, 0);
+        const drawWidth = Math.min(brickSize, leftArmEnd - drawX);
+        if (drawWidth <= 0) continue;
+        ctx.fillRect(drawX, drawTop, drawWidth, height);
+      }
+
+      const rightArmStart = Math.max(0, rightColumnX);
+      for (let x = rightArmStart; x < canvasWidth; x += brickSize + brickGap) {
+        const drawWidth = Math.min(brickSize, canvasWidth - x);
+        if (drawWidth <= 0) break;
+        ctx.fillRect(Math.round(x), drawTop, drawWidth, height);
+      }
+    }
+  }
+
+  // Reinforce the cavern floor with a bright edge to signify a stable landing surface
+  if (expansionBottomScreen >= 0 && expansionBottomScreen <= canvasHeight) {
+    ctx.fillRect(0, expansionBottomScreen - 1, canvasWidth, 1);
   }
 
   // Reinforce the inner edge with a subtle highlight for a cylindrical feel
