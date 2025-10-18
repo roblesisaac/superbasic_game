@@ -862,13 +862,11 @@ export class Sprite {
       }
     }
 
-    if (
-      spriteRight > well.left &&
-      spriteLeft < well.right &&
-      spriteBottom >= shaftBottomY &&
-      this.vy >= 0
-    ) {
-      applyStaticLanding(shaftBottomY);
+    if (spriteBottom >= shaftBottomY && this.vy >= 0) {
+      const cavernSpan = getWellExpansionSpan(canvasWidth);
+      if (spriteRight > cavernSpan.interiorLeft && spriteLeft < cavernSpan.interiorRight) {
+        applyStaticLanding(shaftBottomY);
+      }
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
