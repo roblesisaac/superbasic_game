@@ -1063,8 +1063,7 @@ export class Sprite {
       const inputMagnitude = Math.hypot(this.movementDirection.x, this.movementDirection.y);
       if (this.movementCharging && inputMagnitude > 0.1) {
         const targetAngle = Math.atan2(-this.movementDirection.y, -this.movementDirection.x);
-        const factor = 1 - Math.exp(-SWIM_INPUT_ROTATE_SPEED * dt);
-        this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, targetAngle, factor);
+        this.waterFacingAngle = this._normalizeAngle(targetAngle);
       } else {
         const speed = Math.hypot(this.vx, this.vy);
         if (speed > MIN_SPEED_FOR_UPDATE) {
