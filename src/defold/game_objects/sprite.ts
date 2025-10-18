@@ -826,7 +826,7 @@ export class Sprite {
         spriteBottom >= groundY &&
         !centerOverOpening &&
         spriteBottom < expansionTopY &&
-        prevBottom <= groundY
+        (prevBottom <= groundY || wasOnGround)
       ) {
         applyStaticLanding(groundY);
       }
