@@ -119,3 +119,7 @@ export const OXYGEN_MAX = 30;
 export const OXYGEN_DEPLETION_RATE = 1;
 export const OXYGEN_RECHARGE_RATE = 2;
 export const OXYGEN_DAMAGE_INTERVAL = 1;
+export const SMALL_BUBBLE_OXYGEN_MULTIPLIER = 0.35;
+export const BUBBLE_SHRINK_RATE_PER_SECOND = 9;
+export const BUBBLE_SHRINK_OXYGEN_MULTIPLIER = 0.65;
+export const BUBBLE_EXIT_PADDING = 2;
