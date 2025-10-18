@@ -116,11 +116,34 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     }
   }
 
-  // Cap the shaft where it opens into the wider cavern with a horizontal lintel
+  // Cap the shaft where it opens into the wider cavern by bending each guide
+  // column outward so they form retro "L" shapes that frame the opening.
   ctx.fillStyle = '#fff';
-  if (expansionTopScreen >= 0 && expansionTopScreen <= canvasHeight) {
-    const lintelHeight = 2;
-    ctx.fillRect(0, expansionTopScreen - lintelHeight, canvasWidth, lintelHeight);
+  if (Number.isFinite(expansionTopScreen)) {
+    const armHeight = brickSize;
+    const armTop = Math.round(expansionTopScreen - armHeight);
+    const drawTop = Math.max(armTop, 0);
+    const drawBottom = Math.min(armTop + armHeight, canvasHeight);
+    if (drawBottom > drawTop) {
+      const height = drawBottom - drawTop;
+      const leftColumnX = Math.round(brickColumns[0] ?? innerLeft + columnInset);
+      const rightColumnX = Math.round(brickColumns[1] ?? innerLeft + normalizedOpeningWidth - columnInset - brickSize);
+
+      const leftArmEnd = Math.max(0, leftColumnX + brickSize);
+      for (let x = leftArmEnd - brickSize; x >= 0; x -= brickSize + brickGap) {
+        const drawX = Math.max(x, 0);
+        const drawWidth = Math.min(brickSize, leftArmEnd - drawX);
+        if (drawWidth <= 0) continue;
+        ctx.fillRect(drawX, drawTop, drawWidth, height);
+      }
+
+      const rightArmStart = Math.max(0, rightColumnX);
+      for (let x = rightArmStart; x < canvasWidth; x += brickSize + brickGap) {
+        const drawWidth = Math.min(brickSize, canvasWidth - x);
+        if (drawWidth <= 0) break;
+        ctx.fillRect(Math.round(x), drawTop, drawWidth, height);
+      }
+    }
   }
 
   // Reinforce the cavern floor with a bright edge to signify a stable landing surface
