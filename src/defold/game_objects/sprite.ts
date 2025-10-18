@@ -81,6 +81,7 @@ export class Sprite {
   velocityScaleY: number;
   lastMovementDirection: { x: number; y: number };
   facingLeft: boolean;
+  waterFacingAngle: number;
   hooks: SpriteHooks;
   gateStates: WeakMap<object, GatePassageState>;
   prevX: number;
@@ -117,6 +118,7 @@ export class Sprite {
     this.velocityScaleY = 1;
     this.lastMovementDirection = { x: 0, y: 0 }; // for stretch effects
     this.facingLeft = false; // true if last moving left
+    this.waterFacingAngle = 0;
 
     // hooks to access game state without circular imports
     this.hooks = hooks; // { energyBar, hearts, onGameOver, getRides:()=>[], getGates:()=>[] }
@@ -945,6 +947,7 @@ export class Sprite {
     this._updateGatePassage(prevRect, currRect);
 
     if (wasOnGround && !this.onGround) this.fallStartY = this.y;
+    this._updateSwimOrientation(dt);
     this._applyFinalScale();
   }
 
@@ -968,9 +971,15 @@ export class Sprite {
       ctx.save();
       ctx.translate(px, py);
 
+      const rotateForSwimming = Math.abs(this.waterFacingAngle) > 0.001 || this.inWater;
+      if (rotateForSwimming) {
+        ctx.rotate(this.waterFacingAngle);
+      }
+
       // Combine mirroring and stretch scaling in one scale call.
-      // Negative X when facing left mirrors the sprite about its center.
-      const sx = (this.facingLeft ? -1 : 1) * this.scaleX;
+      // Negative X when facing left mirrors the sprite about its center when not swimming.
+      const mirror = rotateForSwimming ? 1 : (this.facingLeft ? -1 : 1);
+      const sx = mirror * this.scaleX;
       const sy = this.scaleY;
       ctx.scale(sx, sy);
 
@@ -1042,5 +1051,33 @@ export class Sprite {
       ctx.fill();
       ctx.restore();
     }
+  }
+
+  _updateSwimOrientation(dt: number) {
+    const SWIM_ROTATE_SPEED = 12;
+    const SWIM_RETURN_SPEED = 16;
+    const MIN_SPEED_FOR_UPDATE = 20;
+
+    if (this.inWater) {
+      const speed = Math.hypot(this.vx, this.vy);
+      if (speed > MIN_SPEED_FOR_UPDATE) {
+        const targetAngle = Math.atan2(this.vy, this.vx);
+        const factor = 1 - Math.exp(-SWIM_ROTATE_SPEED * dt);
+        this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, targetAngle, factor);
+      }
+    } else {
+      const factor = 1 - Math.exp(-SWIM_RETURN_SPEED * dt);
+      this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, 0, factor);
+      if (Math.abs(this.waterFacingAngle) < 0.0001) this.waterFacingAngle = 0;
+    }
+  }
+
+  _approachAngle(current: number, target: number, factor: number) {
+    const diff = this._normalizeAngle(target - current);
+    return current + diff * clamp(factor, 0, 1);
+  }
+
+  _normalizeAngle(angle: number) {
+    return Math.atan2(Math.sin(angle), Math.cos(angle));
   }
 }
