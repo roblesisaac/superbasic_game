@@ -1,5 +1,5 @@
-import { CAM_TOP, CAM_BOTTOM } from '../../../config/constants.js';
-import { canvasHeight } from '../state/rendering_state.js';
+import { CAM_TOP, CAM_BOTTOM, SPRITE_SIZE } from '../../../config/constants.js';
+import { canvasHeight, groundY } from '../state/rendering_state.js';
 import { cameraY, setCameraY, clampCameraToGround } from '../state/camera_state.js';
 import type { Sprite } from '../../game_objects/sprite.js';
 
@@ -14,10 +14,12 @@ export function updateCameraForSprite(sprite: Sprite): void {
     setCameraY(sprite.y - bottomLine);
   }
 
-  clampCameraToGround();
+  const spriteBottom = sprite.y + SPRITE_SIZE / 2;
+  const belowGround = spriteBottom > groundY + 1;
+  clampCameraToGround(belowGround);
 }
 
 export function resetCameraController(): void {
   setCameraY(0);
-  clampCameraToGround();
+  clampCameraToGround(false);
 }

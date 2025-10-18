@@ -14,10 +14,19 @@ import {
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
-import { canvasWidth, groundY } from '../runtime/state/rendering_state.js';
+import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
+import {
+  getWellBounds,
+  getWellExpansionSpan,
+  getWellExpansionTopY,
+  getWellRimTopY,
+  getWellShaftBottomY,
+  getWellShaftSpan,
+  getWellWaterSurfaceY
+} from '../runtime/environment/well_layout.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -74,6 +83,7 @@ export class Sprite {
   prevX: number;
   prevY: number;
   prevVy: number;
+  inWater: boolean;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -113,6 +123,7 @@ export class Sprite {
     this.prevX = x;
     this.prevY = y;
     this.prevVy = 0;
+    this.inWater = false;
   }
 
   startCharging() {
@@ -626,6 +637,7 @@ export class Sprite {
 
     this.onGround = false;
     this.onPlatform = false;
+    this.inWater = false;
 
     const previousPlatform = this.platformSurface;
     let newPlatformSurface = null;
@@ -780,9 +792,8 @@ export class Sprite {
 
     this.platformSurface = newPlatformSurface;
 
-    // ground
-    if (!this.onPlatform && this.y + hs >= groundY) {
-      this.y = groundY - hs;
+    const applyStaticLanding = (surfaceY: number) => {
+      this.y = surfaceY - hs;
       if (!wasOnGround && this.vy > 0) {
         const fallHeight = this.y - this.fallStartY;
         const safe = Math.abs(this.vy) <= SAFE_FALL_VY || fallHeight <= SAFE_FALL_HEIGHT;
@@ -793,6 +804,101 @@ export class Sprite {
       this.onGround = true;
       this.vy = 0;
       this.gliding = false;
+      this.inWater = false;
+    };
+
+    const applyBuoyantLanding = (surfaceY: number, submersion: number) => {
+      const maxSubmersion = hs * 0.5;
+      const clamped = clamp(submersion, 0, maxSubmersion);
+      const desiredBottom = surfaceY + clamped * 0.5;
+      this.y = desiredBottom - hs;
+      if (this.vy > 0) this.vy = 0;
+      this.onGround = true;
+      this.gliding = false;
+      this.inWater = true;
+    };
+
+    let spriteLeft = this.x - hs;
+    let spriteRight = this.x + hs;
+    let spriteBottom = this.y + hs;
+    const well = getWellBounds(canvasWidth);
+    const shaftBottomY = getWellShaftBottomY(groundY, canvasHeight);
+    const expansionTopY = getWellExpansionTopY(groundY, canvasHeight);
+    const waterSurfaceY = getWellWaterSurfaceY(groundY, canvasHeight);
+    const cavernSpan = getWellExpansionSpan(canvasWidth);
+    const centerOverOpening = this.x > well.left && this.x < well.right;
+    const rimTopY = getWellRimTopY(groundY);
+    const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
+    const cameFromAboveRim = prevBottom <= rimTopY;
+    const eligibleForRimLanding =
+      overlapsRimSpan &&
+      !centerOverOpening &&
+      spriteBottom >= rimTopY &&
+      cameFromAboveRim;
+
+    // ground and well rim collisions
+    if (!this.onPlatform) {
+      if (eligibleForRimLanding) {
+        applyStaticLanding(rimTopY);
+      } else if (
+        spriteBottom >= groundY &&
+        !centerOverOpening &&
+        spriteBottom < expansionTopY &&
+        (prevBottom <= groundY || wasOnGround)
+      ) {
+        applyStaticLanding(groundY);
+      }
+    }
+
+    spriteLeft = this.x - hs;
+    spriteRight = this.x + hs;
+    spriteBottom = this.y + hs;
+
+    if (spriteBottom > rimTopY && spriteRight > well.left && spriteLeft < well.right) {
+      const inExpansionZone = spriteBottom >= expansionTopY;
+      const { interiorLeft, interiorRight } = inExpansionZone
+        ? getWellExpansionSpan(canvasWidth)
+        : getWellShaftSpan(well);
+      const spanWidth = interiorRight - interiorLeft;
+
+      if (spanWidth > 0) {
+        if (spriteLeft < interiorLeft) {
+          this.x = interiorLeft + hs;
+          spriteLeft = this.x - hs;
+          spriteRight = this.x + hs;
+          blockedHorizontally = true;
+          if (this.vx < 0) this.vx = 0;
+        }
+
+        if (spriteRight > interiorRight) {
+          this.x = interiorRight - hs;
+          spriteLeft = this.x - hs;
+          spriteRight = this.x + hs;
+          blockedHorizontally = true;
+          if (this.vx > 0) this.vx = 0;
+        }
+      }
+    }
+
+    let floatingInWater = false;
+    if (
+      spriteBottom >= waterSurfaceY &&
+      spriteBottom >= expansionTopY &&
+      spriteRight > cavernSpan.interiorLeft &&
+      spriteLeft < cavernSpan.interiorRight
+    ) {
+      floatingInWater = true;
+      const submersionDepth = spriteBottom - waterSurfaceY;
+      applyBuoyantLanding(waterSurfaceY, submersionDepth);
+      spriteBottom = this.y + hs;
+      spriteLeft = this.x - hs;
+      spriteRight = this.x + hs;
+    }
+
+    if (!floatingInWater && spriteBottom >= shaftBottomY && this.vy >= 0) {
+      if (spriteRight > cavernSpan.interiorLeft && spriteLeft < cavernSpan.interiorRight) {
+        applyStaticLanding(shaftBottomY);
+      }
     }
 
     const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
