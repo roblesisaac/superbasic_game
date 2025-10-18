@@ -1,4 +1,5 @@
 import { clamp } from '../../../utils/utils.js';
+import { SMALL_BUBBLE_OXYGEN_MULTIPLIER } from '../../../config/constants.js';
 import {
   getWellExpansionSpan,
   getWellExpansionTopY,
@@ -29,6 +30,22 @@ interface RisingBubble {
   trail: BubbleTrail[];
 }
 
+export interface SpriteBubbleCollisionContext {
+  x: number;
+  y: number;
+  spriteRadius: number;
+  isInBubble: boolean;
+  bubbleRadius: number;
+  inWater: boolean;
+  waterSurfaceY: number;
+}
+
+export interface SpriteBubbleCollisionResult {
+  oxygenDelta: number;
+  inBubble: boolean;
+  bubbleRadius: number;
+}
+
 export interface BubbleEnvironment {
   timestamp: number;
   cameraY: number;
@@ -48,7 +65,7 @@ const LARGE_BUBBLE_RADIUS = 26;
 const LARGE_BUBBLE_CHANCE = 0.05;
 const MAX_RISING_BUBBLES = 20;
 const INITIAL_RISING_BUBBLES = 8;
-const RISING_BUBBLE_SPAWNS_PER_SECOND = 0.6; // Tunable spawn cadence for rising bubbles
+const RISING_BUBBLE_SPAWNS_PER_SECOND = 0.35; // Tunable spawn cadence for rising bubbles
 const BUBBLE_MIN_SPEED = 0.5 * 1.5 * 60;
 const BUBBLE_MAX_SPEED = 1.5 * 1.5 * 60;
 const TRAIL_PIXEL_SIZE = 4;
@@ -312,6 +329,54 @@ function drawPixelatedBubble(
   }
 }
 
+export function handleSpriteBubbleCollisions(
+  context: SpriteBubbleCollisionContext
+): SpriteBubbleCollisionResult {
+  let inBubble = context.isInBubble;
+  let bubbleRadius = context.bubbleRadius;
+  let oxygenDelta = 0;
+
+  if (!context.inWater) {
+    return { oxygenDelta, inBubble: false, bubbleRadius: 0 };
+  }
+
+  const spriteRadius = context.spriteRadius;
+
+  for (let i = risingBubbles.length - 1; i >= 0; i--) {
+    const bubble = risingBubbles[i];
+    if (bubble.worldY <= context.waterSurfaceY) {
+      continue;
+    }
+
+    const dx = bubble.x - context.x;
+    const dy = bubble.worldY - context.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (!inBubble) {
+      if (bubble.radius <= spriteRadius && dist < bubble.radius + spriteRadius) {
+        oxygenDelta += bubble.radius * SMALL_BUBBLE_OXYGEN_MULTIPLIER;
+        risingBubbles.splice(i, 1);
+        continue;
+      }
+
+      if (bubble.radius > spriteRadius && dist < bubble.radius) {
+        inBubble = true;
+        bubbleRadius = bubble.radius;
+        risingBubbles.splice(i, 1);
+        continue;
+      }
+    } else {
+      if (dist < bubbleRadius + bubble.radius) {
+        const volumeIncrease = (bubble.radius * bubble.radius) / (bubbleRadius * bubbleRadius);
+        bubbleRadius += bubble.radius * 0.4 * volumeIncrease;
+        risingBubbles.splice(i, 1);
+      }
+    }
+  }
+
+  return { oxygenDelta, inBubble, bubbleRadius };
+}
+
 export function updateBubbleField(env: BubbleEnvironment): void {
   const waterSurfaceY = getWellWaterSurfaceY(env.groundY, env.canvasHeight);
   const viewBottom = env.cameraY + env.canvasHeight * 2;
@@ -375,6 +440,15 @@ export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnviro
   }
 
   ctx.restore();
+}
+
+export function drawEncasingBubble(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number
+): void {
+  drawPixelatedBubble(ctx, x, y, radius, false, [], 0);
 }
 
 export function resetBubbleField(): void {

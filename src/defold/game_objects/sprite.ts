@@ -17,13 +17,20 @@ import {
   WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
   ENERGY_REGEN_STATIONARY_DELAY,
   OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE,
-  OXYGEN_DAMAGE_INTERVAL
+  OXYGEN_DAMAGE_INTERVAL,
+  BUBBLE_SHRINK_RATE_PER_SECOND,
+  BUBBLE_SHRINK_OXYGEN_MULTIPLIER,
+  BUBBLE_EXIT_PADDING
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
+import {
+  handleSpriteBubbleCollisions,
+  drawEncasingBubble
+} from '../runtime/environment/bubble_field.js';
 import {
   getWellBounds,
   getWellExpansionSpan,
@@ -99,6 +106,8 @@ export class Sprite {
   maxOxygen: number;
   isSwimmingInputActive: boolean;
   oxygenDamageTimer: number;
+  inBubble: boolean;
+  bubbleRadius: number;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -147,6 +156,8 @@ export class Sprite {
     this.oxygen = this.maxOxygen;
     this.isSwimmingInputActive = false;
     this.oxygenDamageTimer = 0;
+    this.inBubble = false;
+    this.bubbleRadius = SPRITE_SIZE / 2 + BUBBLE_EXIT_PADDING;
   }
 
   private setSwimmingInputActive(active: boolean) {
@@ -986,13 +997,60 @@ export class Sprite {
       }
     }
 
+    const spriteRadius = SPRITE_SIZE / 2;
+    const restingBubbleRadius = spriteRadius + BUBBLE_EXIT_PADDING;
+    let bubbleOxygenDelta = 0;
+
+    if (!this.inWater) {
+      this.inBubble = false;
+      this.bubbleRadius = restingBubbleRadius;
+    } else {
+      const collisionResult = handleSpriteBubbleCollisions({
+        x: this.x,
+        y: this.y,
+        spriteRadius,
+        isInBubble: this.inBubble,
+        bubbleRadius: Math.max(this.bubbleRadius, restingBubbleRadius),
+        inWater: this.inWater,
+        waterSurfaceY
+      });
+
+      bubbleOxygenDelta += collisionResult.oxygenDelta;
+      this.inBubble = collisionResult.inBubble;
+      this.bubbleRadius = collisionResult.inBubble
+        ? Math.max(collisionResult.bubbleRadius, restingBubbleRadius)
+        : restingBubbleRadius;
+    }
+
+    if (this.inBubble) {
+      const previousRadius = this.bubbleRadius;
+      this.bubbleRadius = Math.max(
+        restingBubbleRadius,
+        this.bubbleRadius - BUBBLE_SHRINK_RATE_PER_SECOND * dt
+      );
+      const shrinkAmount = previousRadius - this.bubbleRadius;
+      if (shrinkAmount > 0) {
+        bubbleOxygenDelta += shrinkAmount * BUBBLE_SHRINK_OXYGEN_MULTIPLIER;
+      }
+      if (this.bubbleRadius <= restingBubbleRadius + 1e-3) {
+        this.inBubble = false;
+        this.bubbleRadius = restingBubbleRadius;
+      }
+    }
+
+    if (bubbleOxygenDelta !== 0) {
+      this.oxygen = clamp(this.oxygen + bubbleOxygenDelta, 0, this.maxOxygen);
+    }
+
     const canReplenishOxygen = this.waterDepthMeters <= 0;
     if (this.waterDepthMeters > 0) {
-      this.oxygen = clamp(
-        this.oxygen - OXYGEN_DEPLETION_RATE * dt,
-        0,
-        this.maxOxygen
-      );
+      if (!this.inBubble) {
+        this.oxygen = clamp(
+          this.oxygen - OXYGEN_DEPLETION_RATE * dt,
+          0,
+          this.maxOxygen
+        );
+      }
     } else if (canReplenishOxygen) {
       this.oxygen = clamp(
         this.oxygen + OXYGEN_RECHARGE_RATE * dt,
@@ -1053,6 +1111,10 @@ export class Sprite {
     }
     const py = this.y - cameraY + platformVisualYOffset;
     const size = SPRITE_SIZE;
+
+    if (this.inBubble) {
+      drawEncasingBubble(ctx, px, py, this.bubbleRadius);
+    }
 
     // --- Draw sprite (with mirroring and scaling) ---
     const shouldRenderSprite = !(this.invulnerableTime > 0 && !this.invulnerableVisible);
