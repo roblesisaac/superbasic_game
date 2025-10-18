@@ -170,8 +170,9 @@ function updateWorld(dt: number): void {
 }
 
 function drawWorld(): void {
+  const timeMs = Number.isFinite(gameWorld.lastTime) ? gameWorld.lastTime : now();
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  drawBackgroundGrid(cameraY);
+  drawBackgroundGrid(cameraY, timeMs);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
