@@ -16,7 +16,8 @@ import {
   WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
   WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
   ENERGY_REGEN_STATIONARY_DELAY,
-  OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE
+  OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE,
+  OXYGEN_DAMAGE_INTERVAL
 } from '../../config/constants.js';
 import { clamp } from '../../utils/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
@@ -96,6 +97,7 @@ export class Sprite {
   oxygen: number;
   maxOxygen: number;
   isSwimmingInputActive: boolean;
+  oxygenDamageTimer: number;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
     this.x = x; this.y = y;
@@ -143,6 +145,7 @@ export class Sprite {
     this.maxOxygen = OXYGEN_MAX;
     this.oxygen = this.maxOxygen;
     this.isSwimmingInputActive = false;
+    this.oxygenDamageTimer = 0;
   }
 
   private setSwimmingInputActive(active: boolean) {
@@ -996,6 +999,20 @@ export class Sprite {
 
     if (!this.inWater && canReplenishOxygen) {
       this.oxygen = this.maxOxygen;
+    }
+
+    const hearts = this.hooks?.hearts;
+    const hasHearts = hearts && typeof hearts.takeDamage === 'function';
+    const hasLifeRemaining = hasHearts && typeof hearts.value === 'number' && hearts.value > 0;
+    const oxygenDepleted = this.oxygen <= 0;
+    if (oxygenDepleted && hasLifeRemaining) {
+      this.oxygenDamageTimer += dt;
+      if (this.oxygenDamageTimer >= OXYGEN_DAMAGE_INTERVAL) {
+        this.oxygenDamageTimer -= OXYGEN_DAMAGE_INTERVAL;
+        hearts.takeDamage(() => this.hooks.onGameOver());
+      }
+    } else {
+      this.oxygenDamageTimer = 0;
     }
 
     if (this.isSwimmingInputActive) {

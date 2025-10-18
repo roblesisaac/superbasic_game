@@ -118,3 +118,4 @@ export const WATER_SURFACE_TOLERANCE = 2;
 export const OXYGEN_MAX = 30;
 export const OXYGEN_DEPLETION_RATE = 1;
 export const OXYGEN_RECHARGE_RATE = 2;
+export const OXYGEN_DAMAGE_INTERVAL = 1;
