@@ -1055,15 +1055,23 @@ export class Sprite {
 
   _updateSwimOrientation(dt: number) {
     const SWIM_ROTATE_SPEED = 12;
+    const SWIM_INPUT_ROTATE_SPEED = 18;
     const SWIM_RETURN_SPEED = 16;
     const MIN_SPEED_FOR_UPDATE = 20;
 
     if (this.inWater) {
-      const speed = Math.hypot(this.vx, this.vy);
-      if (speed > MIN_SPEED_FOR_UPDATE) {
-        const targetAngle = Math.atan2(this.vy, this.vx);
-        const factor = 1 - Math.exp(-SWIM_ROTATE_SPEED * dt);
+      const inputMagnitude = Math.hypot(this.movementDirection.x, this.movementDirection.y);
+      if (this.movementCharging && inputMagnitude > 0.1) {
+        const targetAngle = Math.atan2(-this.movementDirection.y, -this.movementDirection.x);
+        const factor = 1 - Math.exp(-SWIM_INPUT_ROTATE_SPEED * dt);
         this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, targetAngle, factor);
+      } else {
+        const speed = Math.hypot(this.vx, this.vy);
+        if (speed > MIN_SPEED_FOR_UPDATE) {
+          const targetAngle = Math.atan2(this.vy, this.vx);
+          const factor = 1 - Math.exp(-SWIM_ROTATE_SPEED * dt);
+          this.waterFacingAngle = this._approachAngle(this.waterFacingAngle, targetAngle, factor);
+        }
       }
     } else {
       const factor = 1 - Math.exp(-SWIM_RETURN_SPEED * dt);
