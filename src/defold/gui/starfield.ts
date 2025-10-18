@@ -451,10 +451,15 @@ function draw(): void {
   if (!ctx || !canvas) return;
 
   const { width, height } = getCanvasDimensions();
+  const belowGround = cameraY > 0;
 
   // Clear background
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, width, height);
+
+  if (belowGround) {
+    return;
+  }
 
   // Draw stars FIRST (bottom layer)
   drawStars();
