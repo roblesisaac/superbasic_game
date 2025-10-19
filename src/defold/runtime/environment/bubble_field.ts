@@ -57,8 +57,8 @@ export interface BubbleEnvironment {
   wellBounds: WellBounds;
 }
 
-const STATIC_SEGMENT_HEIGHT = 100;
-const STATIC_BUBBLES_PER_SEGMENT = 5;
+const STATIC_SEGMENT_HEIGHT = 120;
+const STATIC_BUBBLES_PER_SEGMENT = 3;
 const STATIC_PIXEL_SIZE = 4;
 
 const MIN_SMALL_BUBBLE_RADIUS = 10;

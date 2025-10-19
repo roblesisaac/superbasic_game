@@ -16,6 +16,7 @@ import {
   WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
   WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
   ENERGY_REGEN_STATIONARY_DELAY,
+  ENERGY_MAX,
   OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE,
   OXYGEN_DAMAGE_INTERVAL,
   BUBBLE_SHRINK_RATE_PER_SECOND,
@@ -250,6 +251,13 @@ export class Sprite {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
         let force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        const energyBar = this.hooks.energyBar;
+        if (energyBar && typeof energyBar.energy === 'number' && ENERGY_MAX > 0) {
+          const energyRatio = clamp(energyBar.energy / ENERGY_MAX, 0, 1);
+          const depletion = 1 - energyRatio;
+          const depletionBoost = 1 + depletion * 0.6;
+          force *= depletionBoost;
+        }
         if (this.inWater && !this.onGround) {
           force *= WATER_STROKE_FORCE_SCALE;
         }
