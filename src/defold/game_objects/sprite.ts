@@ -250,14 +250,17 @@ export class Sprite {
       } else {
         // Normal movement
         const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
-        let force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        let normalized = r;
         const energyBar = this.hooks.energyBar;
         if (energyBar && typeof energyBar.energy === 'number' && ENERGY_MAX > 0) {
           const energyRatio = clamp(energyBar.energy / ENERGY_MAX, 0, 1);
           const depletion = 1 - energyRatio;
-          const depletionBoost = 1 + depletion * 0.6;
-          force *= depletionBoost;
+          // More depleted energy should translate into a sharper dart even on light swipes.
+          // Blend the current charge with the depletion so low charge + low energy still yields
+          // a high normalized stroke value.
+          normalized = clamp(r + depletion * (1 - r), 0, 1);
         }
+        let force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * normalized;
         if (this.inWater && !this.onGround) {
           force *= WATER_STROKE_FORCE_SCALE;
         }
