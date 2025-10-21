@@ -502,6 +502,10 @@ export class InputHandler {
       const dx = last.x - this.mouseStart.x;
       const total = Math.max(1, endTime - this.mouseStart.time);
 
+      const sprite = this.game.sprite;
+      const spriteAirborne = !!(sprite && !sprite.onGround);
+      const spriteSwimming = !!(sprite && sprite.inWater);
+
       if (
         this.mouseSwipe &&
         sprite &&
