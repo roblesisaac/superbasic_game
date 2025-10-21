@@ -798,6 +798,16 @@ export class Sprite {
           const surfaceTop = rect.y;
           const surfaceBottom = rect.y + rect.h;
 
+          const isCliffSurface = this._isCliffSurface(surface);
+          const rectWithSide = rect as typeof rect & { side?: 'left' | 'right' };
+          const cliffSide = isCliffSurface ? rectWithSide.side : undefined;
+
+          const leftEntryEdge = cliffSide === 'left' ? surfaceRight : surfaceLeft;
+          const rightEntryEdge = cliffSide === 'right' ? surfaceLeft : surfaceRight;
+
+          const leftPushX = cliffSide === 'left' ? leftEntryEdge - hs : surfaceLeft - hs;
+          const rightPushX = cliffSide === 'right' ? rightEntryEdge + hs : surfaceRight + hs;
+
           const hOverlap = (currRight >= surfaceLeft) && (currLeft <= surfaceRight);
           const vOverlap = (currBottom >= surfaceTop) && (currTop <= surfaceBottom);
 
@@ -820,24 +830,24 @@ export class Sprite {
 
           if (!vOverlap) continue;
 
-          if (prevRight <= surfaceLeft + epsilon && currRight >= surfaceLeft) {
-            const overlap = currRight - surfaceLeft;
+          if (prevRight <= leftEntryEdge + epsilon && currRight >= leftEntryEdge) {
+            const overlap = currRight - leftEntryEdge;
             if (!leftSideCandidate || overlap < leftSideCandidate.overlap) {
               leftSideCandidate = {
                 surface,
                 overlap,
-                pushX: surfaceLeft - hs
+                pushX: leftPushX
               };
             }
           }
 
-          if (prevLeft >= surfaceRight - epsilon && currLeft <= surfaceRight) {
-            const overlap = surfaceRight - currLeft;
+          if (prevLeft >= rightEntryEdge - epsilon && currLeft <= rightEntryEdge) {
+            const overlap = rightEntryEdge - currLeft;
             if (!rightSideCandidate || overlap < rightSideCandidate.overlap) {
               rightSideCandidate = {
                 surface,
                 overlap,
-                pushX: surfaceRight + hs
+                pushX: rightPushX
               };
             }
           }
