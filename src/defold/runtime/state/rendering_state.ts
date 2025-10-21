@@ -1,6 +1,7 @@
 import { CANVAS_MAX_WIDTH } from '../../../config/constants.js';
 import { resetBubbleField } from '../environment/bubble_field.js';
 import { resetWellDepth } from '../environment/well_layout.js';
+import { resetCliffs } from '../../gui/drawCliffs.js';
 
 const canvasElement = document.getElementById('gameCanvas');
 if (!(canvasElement instanceof HTMLCanvasElement)) {
@@ -29,6 +30,7 @@ export function updateCanvasSize(): void {
   groundY = canvasHeight - 116;
   resetWellDepth(canvasHeight);
   resetBubbleField();
+  resetCliffs();
 }
 
 window.addEventListener('resize', updateCanvasSize);
