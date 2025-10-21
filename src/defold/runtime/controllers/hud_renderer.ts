@@ -52,7 +52,7 @@ export function drawHUD(): void {
 
   const ft = Math.max(0, Math.round((groundY - sprite.y) / PIXELS_PER_FOOT));
   ctx.save();
-  ctx.font = '12px LocalPressStart, monospace';
+  ctx.font = '16px "Tiny5", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#eaeaea';
@@ -80,11 +80,11 @@ function drawDepthAndOxygenMeters(
   ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.font = '10px LocalPressStart, monospace';
+  ctx.font = '10px "Tiny5", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ctx.fillText(depthLabel, anchorX, depthLabelY);
 
-  ctx.font = '16px LocalPressStart, monospace';
+  ctx.font = '16px "Tiny5", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(depthText, anchorX, depthValueY);
   ctx.restore();
@@ -115,7 +115,7 @@ function drawOxygenMeter(
     ctx.fillRect(x, top, width * ratio, barHeight);
   }
 
-  ctx.font = '9px LocalPressStart, monospace';
+  ctx.font = '9px "Tiny5", sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(255,255,255,0.75)';

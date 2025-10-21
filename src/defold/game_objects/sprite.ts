@@ -35,12 +35,20 @@ import {
   getWellBounds,
   getWellExpansionSpan,
   getWellExpansionTopY,
+  getWellExpansionBottomY,
   getWellRimTopY,
   getWellShaftBottomY,
   getWellShaftSpan,
   getWellWaterSurfaceY,
-  ensureWellDepth
+  ensureWellDepth,
+  getCliffStartY
 } from '../runtime/environment/well_layout.js';
+import {
+  prepareCliffField,
+  getCliffInteriorBoundsAtY,
+  getCliffLedgesInRange,
+  CLIFF_LEDGE_TOLERANCE
+} from '../gui/drawCliffs.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -663,8 +671,12 @@ export class Sprite {
     const well = getWellBounds(canvasWidth);
     const cavernSpan = getWellExpansionSpan(canvasWidth);
     const expansionTopY = getWellExpansionTopY(groundY, canvasHeight);
+    const expansionBottomY = getWellExpansionBottomY(groundY, canvasHeight);
     const waterSurfaceY = getWellWaterSurfaceY(groundY, canvasHeight);
     const shaftBottomY = getWellShaftBottomY(groundY, canvasHeight);
+    const cliffStartWorld = getCliffStartY(groundY, canvasHeight);
+
+    prepareCliffField(canvasWidth, cliffStartWorld, expansionBottomY);
 
     // Handle charging
     if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
@@ -933,9 +945,16 @@ export class Sprite {
 
     if (spriteBottom > rimTopY && spriteRight > well.left && spriteLeft < well.right) {
       const inExpansionZone = spriteBottom >= expansionTopY;
-      const { interiorLeft, interiorRight } = inExpansionZone
-        ? cavernSpan
-        : getWellShaftSpan(well);
+      const spanSource = inExpansionZone ? cavernSpan : getWellShaftSpan(well);
+      let interiorLeft = spanSource.interiorLeft;
+      let interiorRight = spanSource.interiorRight;
+
+      if (inExpansionZone) {
+        const cliffBounds = getCliffInteriorBoundsAtY(spriteBottom);
+        interiorLeft = Math.max(interiorLeft, cliffBounds.left);
+        interiorRight = Math.min(interiorRight, cliffBounds.right);
+      }
+
       const spanWidth = interiorRight - interiorLeft;
 
       if (spanWidth > 0) {
@@ -954,6 +973,26 @@ export class Sprite {
           blockedHorizontally = true;
           if (this.vx > 0) this.vx = 0;
         }
+      }
+    }
+
+    let spriteTop = this.y - hs;
+
+    if (spriteBottom >= cliffStartWorld) {
+      const ledges = getCliffLedgesInRange(prevBottom - CLIFF_LEDGE_TOLERANCE, spriteBottom + CLIFF_LEDGE_TOLERANCE);
+      for (const ledge of ledges) {
+        if (prevBottom > ledge.y || spriteBottom < ledge.y) continue;
+        if (spriteRight <= ledge.left || spriteLeft >= ledge.right) continue;
+        this.y = ledge.y - hs;
+        spriteBottom = this.y + hs;
+        spriteTop = this.y - hs;
+        spriteLeft = this.x - hs;
+        spriteRight = this.x + hs;
+        this.vy = 0;
+        this.onGround = true;
+        this.inWater = false;
+        this.gliding = false;
+        break;
       }
     }
 

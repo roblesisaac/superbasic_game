@@ -8,9 +8,20 @@ const LEDGE_THRESHOLD_RATIO = 0.1;
 const LEDGE_WIDTH_RATIO = 0.3;
 const SEGMENT_HEIGHT = 240;
 const BUFFER_SEGMENTS = 4;
+const CLIFF_CLEARANCE = CELL_SIZE * 2;
+const CLIFF_LEDGE_THICKNESS = CELL_SIZE * 3;
 
 type PolyominoCellSet = Set<string>;
 type PolyominoOffsets = Array<readonly [number, number]>;
+
+export interface CliffLedge {
+  left: number;
+  right: number;
+  y: number;
+}
+
+export const CLIFF_CELL_SIZE = CELL_SIZE;
+export const CLIFF_LEDGE_TOLERANCE = CLIFF_LEDGE_THICKNESS;
 
 interface HorizontalCacheEntry {
   offsetX: number;
@@ -157,6 +168,7 @@ class CliffSegment {
   hasArc: boolean;
   arcAmount: number;
   seedBase: number;
+  canvasWidth: number;
   horizontalCache: HorizontalCacheEntry[] | null;
   verticalCache: VerticalCacheEntry[] | null;
   controlX: number | null;
@@ -170,6 +182,7 @@ class CliffSegment {
   ) {
     this.side = side;
     this.seedBase = seedBase;
+    this.canvasWidth = canvasWidth;
 
     const maxWidth = canvasWidth * MAX_WIDTH_RATIO;
     const ledgeThreshold = canvasWidth * LEDGE_THRESHOLD_RATIO;
@@ -266,6 +279,85 @@ class CliffSegment {
     }
 
     this.height = this.verticalLen;
+  }
+
+  private computeGeometry(): {
+    horizStartX: number;
+    horizEndX: number;
+    diagEndX: number;
+    anchor: Edge;
+  } {
+    let horizStartX: number;
+    let horizEndX: number;
+    let diagEndX: number;
+
+    if (this.side === 'left') {
+      horizStartX = this.currentWidth;
+      horizEndX = this.moveInward
+        ? Math.min(this.currentWidth + this.horizontalLen, this.canvasWidth * MAX_WIDTH_RATIO)
+        : Math.max(this.currentWidth - this.horizontalLen, 10);
+      diagEndX = Math.min(this.endWidth, this.canvasWidth * MAX_WIDTH_RATIO);
+    } else {
+      horizStartX = this.canvasWidth - this.currentWidth;
+      horizEndX = this.moveInward
+        ? Math.max(
+            this.canvasWidth - this.currentWidth - this.horizontalLen,
+            this.canvasWidth * (1 - MAX_WIDTH_RATIO)
+          )
+        : Math.min(
+            this.canvasWidth - this.currentWidth + this.horizontalLen,
+            this.canvasWidth - 10
+          );
+      diagEndX = Math.max(this.canvasWidth - this.endWidth, this.canvasWidth * (1 - MAX_WIDTH_RATIO));
+    }
+
+    const anchor: Edge = this.side === 'left' ? 'right' : 'left';
+
+    return { horizStartX, horizEndX, diagEndX, anchor };
+  }
+
+  private computeControlPoint(horizEndX: number, diagEndX: number): void {
+    if (!this.hasArc) {
+      this.controlX = null;
+      this.controlY = null;
+      return;
+    }
+
+    const arcDirection = this.side === 'left' ? 1 : -1;
+    const startX = horizEndX;
+    const startY = this.y;
+    const endX = diagEndX;
+    const endY = this.y + this.verticalLen;
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+    const angle = Math.atan2(endY - startY, endX - startX);
+    const perpAngle = angle + Math.PI / 2;
+
+    this.controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
+    this.controlY = midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
+  }
+
+  getLedgeBounds(): { left: number; right: number } {
+    const { horizStartX, horizEndX } = this.computeGeometry();
+    const left = Math.min(horizStartX, horizEndX);
+    const right = Math.max(horizStartX, horizEndX);
+    return { left, right };
+  }
+
+  getInteriorEdgeAt(y: number): number | null {
+    if (y < this.y || y > this.y + this.verticalLen) return null;
+
+    const { horizStartX, horizEndX, diagEndX } = this.computeGeometry();
+    const startEdge = this.side === 'left'
+      ? Math.max(horizStartX, horizEndX)
+      : Math.min(horizStartX, horizEndX);
+    const endEdge = this.side === 'left'
+      ? Math.max(diagEndX, horizEndX)
+      : Math.min(diagEndX, horizEndX);
+
+    const t = this.verticalLen > 0 ? (y - this.y) / this.verticalLen : 0;
+    const clamped = Math.min(Math.max(t, 0), 1);
+    return startEdge + (endEdge - startEdge) * clamped;
   }
 
   draw(ctx: CanvasRenderingContext2D, canvasWidth: number, scrollY: number): void {
@@ -608,6 +700,82 @@ class CliffSegment {
       }
     }
   }
+}
+
+export function prepareCliffField(
+  canvasWidth: number,
+  cliffTopWorld: number,
+  targetBottomWorld: number
+): void {
+  if (!Number.isFinite(canvasWidth) || canvasWidth <= 0) return;
+  if (!Number.isFinite(cliffTopWorld) || !Number.isFinite(targetBottomWorld)) return;
+
+  const requiredHeight = Math.max(0, targetBottomWorld - cliffTopWorld);
+  if (requiredHeight <= 0) return;
+
+  if (
+    !cliffState.initialized ||
+    cliffState.canvasWidth !== canvasWidth ||
+    Math.abs(cliffState.origin - cliffTopWorld) > 0.5
+  ) {
+    initializeCliffs(cliffTopWorld, canvasWidth, requiredHeight);
+  } else if (requiredHeight > cliffState.cavernHeight) {
+    cliffState.cavernHeight = requiredHeight;
+  }
+
+  const targetDepth = Math.max(0, targetBottomWorld - cliffState.origin) + SEGMENT_HEIGHT * BUFFER_SEGMENTS;
+  ensureSegments(targetDepth);
+}
+
+export function getCliffInteriorBoundsAtY(y: number): { left: number; right: number } {
+  if (!cliffState.initialized || !Number.isFinite(y)) {
+    return { left: 0, right: Infinity };
+  }
+
+  let leftBoundary = 0;
+  let rightBoundary = cliffState.canvasWidth > 0 ? cliffState.canvasWidth : Infinity;
+
+  for (const segment of cliffState.leftSegments) {
+    const edge = segment.getInteriorEdgeAt(y);
+    if (edge === null) continue;
+    leftBoundary = Math.max(leftBoundary, edge + CLIFF_CLEARANCE);
+  }
+
+  for (const segment of cliffState.rightSegments) {
+    const edge = segment.getInteriorEdgeAt(y);
+    if (edge === null) continue;
+    rightBoundary = Math.min(rightBoundary, edge - CLIFF_CLEARANCE);
+  }
+
+  if (leftBoundary > rightBoundary) {
+    const midpoint = (leftBoundary + rightBoundary) / 2;
+    leftBoundary = midpoint - CELL_SIZE;
+    rightBoundary = midpoint + CELL_SIZE;
+  }
+
+  return { left: leftBoundary, right: rightBoundary };
+}
+
+export function getCliffLedgesInRange(rangeTop: number, rangeBottom: number): CliffLedge[] {
+  const ledges: CliffLedge[] = [];
+  if (!cliffState.initialized) return ledges;
+  if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom)) return ledges;
+
+  for (const segment of cliffState.leftSegments) {
+    const y = segment.y;
+    if (y < rangeTop - CLIFF_LEDGE_THICKNESS || y > rangeBottom + CLIFF_LEDGE_THICKNESS) continue;
+    const { left, right } = segment.getLedgeBounds();
+    ledges.push({ left, right, y });
+  }
+
+  for (const segment of cliffState.rightSegments) {
+    const y = segment.y;
+    if (y < rangeTop - CLIFF_LEDGE_THICKNESS || y > rangeBottom + CLIFF_LEDGE_THICKNESS) continue;
+    const { left, right } = segment.getLedgeBounds();
+    ledges.push({ left, right, y });
+  }
+
+  return ledges;
 }
 
 interface CliffRenderState {

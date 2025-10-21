@@ -125,7 +125,7 @@ export class EnergyBar {
 
     if (this.state === 'cooldown') {
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.font = '10px LocalPressStart, monospace';
+      ctx.font = '10px "Tiny5", sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText('COOLING…', barX + this.barWidth + 8, barY - 1);
