@@ -1,7 +1,7 @@
 type CliffSide = 'left' | 'right';
 type Edge = 'left' | 'right' | 'top' | 'bottom';
 
-const CELL_SIZE = 4;
+const CELL_SIZE = 2;
 const MAX_WIDTH_RATIO = 0.3;
 const LEDGE_THRESHOLD_RATIO = 0.1;
 const LEDGE_WIDTH_RATIO = 0.3;
