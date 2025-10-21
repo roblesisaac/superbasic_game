@@ -371,6 +371,10 @@ export class InputHandler {
           return;
         }
 
+        const sprite = this.game.sprite;
+        const spriteAirborne = !!(sprite && !sprite.onGround);
+        const spriteSwimming = !!(sprite && sprite.inWater);
+
         const endTime = Date.now();
         const last = this.touchSamples[this.touchSamples.length - 1] || this.touchStart;
         const dx = last.x - this.touchStart.x;
