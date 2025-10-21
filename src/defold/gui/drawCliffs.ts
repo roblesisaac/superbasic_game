@@ -2,6 +2,7 @@ type CliffSide = 'left' | 'right';
 type Edge = 'left' | 'right' | 'top' | 'bottom';
 
 const CELL_SIZE = 2;
+const USE_OFFSCREEN_CANVAS = false;
 const MAX_WIDTH_RATIO = 0.3;
 const LEDGE_THRESHOLD_RATIO = 0.1;
 const LEDGE_WIDTH_RATIO = 0.3;
@@ -9,6 +10,20 @@ const SEGMENT_HEIGHT = 240;
 const BUFFER_SEGMENTS = 4;
 
 type PolyominoCellSet = Set<string>;
+type PolyominoOffsets = Array<readonly [number, number]>;
+
+interface HorizontalCacheEntry {
+  offsetX: number;
+  offsetY: number;
+  cells: PolyominoOffsets;
+}
+
+interface VerticalCacheEntry {
+  t: number;
+  anchor: Edge;
+  widthPixels: number;
+  cells: PolyominoOffsets;
+}
 
 function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
@@ -142,6 +157,10 @@ class CliffSegment {
   hasArc: boolean;
   arcAmount: number;
   seedBase: number;
+  horizontalCache: HorizontalCacheEntry[] | null;
+  verticalCache: VerticalCacheEntry[] | null;
+  controlX: number | null;
+  controlY: number | null;
 
   constructor(
     side: CliffSide,
@@ -158,6 +177,10 @@ class CliffSegment {
 
     this.hasArc = seededRandom(seedBase + 8888) < 0.15;
     this.arcAmount = this.hasArc ? seededRandom(seedBase + 9999) * 50 + 50 : 0;
+    this.horizontalCache = null;
+    this.verticalCache = null;
+    this.controlX = null;
+    this.controlY = null;
 
     if (!prevSegment) {
       this.y = 0;
@@ -284,24 +307,34 @@ class CliffSegment {
       diagEndX
     );
 
-    this.drawPolyominoLineHorizontal(
-      ctx,
-      horizStartX,
-      screenY,
-      horizEndX,
-      screenY,
-      this.seedBase
-    );
+    if (!this.horizontalCache) {
+      this.horizontalCache = this.buildHorizontalCache(
+        horizStartX,
+        screenY,
+        horizEndX,
+        this.seedBase
+      );
+    }
+    this.renderHorizontalCache(ctx, this.horizontalCache, horizStartX, screenY, horizEndX);
 
     const verticalAnchor: Edge = this.side === 'left' ? 'right' : 'left';
-    this.drawPolyominoLineVertical(
+    if (!this.verticalCache) {
+      this.verticalCache = this.buildVerticalCache(
+        horizEndX,
+        screenY,
+        diagEndX,
+        screenY + this.verticalLen,
+        this.seedBase + 1000,
+        verticalAnchor
+      );
+    }
+    this.renderVerticalCache(
       ctx,
+      this.verticalCache,
       horizEndX,
       screenY,
       diagEndX,
-      screenY + this.verticalLen,
-      this.seedBase + 1000,
-      verticalAnchor
+      screenY + this.verticalLen
     );
   }
 
@@ -318,8 +351,8 @@ class CliffSegment {
     const padding = 12;
     const arcDirection = this.side === 'left' ? 1 : -1;
 
-    let controlX: number | null = null;
-    let controlY: number | null = null;
+    this.controlX = null;
+    this.controlY = null;
     let topX = horizEndX;
     const bottomX = diagEndX;
     const bottomY = screenY + this.verticalLen;
@@ -329,8 +362,8 @@ class CliffSegment {
       const midY = (screenY + bottomY) / 2;
       const angle = Math.atan2(bottomY - screenY, bottomX - topX);
       const perpAngle = angle + Math.PI / 2;
-      controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
-      controlY = midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
+      this.controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
+      this.controlY = midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
     }
 
     for (let i = 0; i < textureCount; i += 1) {
@@ -351,11 +384,11 @@ class CliffSegment {
       } else {
         const diagT = (y - screenY) / this.verticalLen;
         let edgeX: number;
-        if (this.hasArc && controlX !== null && controlY !== null) {
+        if (this.hasArc && this.controlX !== null && this.controlY !== null) {
           const oneMinusT = 1 - diagT;
           edgeX =
             oneMinusT * oneMinusT * topX +
-            2 * oneMinusT * diagT * controlX +
+            2 * oneMinusT * diagT * this.controlX +
             diagT * diagT * bottomX;
         } else {
           edgeX = topX + (bottomX - topX) * diagT;
@@ -390,56 +423,53 @@ class CliffSegment {
     }
   }
 
-  private drawPolyominoLineHorizontal(
-    ctx: CanvasRenderingContext2D,
+  private buildHorizontalCache(
     x1: number,
     y1: number,
     x2: number,
-    y2: number,
     seed: number
-  ): void {
-    let x = Math.min(x1, x2);
+  ): HorizontalCacheEntry[] {
+    const start = Math.min(x1, x2);
+    const baseY = Math.round(y1);
+    let x = start;
     const end = Math.max(x1, x2);
     let shapeIndex = 0;
 
-    ctx.fillStyle = '#FFFFFF';
-
+    const entries: HorizontalCacheEntry[] = [];
     while (x < end) {
       let cells = generatePolyomino(seed + shapeIndex * 123, 4, 9);
       cells = flattenEdge(cells, 'top');
       const bounds = getBounds(cells);
       const shapeWidth = bounds.w * CELL_SIZE;
-      const px = Math.round(x);
-      const py = Math.round(y1);
 
-      for (const key of cells) {
+      const offsets: PolyominoOffsets = Array.from(cells, (key) => {
         const [cx, cy] = key.split(',').map(Number);
-        ctx.fillRect(
-          px + cx * CELL_SIZE,
-          py + cy * CELL_SIZE,
-          CELL_SIZE,
-          CELL_SIZE
-        );
-      }
+        return [cx, cy] as const;
+      });
+
+      entries.push({
+        offsetX: Math.round(x - start),
+        offsetY: Math.round(y1) - baseY,
+        cells: offsets
+      });
 
       x += Math.max(1, shapeWidth - 1);
       shapeIndex += 1;
     }
+
+    return entries;
   }
 
-  private drawPolyominoLineVertical(
-    ctx: CanvasRenderingContext2D,
+  private buildVerticalCache(
     x1: number,
     y1: number,
     x2: number,
     y2: number,
     seed: number,
     anchor: Edge
-  ): void {
+  ): VerticalCacheEntry[] {
     const dist = Math.hypot(x2 - x1, y2 - y1);
     const steps = Math.max(1, Math.ceil(dist / (CELL_SIZE * 6)));
-
-    ctx.fillStyle = '#FFFFFF';
 
     const shouldArc = this.hasArc;
     const arcAmount = this.arcAmount;
@@ -456,8 +486,10 @@ class CliffSegment {
       ? midY + Math.sin(perpAngle) * arcAmount * arcDirection
       : 0;
 
+    const entries: VerticalCacheEntry[] = [];
     for (let i = 0; i <= steps; i += 1) {
       const t = i / steps;
+
       let x: number;
       let y: number;
 
@@ -480,18 +512,93 @@ class CliffSegment {
       cells = flattenEdge(cells, anchor);
       const bounds = getBounds(cells);
 
-      let px: number;
-      let py: number;
-      if (anchor === 'right') {
-        px = Math.round(x - bounds.w * CELL_SIZE);
-        py = Math.round(y);
+      const offsets: PolyominoOffsets = Array.from(cells, (key) => {
+        const [cx, cy] = key.split(',').map(Number);
+        return [cx, cy] as const;
+      });
+
+      entries.push({
+        t,
+        anchor,
+        widthPixels: bounds.w * CELL_SIZE,
+        cells: offsets
+      });
+    }
+
+    return entries;
+  }
+
+  private renderHorizontalCache(
+    ctx: CanvasRenderingContext2D,
+    cache: HorizontalCacheEntry[] | null,
+    x1: number,
+    y1: number,
+    x2: number
+  ): void {
+    if (USE_OFFSCREEN_CANVAS) {
+      // TODO: draw cliffs into an offscreen canvas and blit them to improve fillRect throughput.
+    }
+    if (!cache) return;
+    const start = Math.round(Math.min(x1, x2));
+    const baseY = Math.round(y1);
+
+    ctx.fillStyle = '#FFFFFF';
+    for (const entry of cache) {
+      const px = start + entry.offsetX;
+      const py = baseY + entry.offsetY;
+      for (const [cx, cy] of entry.cells) {
+        ctx.fillRect(
+          px + cx * CELL_SIZE,
+          py + cy * CELL_SIZE,
+          CELL_SIZE,
+          CELL_SIZE
+        );
+      }
+    }
+  }
+
+  private renderVerticalCache(
+    ctx: CanvasRenderingContext2D,
+    cache: VerticalCacheEntry[] | null,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number
+  ): void {
+    if (!cache) return;
+
+    const shouldArc = this.hasArc;
+    const controlX = this.controlX;
+    const controlY = this.controlY;
+
+    ctx.fillStyle = '#FFFFFF';
+    for (const entry of cache) {
+      const t = entry.t;
+      let x: number;
+      let y: number;
+
+      if (shouldArc && controlX !== null && controlY !== null) {
+        const oneMinusT = 1 - t;
+        x =
+          oneMinusT * oneMinusT * x1 +
+          2 * oneMinusT * t * controlX +
+          t * t * x2;
+        y =
+          oneMinusT * oneMinusT * y1 +
+          2 * oneMinusT * t * controlY +
+          t * t * y2;
       } else {
-        px = Math.round(x);
-        py = Math.round(y);
+        x = x1 + (x2 - x1) * t;
+        y = y1 + (y2 - y1) * t;
       }
 
-      for (const key of cells) {
-        const [cx, cy] = key.split(',').map(Number);
+      const px =
+        entry.anchor === 'right'
+          ? Math.round(x) - entry.widthPixels
+          : Math.round(x);
+      const py = Math.round(y);
+
+      for (const [cx, cy] of entry.cells) {
         ctx.fillRect(
           px + cx * CELL_SIZE,
           py + cy * CELL_SIZE,
