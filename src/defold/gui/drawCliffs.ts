@@ -8,7 +8,7 @@ const LEDGE_THRESHOLD_RATIO = 0.1;
 const LEDGE_WIDTH_RATIO = 0.3;
 const SEGMENT_HEIGHT = 240;
 const BUFFER_SEGMENTS = 4;
-const CLIFF_CLEARANCE = CELL_SIZE * 2;
+const CLIFF_CLEARANCE = CELL_SIZE;
 const CLIFF_LEDGE_THICKNESS = CELL_SIZE * 3;
 
 type PolyominoCellSet = Set<string>;
@@ -351,15 +351,37 @@ class CliffSegment {
     if (y < segmentTop || y > segmentBottom) return null;
 
     const { horizStartX, horizEndX, diagEndX } = this.computeGeometry();
-    const startEdge = this.side === 'left'
-      ? Math.max(horizStartX, horizEndX)
-      : Math.min(horizStartX, horizEndX);
-    const endEdge = this.side === 'left'
-      ? Math.max(diagEndX, horizEndX)
-      : Math.min(diagEndX, horizEndX);
+    const startEdge =
+      this.side === 'left'
+        ? Math.max(horizStartX, horizEndX)
+        : Math.min(horizStartX, horizEndX);
+    const endEdge =
+      this.side === 'left'
+        ? Math.max(diagEndX, horizEndX)
+        : Math.min(diagEndX, horizEndX);
 
     const t = this.verticalLen > 0 ? (y - segmentTop) / this.verticalLen : 0;
     const clamped = Math.min(Math.max(t, 0), 1);
+
+    if (this.hasArc) {
+      const arcDirection = this.side === 'left' ? 1 : -1;
+      const startX = startEdge;
+      const endX = endEdge;
+      const startY = segmentTop;
+      const endY = segmentBottom;
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      const angle = Math.atan2(endY - startY, endX - startX);
+      const perpAngle = angle + Math.PI / 2;
+      const controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
+      const oneMinusT = 1 - clamped;
+      return (
+        oneMinusT * oneMinusT * startX +
+        2 * oneMinusT * clamped * controlX +
+        clamped * clamped * endX
+      );
+    }
+
     return startEdge + (endEdge - startEdge) * clamped;
   }
 
@@ -741,13 +763,13 @@ export function getCliffInteriorBoundsAtY(y: number): { left: number; right: num
   for (const segment of cliffState.leftSegments) {
     const edge = segment.getInteriorEdgeAt(y);
     if (edge === null) continue;
-    leftBoundary = Math.max(leftBoundary, edge + CLIFF_CLEARANCE);
+    leftBoundary = Math.max(leftBoundary, edge);
   }
 
   for (const segment of cliffState.rightSegments) {
     const edge = segment.getInteriorEdgeAt(y);
     if (edge === null) continue;
-    rightBoundary = Math.min(rightBoundary, edge - CLIFF_CLEARANCE);
+    rightBoundary = Math.min(rightBoundary, edge);
   }
 
   if (leftBoundary > rightBoundary) {
@@ -794,8 +816,10 @@ export function getCliffCollisionRects(
   if (!cliffState.initialized) return rects;
   if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom)) return rects;
 
-  const step = Math.max(CLIFF_CELL_SIZE * 2, 4);
-  const thickness = Math.max(CLIFF_CLEARANCE, 2);
+  const thickness = Math.max(1, Math.round(CLIFF_CELL_SIZE * 0.5));
+  const edgeTolerance = Math.max(0.75, thickness * 0.9);
+  const minSliceHeight = Math.max(0.75, thickness * 0.75);
+  const maxRecursionDepth = 8;
 
   const processSegment = (segment: CliffSegment, side: 'left' | 'right') => {
     const segmentTop = cliffState.origin + segment.y;
@@ -805,18 +829,73 @@ export function getCliffCollisionRects(
     const endY = Math.min(rangeBottom, segmentBottom);
     if (startY >= endY) return;
 
-    for (let y = startY; y < endY; y += step) {
-      const h = Math.min(step, endY - y);
-      const sampleY = y + h * 0.5;
-      const edge = segment.getInteriorEdgeAt(sampleY);
-      if (!Number.isFinite(edge)) continue;
+    const clampSample = (y: number): number | null => {
+      const edge = segment.getInteriorEdgeAt(y);
+      if (edge === null || Number.isNaN(edge) || !Number.isFinite(edge)) return null;
+      return edge;
+    };
+
+    const gatherSamples = (y1: number, y2: number): number[] => {
+      const values: number[] = [];
+      const height = y2 - y1;
+
+      const addSample = (sampleY: number) => {
+        const clampedY = Math.max(segmentTop, Math.min(segmentBottom, sampleY));
+        const edge = clampSample(clampedY);
+        if (edge === null) return;
+        values.push(edge);
+      };
+
+      addSample(y1);
+      addSample(y2);
+
+      const mid = (y1 + y2) / 2;
+      addSample(mid);
+
+      if (height > 2 * minSliceHeight) {
+        addSample((y1 + mid) / 2);
+        addSample((mid + y2) / 2);
+      }
+
+      return values;
+    };
+
+    const refine = (y1: number, y2: number, depth: number): void => {
+      const height = y2 - y1;
+      if (height <= 0) return;
+
+      const samples = gatherSamples(y1, y2);
+      if (samples.length === 0) return;
+
+      const targetEdge =
+        side === 'left' ? Math.max(...samples) : Math.min(...samples);
+
+      let deviation = 0;
+      for (const sample of samples) {
+        deviation = Math.max(deviation, Math.abs(sample - targetEdge));
+      }
+
+      if (
+        (deviation > edgeTolerance && height > minSliceHeight && depth < maxRecursionDepth) ||
+        (!Number.isFinite(targetEdge) && depth < maxRecursionDepth)
+      ) {
+        const midPoint = (y1 + y2) / 2;
+        if (midPoint <= y1 || midPoint >= y2) return;
+        refine(y1, midPoint, depth + 1);
+        refine(midPoint, y2, depth + 1);
+        return;
+      }
+
+      if (!Number.isFinite(targetEdge)) return;
 
       if (side === 'left') {
-        rects.push({ x: edge - thickness, y, w: thickness, h });
+        rects.push({ x: targetEdge - thickness, y: y1, w: thickness, h: height });
       } else {
-        rects.push({ x: edge, y, w: thickness, h });
+        rects.push({ x: targetEdge, y: y1, w: thickness, h: height });
       }
-    }
+    };
+
+    refine(startY, endY, 0);
 
     const ledge = segment.getLedgeBounds();
     if (
