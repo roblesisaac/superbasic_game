@@ -6,11 +6,11 @@ export default defineConfig({
     sourcemap: true
   },
   server: {
-    port: 5173,
+    port: 5174,
     open: true,
     host: true,
     hmr: {
-      port: 5173
+      port: 5174
     }
   },
   esbuild: {

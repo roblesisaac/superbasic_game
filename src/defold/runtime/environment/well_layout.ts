@@ -11,6 +11,8 @@ export const WELL_SHAFT_COLUMN_INSET = 2;
 export const WELL_SHAFT_COLUMN_WIDTH = 4;
 export const WELL_WATER_OFFSET_MULTIPLIER = 0.1;
 export const WELL_RIM_TOP_OFFSET = WELL_RIM_THICKNESS * 2 + 1;
+export const CLIFF_SCREEN_OFFSET = 2;
+export const WATER_SCREEN_OFFSET_FROM_CLIFF = 10;
 
 const MIN_NARROW_SHAFT_DEPTH = SPRITE_SIZE * 5;
 const CAVERN_CHUNK_HEIGHT = SPRITE_SIZE * 4;
@@ -146,9 +148,23 @@ export function getWellExpansionBottomY(groundY: number, canvasHeight: number): 
   return getWellExpansionTopY(groundY, canvasHeight) + getWellCavernDepth(canvasHeight);
 }
 
+export function getCliffStartY(groundY: number, canvasHeight: number): number {
+  const expansionTop = getWellExpansionTopY(groundY, canvasHeight);
+  const expansionBottom = getWellExpansionBottomY(groundY, canvasHeight);
+  const offset = Math.round(canvasHeight * CLIFF_SCREEN_OFFSET);
+  const target = expansionTop + offset;
+  return Math.min(expansionBottom, target);
+}
+
 export function getWellWaterSurfaceY(groundY: number, canvasHeight: number): number {
   const expansionTop = getWellExpansionTopY(groundY, canvasHeight);
   const expansionBottom = getWellExpansionBottomY(groundY, canvasHeight);
   const offset = Math.max(0, Math.round(canvasHeight * WELL_WATER_OFFSET_MULTIPLIER));
-  return Math.min(expansionBottom, expansionTop + offset);
+  const defaultSurface = Math.min(expansionBottom, expansionTop + offset);
+  const cliffStart = getCliffStartY(groundY, canvasHeight);
+  const delayedSurfaceTarget = Math.min(
+    expansionBottom,
+    cliffStart + Math.round(canvasHeight * WATER_SCREEN_OFFSET_FROM_CLIFF)
+  );
+  return Math.max(defaultSurface, delayedSurfaceTarget);
 }

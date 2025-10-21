@@ -8,7 +8,8 @@ import {
   getWellExpansionTopY,
   getWellShaftBottomY,
   getWellWaterSurfaceY,
-  ensureWellDepth
+  ensureWellDepth,
+  getCliffStartY
 } from '../runtime/environment/well_layout.js';
 import { drawCavernCliffs } from './drawCliffs.js';
 
@@ -34,6 +35,7 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const expansionTopWorld = getWellExpansionTopY(groundY, canvasHeight);
   const expansionBottomWorld = getWellExpansionBottomY(groundY, canvasHeight);
   const waterSurfaceWorld = getWellWaterSurfaceY(groundY, canvasHeight);
+  const cliffStartWorld = getCliffStartY(groundY, canvasHeight);
   const shaftBottomScreen = Math.round(shaftBottomWorld - cameraY);
   const expansionTopScreen = Math.round(expansionTopWorld - cameraY);
   const expansionBottomScreen = Math.round(expansionBottomWorld - cameraY);
@@ -126,13 +128,15 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
       ctx.fillStyle = '#000';
       ctx.fillRect(0, cavernDrawTop, canvasWidth, cavernDrawBottom - cavernDrawTop);
 
-      drawCavernCliffs(ctx, {
-        canvasWidth,
-        canvasHeight,
-        cameraY,
-        cavernTop: expansionTopWorld,
-        cavernBottom: expansionBottomWorld
-      });
+      if (cliffStartWorld < expansionBottomWorld) {
+        drawCavernCliffs(ctx, {
+          canvasWidth,
+          canvasHeight,
+          cameraY,
+          cavernTop: cliffStartWorld,
+          cavernBottom: expansionBottomWorld
+        });
+      }
 
       ctx.fillStyle = '#fff';
     }
