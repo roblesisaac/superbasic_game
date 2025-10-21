@@ -779,6 +779,71 @@ export function getCliffLedgesInRange(rangeTop: number, rangeBottom: number): Cl
   return ledges;
 }
 
+export interface CliffCollisionRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export function getCliffCollisionRects(
+  rangeTop: number,
+  rangeBottom: number
+): CliffCollisionRect[] {
+  const rects: CliffCollisionRect[] = [];
+  if (!cliffState.initialized) return rects;
+  if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom)) return rects;
+
+  const step = Math.max(CLIFF_CELL_SIZE * 2, 4);
+  const thickness = Math.max(CLIFF_CLEARANCE, 2);
+
+  const processSegment = (segment: CliffSegment, side: 'left' | 'right') => {
+    const segmentTop = cliffState.origin + segment.y;
+    const segmentBottom = segmentTop + segment.height;
+
+    const startY = Math.max(rangeTop, segmentTop);
+    const endY = Math.min(rangeBottom, segmentBottom);
+    if (startY >= endY) return;
+
+    for (let y = startY; y < endY; y += step) {
+      const h = Math.min(step, endY - y);
+      const sampleY = y + h * 0.5;
+      const edge = segment.getInteriorEdgeAt(sampleY);
+      if (!Number.isFinite(edge)) continue;
+
+      if (side === 'left') {
+        rects.push({ x: edge - thickness, y, w: thickness, h });
+      } else {
+        rects.push({ x: edge, y, w: thickness, h });
+      }
+    }
+
+    const ledge = segment.getLedgeBounds();
+    if (
+      ledge.y >= rangeTop - CLIFF_LEDGE_TOLERANCE &&
+      ledge.y <= rangeBottom + CLIFF_LEDGE_TOLERANCE
+    ) {
+      const width = Math.max(ledge.right - ledge.left, CLIFF_CELL_SIZE * 2);
+      rects.push({
+        x: ledge.left,
+        y: ledge.y,
+        w: width,
+        h: CLIFF_LEDGE_THICKNESS
+      });
+    }
+  };
+
+  for (const segment of cliffState.leftSegments) {
+    processSegment(segment, 'left');
+  }
+
+  for (const segment of cliffState.rightSegments) {
+    processSegment(segment, 'right');
+  }
+
+  return rects;
+}
+
 interface CliffRenderState {
   initialized: boolean;
   origin: number;

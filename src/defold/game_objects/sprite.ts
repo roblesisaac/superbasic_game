@@ -46,8 +46,8 @@ import {
 import {
   prepareCliffField,
   getCliffInteriorBoundsAtY,
-  getCliffLedgesInRange,
-  CLIFF_LEDGE_TOLERANCE
+  CLIFF_LEDGE_TOLERANCE,
+  getCliffCollisionRects
 } from '../gui/drawCliffs.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
@@ -437,6 +437,10 @@ export class Sprite {
     );
   }
 
+  _isCliffSurface(surface: any): boolean {
+    return Boolean(surface && surface.collisionType === 'cliff');
+  }
+
   _updateGatePassage(prevRect, currRect) {
     if (!this.hooks || typeof this.hooks.getGates !== 'function') return;
     const gates = this.hooks.getGates();
@@ -758,6 +762,23 @@ export class Sprite {
     const currBottom = this.y + hs;
     const epsilon = 0.1;
 
+    const collisionRangeTop = Math.min(prevTop, currTop) - CLIFF_LEDGE_TOLERANCE;
+    const collisionRangeBottom = Math.max(prevBottom, currBottom) + CLIFF_LEDGE_TOLERANCE;
+    const cliffRects = getCliffCollisionRects(collisionRangeTop, collisionRangeBottom).map((rect) => ({
+      active: true,
+      collisionType: 'cliff',
+      floating: false,
+      speed: 0,
+      direction: 0,
+      rect,
+      getRects() {
+        return [this.rect];
+      }
+    }));
+    if (cliffRects.length > 0) {
+      surfaceCollections.push(cliffRects);
+    }
+
     let landingCandidate = null;
     let ceilingCandidate = null;
     let leftSideCandidate = null;
@@ -840,7 +861,9 @@ export class Sprite {
       this.vx = 0;
       this.impactSquash = Math.max(this.impactSquash, 0.6);
       blockedHorizontally = true;
-      this._markGateCollision(activeSideCollision.surface, 'side');
+      if (!this._isCliffSurface(activeSideCollision.surface)) {
+        this._markGateCollision(activeSideCollision.surface, 'side');
+      }
     }
 
     if (ceilingCandidate) {
@@ -848,12 +871,16 @@ export class Sprite {
       if (this.vy < 0) this.vy = 0;
       this.gliding = false;
       this.impactSquash = 1.8 * 0.3;
-      this._markGateBottomCollision(ceilingCandidate.surface);
+      if (!this._isCliffSurface(ceilingCandidate.surface)) {
+        this._markGateBottomCollision(ceilingCandidate.surface);
+      }
     }
 
     if (landingCandidate) {
       const surface = landingCandidate.surface;
-      this._markGateCollision(surface, 'top');
+      if (!this._isCliffSurface(surface)) {
+        this._markGateCollision(surface, 'top');
+      }
       if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
         this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
         this.vy = RIDE_BOUNCE_VY;
@@ -976,25 +1003,6 @@ export class Sprite {
       }
     }
 
-    let spriteTop = this.y - hs;
-
-    if (spriteBottom >= cliffStartWorld) {
-      const ledges = getCliffLedgesInRange(prevBottom - CLIFF_LEDGE_TOLERANCE, spriteBottom + CLIFF_LEDGE_TOLERANCE);
-      for (const ledge of ledges) {
-        if (prevBottom > ledge.y || spriteBottom < ledge.y) continue;
-        if (spriteRight <= ledge.left || spriteLeft >= ledge.right) continue;
-        this.y = ledge.y - hs;
-        spriteBottom = this.y + hs;
-        spriteTop = this.y - hs;
-        spriteLeft = this.x - hs;
-        spriteRight = this.x + hs;
-        this.vy = 0;
-        this.onGround = true;
-        this.inWater = false;
-        this.gliding = false;
-        break;
-      }
-    }
 
     let submergedInWater = false;
     if (
