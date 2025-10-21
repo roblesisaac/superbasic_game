@@ -1,4 +1,5 @@
 type CliffSide = 'left' | 'right';
+type Edge = 'left' | 'right' | 'top' | 'bottom';
 
 const CELL_SIZE = 4;
 const MAX_WIDTH_RATIO = 0.3;
@@ -14,8 +15,16 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-function generatePolyomino(seed: number, minSize = 4, maxSize = 9): PolyominoCellSet {
-  const target = Math.floor(seededRandom(seed) * (maxSize - minSize + 1)) + minSize;
+function randInt(min: number, max: number, seed: number): number {
+  return Math.floor(seededRandom(seed) * (max - min + 1)) + min;
+}
+
+function generatePolyomino(
+  seed: number,
+  minSize = 4,
+  maxSize = 9
+): PolyominoCellSet {
+  const target = randInt(minSize, maxSize, seed);
   const cells = new Set<string>(['0,0']);
   const dirs: Array<[number, number]> = [
     [1, 0],
@@ -27,12 +36,10 @@ function generatePolyomino(seed: number, minSize = 4, maxSize = 9): PolyominoCel
   let attempts = 0;
   while (cells.size < target && attempts < target * 10) {
     const arr = Array.from(cells);
-    const anchorSeed = seed + attempts;
-    const dirSeed = seed + attempts + 1000;
-    const [x, y] = arr[Math.floor(seededRandom(anchorSeed) * arr.length)]
-      .split(',')
-      .map(Number);
-    const [dx, dy] = dirs[Math.floor(seededRandom(dirSeed) * dirs.length)];
+    const anchorIndex = randInt(0, arr.length - 1, seed + attempts);
+    const [x, y] = arr[anchorIndex]?.split(',').map(Number) ?? [0, 0];
+    const dirIndex = randInt(0, dirs.length - 1, seed + attempts + 1000);
+    const [dx, dy] = dirs[dirIndex];
     const nx = x + dx;
     const ny = y + dy;
     const key = `${nx},${ny}`;
@@ -53,6 +60,7 @@ function generatePolyomino(seed: number, minSize = 4, maxSize = 9): PolyominoCel
     const [x, y] = key.split(',').map(Number);
     normalized.add(`${x - minX},${y - minY}`);
   }
+
   return normalized;
 }
 
@@ -61,6 +69,7 @@ function getBounds(cells: PolyominoCellSet) {
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
+
   for (const key of cells) {
     const [x, y] = key.split(',').map(Number);
     if (x < minX) minX = x;
@@ -69,19 +78,13 @@ function getBounds(cells: PolyominoCellSet) {
     if (y > maxY) maxY = y;
   }
 
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    w: maxX - minX + 1,
-    h: maxY - minY + 1
-  };
+  return { minX, minY, maxX, maxY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-function flattenEdge(cells: PolyominoCellSet, side: 'left' | 'right' | 'top' | 'bottom'): PolyominoCellSet {
+function flattenEdge(cells: PolyominoCellSet, side: Edge): PolyominoCellSet {
   const bounds = getBounds(cells);
   const map = new Map<number, number[]>();
+
   for (const key of cells) {
     const [x, y] = key.split(',').map(Number);
     const primary = side === 'top' || side === 'bottom' ? x : y;
@@ -136,6 +139,8 @@ class CliffSegment {
   angle: number;
   isLedge: boolean;
   isPreLedge: boolean;
+  hasArc: boolean;
+  arcAmount: number;
   seedBase: number;
 
   constructor(
@@ -151,6 +156,9 @@ class CliffSegment {
     const ledgeThreshold = canvasWidth * LEDGE_THRESHOLD_RATIO;
     const ledgeWidth = canvasWidth * LEDGE_WIDTH_RATIO;
 
+    this.hasArc = seededRandom(seedBase + 8888) < 0.15;
+    this.arcAmount = this.hasArc ? seededRandom(seedBase + 9999) * 50 + 50 : 0;
+
     if (!prevSegment) {
       this.y = 0;
       this.currentWidth = seededRandom(seedBase) * maxWidth * 0.3 + maxWidth * 0.2;
@@ -163,7 +171,8 @@ class CliffSegment {
     let moveInward: boolean;
     let isPreLedge = false;
 
-    const shouldCreateLedge = !!prevSegment && prevSegment.horizontalLen <= ledgeThreshold;
+    const shouldCreateLedge =
+      !!prevSegment && prevSegment.horizontalLen <= ledgeThreshold;
 
     if (shouldCreateLedge) {
       horizontalLen = ledgeWidth;
@@ -201,9 +210,15 @@ class CliffSegment {
 
     let widthAfterHorizontal: number;
     if (moveInward) {
-      widthAfterHorizontal = Math.min(maxWidth, this.currentWidth + this.horizontalLen);
+      widthAfterHorizontal = Math.min(
+        maxWidth,
+        this.currentWidth + this.horizontalLen
+      );
     } else {
-      widthAfterHorizontal = Math.max(maxWidth * 0.1, this.currentWidth - this.horizontalLen);
+      widthAfterHorizontal = Math.max(
+        maxWidth * 0.1,
+        this.currentWidth - this.horizontalLen
+      );
     }
 
     const minV = 180;
@@ -213,9 +228,9 @@ class CliffSegment {
     if (isPreLedge) {
       const outwardDistance = canvasWidth * 0.15;
       const maxOutward = widthAfterHorizontal - canvasWidth * 0.05;
-      const actualOutward = Math.max(0, Math.min(outwardDistance, maxOutward));
+      const actualOutward = Math.min(outwardDistance, maxOutward);
       this.angle = -Math.atan(actualOutward / this.verticalLen);
-      this.endWidth = Math.max(canvasWidth * 0.05, widthAfterHorizontal - actualOutward);
+      this.endWidth = widthAfterHorizontal - actualOutward;
     } else {
       const angleRange = 0.1;
       this.angle = (seededRandom(seedBase + 400) - 0.5) * angleRange;
@@ -230,11 +245,7 @@ class CliffSegment {
     this.height = this.verticalLen;
   }
 
-  draw(
-    ctx: CanvasRenderingContext2D,
-    canvasWidth: number,
-    scrollY: number
-  ): void {
+  draw(ctx: CanvasRenderingContext2D, canvasWidth: number, scrollY: number): void {
     const screenY = this.y - scrollY;
 
     const inwardLimitLeft = canvasWidth * MAX_WIDTH_RATIO;
@@ -257,23 +268,40 @@ class CliffSegment {
             canvasWidth - this.currentWidth - this.horizontalLen,
             inwardLimitRight
           )
-        : Math.min(canvasWidth - this.currentWidth + this.horizontalLen, canvasWidth - 10);
+        : Math.min(
+            canvasWidth - this.currentWidth + this.horizontalLen,
+            canvasWidth - 10
+          );
       diagEndX = Math.max(canvasWidth - this.endWidth, inwardLimitRight);
     }
 
-    this.drawInteriorTexture(ctx, canvasWidth, screenY, horizStartX, horizEndX, diagEndX);
+    this.drawInteriorTexture(
+      ctx,
+      canvasWidth,
+      screenY,
+      horizStartX,
+      horizEndX,
+      diagEndX
+    );
 
-    this.drawPolyominoLineHorizontal(horizStartX, screenY, horizEndX, screenY, this.seedBase, ctx);
+    this.drawPolyominoLineHorizontal(
+      ctx,
+      horizStartX,
+      screenY,
+      horizEndX,
+      screenY,
+      this.seedBase
+    );
 
-    const anchor: 'left' | 'right' = this.side === 'left' ? 'right' : 'left';
+    const verticalAnchor: Edge = this.side === 'left' ? 'right' : 'left';
     this.drawPolyominoLineVertical(
+      ctx,
       horizEndX,
       screenY,
       diagEndX,
       screenY + this.verticalLen,
       this.seedBase + 1000,
-      anchor,
-      ctx
+      verticalAnchor
     );
   }
 
@@ -284,10 +312,26 @@ class CliffSegment {
     horizStartX: number,
     horizEndX: number,
     diagEndX: number
-  ) {
+  ): void {
+    ctx.fillStyle = '#6ba1d7';
     const textureCount = Math.floor(this.height * 0.15);
     const padding = 12;
-    ctx.fillStyle = '#FFFFFF';
+    const arcDirection = this.side === 'left' ? 1 : -1;
+
+    let controlX: number | null = null;
+    let controlY: number | null = null;
+    let topX = horizEndX;
+    const bottomX = diagEndX;
+    const bottomY = screenY + this.verticalLen;
+
+    if (this.hasArc) {
+      const midX = (topX + bottomX) / 2;
+      const midY = (screenY + bottomY) / 2;
+      const angle = Math.atan2(bottomY - screenY, bottomX - topX);
+      const perpAngle = angle + Math.PI / 2;
+      controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
+      controlY = midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
+    }
 
     for (let i = 0; i < textureCount; i += 1) {
       const t = seededRandom(this.seedBase + 5000 + i * 47);
@@ -295,32 +339,42 @@ class CliffSegment {
 
       let minX: number;
       let maxX: number;
-      if (this.side === 'left') {
-        if (y < screenY + 5) {
+
+      if (y < screenY + 5) {
+        if (this.side === 'left') {
+          minX = padding;
           maxX = horizEndX - padding;
         } else {
-          const diagT = (y - screenY) / this.verticalLen;
-          maxX =
-            horizEndX + (diagEndX - horizEndX) * diagT - padding;
-        }
-        minX = padding;
-      } else {
-        if (y < screenY + 5) {
           minX = horizEndX + padding;
-        } else {
-          const diagT = (y - screenY) / this.verticalLen;
-          minX =
-            horizEndX + (diagEndX - horizEndX) * diagT + padding;
+          maxX = canvasWidth - padding;
         }
-        maxX = canvasWidth - padding;
+      } else {
+        const diagT = (y - screenY) / this.verticalLen;
+        let edgeX: number;
+        if (this.hasArc && controlX !== null && controlY !== null) {
+          const oneMinusT = 1 - diagT;
+          edgeX =
+            oneMinusT * oneMinusT * topX +
+            2 * oneMinusT * diagT * controlX +
+            diagT * diagT * bottomX;
+        } else {
+          edgeX = topX + (bottomX - topX) * diagT;
+        }
+
+        if (this.side === 'left') {
+          minX = padding;
+          maxX = edgeX - padding;
+        } else {
+          minX = edgeX + padding;
+          maxX = canvasWidth - padding;
+        }
       }
 
       if (!Number.isFinite(minX) || !Number.isFinite(maxX)) continue;
       if (maxX <= minX) continue;
 
-      const x =
-        minX +
-        seededRandom(this.seedBase + 6000 + i * 53) * (maxX - minX);
+      const randomSeed = this.seedBase + 6000 + i * 53;
+      const x = minX + seededRandom(randomSeed) * (maxX - minX);
       const type = seededRandom(this.seedBase + 7000 + i * 61);
 
       const drawX = Math.round(x);
@@ -337,13 +391,13 @@ class CliffSegment {
   }
 
   private drawPolyominoLineHorizontal(
+    ctx: CanvasRenderingContext2D,
     x1: number,
     y1: number,
     x2: number,
     y2: number,
-    seed: number,
-    ctx: CanvasRenderingContext2D
-  ) {
+    seed: number
+  ): void {
     let x = Math.min(x1, x2);
     const end = Math.max(x1, x2);
     let shapeIndex = 0;
@@ -355,12 +409,17 @@ class CliffSegment {
       cells = flattenEdge(cells, 'top');
       const bounds = getBounds(cells);
       const shapeWidth = bounds.w * CELL_SIZE;
-
       const px = Math.round(x);
       const py = Math.round(y1);
+
       for (const key of cells) {
         const [cx, cy] = key.split(',').map(Number);
-        ctx.fillRect(px + cx * CELL_SIZE, py + cy * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        ctx.fillRect(
+          px + cx * CELL_SIZE,
+          py + cy * CELL_SIZE,
+          CELL_SIZE,
+          CELL_SIZE
+        );
       }
 
       x += Math.max(1, shapeWidth - 1);
@@ -369,26 +428,56 @@ class CliffSegment {
   }
 
   private drawPolyominoLineVertical(
+    ctx: CanvasRenderingContext2D,
     x1: number,
     y1: number,
     x2: number,
     y2: number,
     seed: number,
-    anchor: 'left' | 'right',
-    ctx: CanvasRenderingContext2D
-  ) {
+    anchor: Edge
+  ): void {
     const dist = Math.hypot(x2 - x1, y2 - y1);
     const steps = Math.max(1, Math.ceil(dist / (CELL_SIZE * 6)));
 
     ctx.fillStyle = '#FFFFFF';
 
+    const shouldArc = this.hasArc;
+    const arcAmount = this.arcAmount;
+    const arcDirection = this.side === 'left' ? 1 : -1;
+
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const perpAngle = angle + Math.PI / 2;
+    const controlX = shouldArc
+      ? midX + Math.cos(perpAngle) * arcAmount * arcDirection
+      : 0;
+    const controlY = shouldArc
+      ? midY + Math.sin(perpAngle) * arcAmount * arcDirection
+      : 0;
+
     for (let i = 0; i <= steps; i += 1) {
       const t = i / steps;
-      const x = x1 + (x2 - x1) * t;
-      const y = y1 + (y2 - y1) * t;
+      let x: number;
+      let y: number;
+
+      if (shouldArc) {
+        const oneMinusT = 1 - t;
+        x =
+          oneMinusT * oneMinusT * x1 +
+          2 * oneMinusT * t * controlX +
+          t * t * x2;
+        y =
+          oneMinusT * oneMinusT * y1 +
+          2 * oneMinusT * t * controlY +
+          t * t * y2;
+      } else {
+        x = x1 + (x2 - x1) * t;
+        y = y1 + (y2 - y1) * t;
+      }
 
       let cells = generatePolyomino(seed + i * 79, 4, 9);
-      cells = flattenEdge(cells, anchor === 'right' ? 'right' : 'left');
+      cells = flattenEdge(cells, anchor);
       const bounds = getBounds(cells);
 
       let px: number;
@@ -403,7 +492,12 @@ class CliffSegment {
 
       for (const key of cells) {
         const [cx, cy] = key.split(',').map(Number);
-        ctx.fillRect(px + cx * CELL_SIZE, py + cy * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        ctx.fillRect(
+          px + cx * CELL_SIZE,
+          py + cy * CELL_SIZE,
+          CELL_SIZE,
+          CELL_SIZE
+        );
       }
     }
   }
@@ -490,13 +584,7 @@ export function drawCavernCliffs(
   ctx: CanvasRenderingContext2D,
   options: CliffRenderOptions
 ): void {
-  const {
-    canvasWidth,
-    canvasHeight,
-    cameraY,
-    cavernTop,
-    cavernBottom
-  } = options;
+  const { canvasWidth, canvasHeight, cameraY, cavernTop, cavernBottom } = options;
 
   if (!Number.isFinite(canvasWidth) || canvasWidth <= 0) return;
   if (!Number.isFinite(cavernTop) || !Number.isFinite(cavernBottom)) return;
@@ -523,7 +611,6 @@ export function drawCavernCliffs(
 
   const clipTop = cavernTop - cameraY;
   const clipHeight = cavernBottom - cavernTop;
-
   if (!Number.isFinite(clipTop) || clipHeight <= 0) return;
 
   const previousSmoothing = ctx.imageSmoothingEnabled;
