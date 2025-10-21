@@ -337,15 +337,18 @@ class CliffSegment {
     this.controlY = midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
   }
 
-  getLedgeBounds(): { left: number; right: number } {
+  getLedgeBounds(): { left: number; right: number; y: number } {
     const { horizStartX, horizEndX } = this.computeGeometry();
     const left = Math.min(horizStartX, horizEndX);
     const right = Math.max(horizStartX, horizEndX);
-    return { left, right };
+    const y = cliffState.origin + this.y;
+    return { left, right, y };
   }
 
   getInteriorEdgeAt(y: number): number | null {
-    if (y < this.y || y > this.y + this.verticalLen) return null;
+    const segmentTop = cliffState.origin + this.y;
+    const segmentBottom = segmentTop + this.verticalLen;
+    if (y < segmentTop || y > segmentBottom) return null;
 
     const { horizStartX, horizEndX, diagEndX } = this.computeGeometry();
     const startEdge = this.side === 'left'
@@ -355,7 +358,7 @@ class CliffSegment {
       ? Math.max(diagEndX, horizEndX)
       : Math.min(diagEndX, horizEndX);
 
-    const t = this.verticalLen > 0 ? (y - this.y) / this.verticalLen : 0;
+    const t = this.verticalLen > 0 ? (y - segmentTop) / this.verticalLen : 0;
     const clamped = Math.min(Math.max(t, 0), 1);
     return startEdge + (endEdge - startEdge) * clamped;
   }
@@ -762,16 +765,14 @@ export function getCliffLedgesInRange(rangeTop: number, rangeBottom: number): Cl
   if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom)) return ledges;
 
   for (const segment of cliffState.leftSegments) {
-    const y = segment.y;
-    if (y < rangeTop - CLIFF_LEDGE_THICKNESS || y > rangeBottom + CLIFF_LEDGE_THICKNESS) continue;
-    const { left, right } = segment.getLedgeBounds();
+    const { left, right, y } = segment.getLedgeBounds();
+    if (y < rangeTop - CLIFF_LEDGE_TOLERANCE || y > rangeBottom + CLIFF_LEDGE_TOLERANCE) continue;
     ledges.push({ left, right, y });
   }
 
   for (const segment of cliffState.rightSegments) {
-    const y = segment.y;
-    if (y < rangeTop - CLIFF_LEDGE_THICKNESS || y > rangeBottom + CLIFF_LEDGE_THICKNESS) continue;
-    const { left, right } = segment.getLedgeBounds();
+    const { left, right, y } = segment.getLedgeBounds();
+    if (y < rangeTop - CLIFF_LEDGE_TOLERANCE || y > rangeBottom + CLIFF_LEDGE_TOLERANCE) continue;
     ledges.push({ left, right, y });
   }
 
