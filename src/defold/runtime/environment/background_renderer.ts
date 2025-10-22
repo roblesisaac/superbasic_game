@@ -1,5 +1,5 @@
 import { drawGrass } from '../../gui/drawGrass.js';
-import { drawTree } from '../../gui/drawTree.js';
+import { drawTree, DrawTreeConfig } from '../../gui/drawTree.js';
 import { drawWell } from '../../gui/drawWell.js';
 import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
 import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
@@ -28,9 +28,18 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
 
   drawBubbleField(ctx, bubbleEnv);
 
-  drawTree(ctx, { tree: 'tree2', x: 100, y: groundY - cameraY, pixelSize: 1.2, align: 'bottom' });
+  const treeConfig: any = {
+    tree: 'tree2',
+    y: groundY - cameraY,
+    align: 'bottom'
+  };
 
-  drawTree(ctx, { tree: 'tree2', x: 300, y: groundY - cameraY, pixelSize: 1.5, align: 'bottom' });
+  drawTree(ctx, {
+    ...treeConfig,
+    x: 130,
+    pixelSize: 1.5,
+    heightScale: 1.5,
+  });
 
   drawGrass(ctx, {
     width: canvasWidth,
