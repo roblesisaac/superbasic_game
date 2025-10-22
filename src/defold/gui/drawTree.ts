@@ -59,19 +59,20 @@ const FOLIAGE_PATTERN = [
 ] as const;
 
 const TRUNK_PATTERN = [
-  '       111                          ',
-  '        111                         ',
-  '          11111         11          ',
-  '            111111    111           ',
-  '              11111111              ',
-  '              11111111              ',
-  '              11111111              ',
-  '              11111111              ',
-  '         111111     1111111         ',
-  '      111111           1111111      '
+  '       000                          ',
+  '       1110                         ',
+  '        1110000        0000         ',
+  '          11111000   000110         ',
+  '            11111100001110          ',
+  '              111111110             ',
+  '              111111110             ',
+  '              111111110             ',
+  '              11111111000000        ',
+  '         111111     1111111000      ',
+  '      111111           11111110      '
 ] as const;
 
-const TREE_TRUNK_OVERLAP_ROWS = 2;
+const TREE_TRUNK_OVERLAP_ROWS = 3;
 const FOLIAGE_BASE_PIXEL_WIDTH = 10;
 const TRUNK_BASE_PIXEL_WIDTH = 5;
 const TREE_PATTERN_MAX_WIDTH = Math.max(
