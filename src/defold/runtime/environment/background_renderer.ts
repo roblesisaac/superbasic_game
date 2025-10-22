@@ -6,6 +6,7 @@ import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_stat
 import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
 import { getWellBounds } from './well_layout.js';
 import { CABIN_BITMAP } from '../../modules/bitmaps/cabin.js';
+import { drawRollingHills } from '../../gui/drawRollingHills.js';
 
 interface TreePlacement {
   x: number;
@@ -30,8 +31,8 @@ const FOREGROUND_TREE_POSITIONS = [30,
   // 200, 
   // 230, 
   // 300, 
-  // 330, 
-  // 390, 
+  360, 
+  390, 
   // 450
 ];
 
@@ -148,6 +149,12 @@ function drawCabin(groundLineY: number): void {
 
 export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   const groundLineY = groundY - cameraY;
+
+  drawRollingHills(ctx, {
+    width: canvasWidth,
+    groundY: groundLineY,
+    cameraY,
+  });
 
   foregroundTrees.forEach((placement) => {
     drawTreePlacement({
