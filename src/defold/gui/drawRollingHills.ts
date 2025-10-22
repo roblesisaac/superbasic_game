@@ -6,7 +6,7 @@ interface RollingHillsOptions {
   hillHeight?: number;
   baseThickness?: number;
   baseColor?: string;
-  ridgeColor?: string;
+  pixelSize?: number;
 }
 
 const DEFAULTS = {
@@ -14,8 +14,32 @@ const DEFAULTS = {
   hillHeight: 88,
   baseThickness: 20,
   baseColor: '#050505',
-  ridgeColor: '#050505',
+  pixelSize: 4,
 } as const;
+
+type Canvas2DContext =
+  | CanvasRenderingContext2D
+  | OffscreenCanvasRenderingContext2D;
+
+function createPixelCanvas(
+  width: number,
+  height: number
+): OffscreenCanvas | HTMLCanvasElement | null {
+  if (width <= 0 || height <= 0) return null;
+
+  if (typeof OffscreenCanvas !== 'undefined') {
+    return new OffscreenCanvas(width, height);
+  }
+
+  if (typeof document !== 'undefined') {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+  }
+
+  return null;
+}
 
 function isInView(
   baseY: number,
@@ -40,7 +64,7 @@ export function drawRollingHills(
     hillHeight = DEFAULTS.hillHeight,
     baseThickness = DEFAULTS.baseThickness,
     baseColor = DEFAULTS.baseColor,
-    ridgeColor = DEFAULTS.ridgeColor,
+    pixelSize = DEFAULTS.pixelSize,
   } = options;
 
   if (!Number.isFinite(width) || width <= 0) return;
@@ -54,34 +78,104 @@ export function drawRollingHills(
 
   const startX = -Math.max(40, width * 0.08);
   const endX = width + Math.max(40, width * 0.08);
+  const topY = baseY - hillHeight;
+  const bottomY = baseY + baseThickness;
+  const normalizedPixelSize = Number.isFinite(pixelSize)
+    ? Math.max(1, Math.round(pixelSize))
+    : DEFAULTS.pixelSize;
 
   ctx.save();
   ctx.fillStyle = baseColor;
 
-  ctx.beginPath();
-  ctx.moveTo(startX, baseY + baseThickness);
-  ctx.lineTo(startX, baseY);
-  ctx.quadraticCurveTo(
-    width * 0.18,
-    baseY - hillHeight * 1,
-    width * 0.36,
-    baseY - hillHeight * 0.1
-  );
-  ctx.quadraticCurveTo(
-    width * 0.55,
-    baseY - hillHeight * 1,
-    width * 0.72,
-    baseY - hillHeight * 0.2
-  );
-  ctx.quadraticCurveTo(
-    width * 1,
-    baseY - hillHeight * 1,
-    endX,
-    baseY
-  );
-  ctx.lineTo(endX, baseY + baseThickness);
-  ctx.closePath();
-  ctx.fill();
+  const drawPath = (
+    target: Canvas2DContext,
+    mapX: (value: number) => number,
+    mapY: (value: number) => number
+  ) => {
+    target.beginPath();
+    target.moveTo(mapX(startX), mapY(baseY + baseThickness));
+    target.lineTo(mapX(startX), mapY(baseY));
+    target.quadraticCurveTo(
+      mapX(width * 0.18),
+      mapY(baseY - hillHeight * 1),
+      mapX(width * 0.36),
+      mapY(baseY - hillHeight * 0.1)
+    );
+    target.quadraticCurveTo(
+      mapX(width * 0.55),
+      mapY(baseY - hillHeight * 1),
+      mapX(width * .82),
+      mapY(baseY - hillHeight * 0.2)
+    );
+    target.quadraticCurveTo(
+      mapX(width * 1),
+      mapY(baseY - hillHeight * 1),
+      mapX(endX),
+      mapY(baseY)
+    );
+    target.lineTo(mapX(endX), mapY(baseY + baseThickness));
+    target.closePath();
+  };
+
+  if (normalizedPixelSize > 1) {
+    const alignedStartX =
+      Math.floor(startX / normalizedPixelSize) * normalizedPixelSize;
+    const alignedEndX =
+      Math.ceil(endX / normalizedPixelSize) * normalizedPixelSize;
+    const alignedTopY =
+      Math.floor(topY / normalizedPixelSize) * normalizedPixelSize;
+    const alignedBottomY =
+      Math.ceil(bottomY / normalizedPixelSize) * normalizedPixelSize;
+
+    const widthSpan = alignedEndX - alignedStartX;
+    const heightSpan = alignedBottomY - alignedTopY;
+
+    if (widthSpan > 0 && heightSpan > 0) {
+      const offscreenWidth = Math.max(
+        1,
+        Math.ceil(widthSpan / normalizedPixelSize)
+      );
+      const offscreenHeight = Math.max(
+        1,
+        Math.ceil(heightSpan / normalizedPixelSize)
+      );
+      const canvas = createPixelCanvas(offscreenWidth, offscreenHeight);
+      const offscreenCtx =
+        canvas && 'getContext' in canvas
+          ? (canvas.getContext('2d') as Canvas2DContext | null)
+          : null;
+
+      if (offscreenCtx) {
+        // Downsample curve into a coarse buffer for a blocky silhouette.
+        offscreenCtx.imageSmoothingEnabled = false;
+        offscreenCtx.fillStyle = baseColor;
+        drawPath(
+          offscreenCtx,
+          (value) => (value - alignedStartX) / normalizedPixelSize,
+          (value) => (value - alignedTopY) / normalizedPixelSize
+        );
+        offscreenCtx.fill();
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          canvas as unknown as CanvasImageSource,
+          alignedStartX,
+          alignedTopY,
+          offscreenWidth * normalizedPixelSize,
+          offscreenHeight * normalizedPixelSize
+        );
+      } else {
+        drawPath(ctx, (value) => value, (value) => value);
+        ctx.fill();
+      }
+    } else {
+      drawPath(ctx, (value) => value, (value) => value);
+      ctx.fill();
+    }
+  } else {
+    drawPath(ctx, (value) => value, (value) => value);
+    ctx.fill();
+  }
 
   ctx.globalAlpha = 1;
   ctx.restore();
