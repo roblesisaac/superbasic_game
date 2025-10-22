@@ -1,199 +1,109 @@
-// ─────────────────────────────────────────────────────────────
-// Tree (single pattern, one-pass renderer, no unused options)
-// ─────────────────────────────────────────────────────────────
+export type TreeKey = 'tree1' | 'tree2' | (string & {});
+import { TREE1 } from '../modules/trees/tree1.js';
+import { TREE2 } from '../modules/trees/tree2.js';
 
-interface TreeOptions {
+const TREES: Record<string, string[]> = {
+  tree1: TREE1,
+  tree2: TREE2,
+};
+
+export interface DrawTreeConfig {
+  /** Which tree to draw. Defaults to 'tree1'. */
+  tree?: TreeKey;
+
+  /** Anchor position on the canvas. Interpretation depends on `align`. */
   x: number;
-  groundY: number;
-  cameraY: number;
-  size?: number;   // controls overall scale
-  color?: string;  // fill color
+  y: number;
+
+  /** Base size of each pixel “cell” in CSS px. Default: 4 */
+  pixelSize?: number;
+
+  /** Global alpha for the tree. Default: 1 */
+  alpha?: number;
+
+  /**
+   * Alignment relative to (x, y):
+   * - 'top-left': (x,y) is top-left of the bitmap
+   * - 'center':   (x,y) is the center of the bitmap
+   * - 'bottom':   (x,y) is the bottom-center (useful to place at ground)
+   * Default: 'bottom'
+   */
+  align?: 'top-left' | 'center' | 'bottom';
+
+  /**
+   * Non-uniform stretch scales for width/height. Default: 1 for both.
+   * These multiply the base pixel size on each axis.
+   */
+  widthScale?: number;
+  heightScale?: number;
 }
-
-type TreeDrawContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-interface NormalizedTreeOptions {
-  size: number;
-  color: string;
-}
-
-interface TreeMetrics {
-  width: number;
-  height: number;
-  centerX: number;
-  baseY: number;
-}
-
-interface TreeSprite {
-  canvas: CanvasImageSource;
-  metrics: TreeMetrics;
-}
-
-const TREE_PADDING_X = 16;
-const TREE_PADDING_TOP = 24;
-const TREE_PADDING_BOTTOM = 0;
 
 /**
- * Build `tree1` from the attached TXT verbatim.
- * Rule: every non-space char becomes '1'; spaces remain spaces.
+ * Draws a bitmap tree to the provided 2D context.
+ * '1' pixels use #2f2f2f, '3' pixels use #4c4c4c; spaces are transparent.
  */
-const tree1: readonly string[] = (() => {
-  const RAW = `
-                                                                11111                                                           
-                                                         1111  11111111111                                                     
-                                                      11111111111111111111                                                     
-                                                    111111111111111111111111  11                                               
-                                                    111111111111111111111111111111                                             
-                                               111  111111111111111111111111111111                                             
-                                             11111    111111111111111111111111111111                                           
-                                            1111111111111111111111111111111111111111                                           
-                                           111111111111111111111111111111111111111                                             
-                                             1111111111111111111111111111111111111                                             
-                                        111  111111111111111111111111111111111111111111                                        
-                                       1111111111111111111111111111111111111111111111111                                       
-                                      11111111111111111111111111111111111111111111111111                                       
-                                      111111111111111111111111111111111111111111111111111                                      
-                                      1111111111111111111111111111111111111111111111111111                                     
-                                       111111111111111111111111111111111111111111111111111                                     
-                                         1111111111   111111111111111111111111111111111                                        
-                                          11111111    1111111111   111111111111111111                                          
-                                        1111111111      11111       1111111   111111                                           
-                                        11111111111                 111111      1111111                                        
-                                          11111111111    111                  111111111                                        
-                                             1111111       1111       11     111111111                                         
-                                                            11111    111    11111111                                           
-                                                              111111111                                                        
-                                                              1111111                                                          
-                                                              1111111                                                          
-                                                              1111111                                                          
-                                                              1111111                                                          
-                                                            11111111111                                                        
-                                                          11111    111111                                                      
-                                                       11111          111111                                                   
-                                                                                                                      
-  `.slice(1, -1); // drop indentation guard newlines only
+export function drawTree(
+  ctx: CanvasRenderingContext2D,
+  config: DrawTreeConfig
+): void {
+  const {
+    tree = 'tree1',
+    x,
+    y,
+    pixelSize = 4,
+    alpha = 1,
+    align = 'bottom',
+    widthScale = 1,
+    heightScale = 1.5,
+  } = config;
 
-  // Convert every non-space glyph into '1' while preserving all spacing + line lengths
-  const toOnes = (line: string) => line.replace(/[^\s]/g, '1');
-  return RAW.split('\n').map(toOnes) as readonly string[];
-})();
+  const COLOR_1 = '#2f2f2f';
+  const COLOR_3 = '#4c4c4c';
 
-const DEFAULT_TREE = {
-  size: 94,
-  color: '#2e2e2e'
-} as const;
+  const pattern = TREES[tree] ?? TREES['tree1'];
+  if (!pattern || pattern.length === 0) return;
 
-const treeSpriteCache = new Map<string, TreeSprite>();
+  const rows = pattern.length;
+  const cols = Math.max(...pattern.map((r) => r.length));
 
-function normalizeTreeOptions(options: TreeOptions): NormalizedTreeOptions {
-  const { size, color } = options;
-  return {
-    size: typeof size === 'number' && Number.isFinite(size) && size > 0 ? size : DEFAULT_TREE.size,
-    color: typeof color === 'string' ? color : DEFAULT_TREE.color
-  };
-}
+  const cellW = pixelSize * widthScale;
+  const cellH = pixelSize * heightScale;
 
-function makeCacheKey(config: NormalizedTreeOptions): string {
-  return `s:${config.size}|c:${config.color}`;
-}
+  // Compute anchor offset based on alignment
+  let originX = x;
+  let originY = y;
 
-function computeTreeMetrics(config: NormalizedTreeOptions): TreeMetrics {
-  // Scale pattern with square pixels based on `size`.
-  const PATTERN_MAX_WIDTH = Math.max(...tree1.map(r => r.length));
-  const PATTERN_TOTAL_ROWS = tree1.length;
+  if (align === 'center') {
+    originX = Math.round(x - cols * cellW / 2);
+    originY = Math.round(y - rows * cellH / 2);
+  } else if (align === 'bottom') {
+    originX = Math.round(x - cols * cellW / 2);
+    originY = Math.round(y - rows * cellH);
+  } // 'top-left' uses (x, y) as-is
 
-  // Choose cell size from requested `size`
-  const cell = Math.max(1, Math.round((config.size * 2) / PATTERN_MAX_WIDTH)); // ~2*size pixels wide overall
-  const width = PATTERN_MAX_WIDTH * cell + TREE_PADDING_X * 2;
-  const height = (PATTERN_TOTAL_ROWS * cell + TREE_PADDING_TOP + TREE_PADDING_BOTTOM) * 1.5;
+  const prevAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-  return {
-    width,
-    height,
-    centerX: Math.round(width / 2),
-    baseY: height - TREE_PADDING_BOTTOM
-  };
-}
-
-function createTreeSprite(config: NormalizedTreeOptions, metrics: TreeMetrics): TreeSprite | null {
-  let canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
-
-  if (typeof OffscreenCanvas === 'function') {
-    canvas = new OffscreenCanvas(metrics.width, metrics.height);
-  } else if (typeof document !== 'undefined') {
-    const el = document.createElement('canvas');
-    el.width = metrics.width;
-    el.height = metrics.height;
-    canvas = el;
-  }
-  if (!canvas) return null;
-
-  const context = canvas.getContext('2d', { alpha: true }) as TreeDrawContext | null;
-  if (!context) return null;
-
-  renderTreeSprite(context, config, metrics);
-  return { canvas, metrics };
-}
-
-function getTreeSprite(config: NormalizedTreeOptions): TreeSprite | null {
-  const key = makeCacheKey(config);
-  const cached = treeSpriteCache.get(key);
-  if (cached) return cached;
-
-  const metrics = computeTreeMetrics(config);
-  const sprite = createTreeSprite(config, metrics);
-  if (!sprite) return null;
-  treeSpriteCache.set(key, sprite);
-  return sprite;
-}
-
-function renderTreeSprite(ctx: TreeDrawContext, config: NormalizedTreeOptions, metrics: TreeMetrics): void {
-  const PATTERN_MAX_WIDTH = Math.max(...tree1.map(r => r.length));
-  const PATTERN_TOTAL_ROWS = tree1.length;
-  if (PATTERN_MAX_WIDTH <= 0 || PATTERN_TOTAL_ROWS <= 0) return;
-
-  const c = ctx.canvas as any;
-  ctx.clearRect(0, 0, c.width, c.height);
-  ctx.fillStyle = config.color;
-  ctx.imageSmoothingEnabled = false;
-
-  // Square cells derived from metrics
-  const cellWidth = (metrics.width - TREE_PADDING_X * 2) / PATTERN_MAX_WIDTH;
-  const cellHeight = (metrics.baseY - TREE_PADDING_TOP) / PATTERN_TOTAL_ROWS;
-
-  for (let rowIndex = 0; rowIndex < tree1.length; rowIndex++) {
-    const row = tree1[rowIndex];
-    const rowWidth = row.length * cellWidth;
-    const baseLeft = metrics.centerX - rowWidth / 2;
-    const top = TREE_PADDING_TOP + rowIndex * cellHeight;
-
-    for (let i = 0; i < row.length; i++) {
-      if (row[i] !== '1') continue;
-      const x = Math.round(baseLeft + i * cellWidth);
-      const y = Math.round(top);
-      const w = Math.max(1, Math.round(baseLeft + (i + 1) * cellWidth) - x);
-      const h = Math.max(1, Math.round(top + cellHeight) - y);
-      ctx.fillRect(x, y, w, h);
+  for (let r = 0; r < rows; r++) {
+    const line = pattern[r];
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (ch === '1' || ch === '3') {
+        ctx.fillStyle = ch === '1' ? COLOR_1 : COLOR_3;
+        const px = originX + c * cellW;
+        const py = originY + r * cellH;
+        ctx.fillRect(px, py, cellW, cellH);
+      }
     }
   }
+
+  ctx.globalAlpha = prevAlpha;
 }
 
-export function drawTree(ctx: CanvasRenderingContext2D, options: TreeOptions): void {
-  if (!Number.isFinite(options.x)) return;
-
-  const { x, groundY, cameraY } = options;
-  const config = normalizeTreeOptions(options);
-  const sprite = getTreeSprite(config);
-  if (!sprite) return;
-
-  const canvasHeight = ctx.canvas?.height ?? 0;
-  const screenGroundY = Math.round(groundY - cameraY);
-
-  const { metrics, canvas } = sprite;
-  const { height, width } = metrics;
-  if (screenGroundY < -height || screenGroundY > canvasHeight + height) return;
-
-  const drawX = Math.round(x - width / 2);
-  const drawY = Math.round(screenGroundY - height);
-  ctx.drawImage(canvas, drawX, drawY);
+/**
+ * Register/override a tree at runtime.
+ * Useful for adding future trees without editing this module.
+ */
+export function registerTree(key: string, pattern: string[]): void {
+  TREES[key] = pattern;
 }
