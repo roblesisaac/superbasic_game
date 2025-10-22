@@ -26,7 +26,7 @@ const DEFAULTS = {
   tuftChance: 0.28,
   groundTextureChance: 0.18,
   seed: 0x5a5a,
-  color: '#fff'
+  color: '#2f2f2f'
 } as const;
 
 export function drawGrass(ctx: CanvasRenderingContext2D, options: GrassOptions): void {

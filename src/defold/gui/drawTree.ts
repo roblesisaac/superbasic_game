@@ -137,6 +137,112 @@ export function drawTree(
   ctx.globalAlpha = prevAlpha;
 }
 
+export interface TreeVisualStyle {
+  tree?: TreeKey;
+  pixelSize?: number;
+  alpha?: number;
+  widthScale?: number;
+  heightScale?: number;
+  brighten?: number;
+  darken?: number;
+}
+
+type NormalizedTreeVisualStyle = {
+  tree: TreeKey;
+  pixelSize: number;
+  alpha: number;
+  widthScale: number;
+  heightScale: number;
+  brighten: number;
+  darken: number;
+};
+
+function normalizeTreeStyle(style: TreeVisualStyle = {}): NormalizedTreeVisualStyle {
+  const {
+    tree = 'tree1',
+    pixelSize = 4,
+    alpha = 1,
+    widthScale = 1,
+    heightScale = 1.5,
+    brighten = 0,
+    darken = 0,
+  } = style;
+
+  const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+  const positive = (v: number, fallback: number) =>
+    Number.isFinite(v) && v !== undefined && v > 0 ? v : fallback;
+
+  return {
+    tree,
+    pixelSize: positive(pixelSize, 4),
+    alpha: clamp01(Number.isFinite(alpha) ? alpha : 1),
+    widthScale: positive(widthScale, 1),
+    heightScale: positive(heightScale, 1.5),
+    brighten: clamp01(Number.isFinite(brighten) ? brighten : 0),
+    darken: clamp01(Number.isFinite(darken) ? darken : 0),
+  };
+}
+
+function getTreePattern(tree: TreeKey): string[] {
+  return TREES[tree] ?? TREES['tree1'] ?? [];
+}
+
+function computeTreeDimensions(style: NormalizedTreeVisualStyle): { width: number; height: number } {
+  const pattern = getTreePattern(style.tree);
+  if (!pattern.length) return { width: 0, height: 0 };
+
+  const rows = pattern.length;
+  const cols = Math.max(...pattern.map((line) => line.length), 0);
+  const width = Math.ceil(cols * style.pixelSize * style.widthScale);
+  const height = Math.ceil(rows * style.pixelSize * style.heightScale);
+  return { width, height };
+}
+
+export function measureTree(style: TreeVisualStyle = {}): { width: number; height: number } {
+  const normalized = normalizeTreeStyle(style);
+  return computeTreeDimensions(normalized);
+}
+
+export function createTreeBitmap(style: TreeVisualStyle = {}): {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
+} {
+  if (typeof document === 'undefined') {
+    throw new Error('Tree bitmaps require a DOM document to create canvases.');
+  }
+
+  const normalized = normalizeTreeStyle(style);
+  const { width, height } = computeTreeDimensions(normalized);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  if (width === 0 || height === 0) {
+    return { canvas, width, height };
+  }
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Unable to acquire 2D context for tree bitmap.');
+  }
+
+  drawTree(context, {
+    tree: normalized.tree,
+    pixelSize: normalized.pixelSize,
+    alpha: normalized.alpha,
+    widthScale: normalized.widthScale,
+    heightScale: normalized.heightScale,
+    brighten: normalized.brighten,
+    darken: normalized.darken,
+    x: 0,
+    y: 0,
+    align: 'top-left',
+  });
+
+  return { canvas, width, height };
+}
+
 /** Register/override a tree at runtime. */
 export function registerTree(key: string, pattern: string[]): void {
   TREES[key] = pattern;
