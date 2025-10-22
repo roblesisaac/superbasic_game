@@ -132,7 +132,7 @@ function drawTreePlacement(request: TreePlacement): void {
 function drawCabin(groundLineY: number): void {
   if (CABIN_COLS === 0) return;
 
-  const cabinX = 350;
+  const cabinX = 250;
 
   void drawBitmap(ctx, {
     pattern: CABIN_BITMAP,
