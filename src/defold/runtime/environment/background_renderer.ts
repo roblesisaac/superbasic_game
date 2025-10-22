@@ -5,6 +5,7 @@ import { drawWell } from '../../gui/drawWell.js';
 import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
 import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
 import { getWellBounds } from './well_layout.js';
+import { CABIN_BITMAP } from '../../modules/bitmaps/cabin.js';
 
 interface TreePlacement {
   x: number;
@@ -58,6 +59,23 @@ const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
 const FEATURE_TREE_X = 110;
 
 const DEFAULT_TREE_KEY: TreeKey = 'tree1';
+
+const CABIN_COLOR_MAP: Record<string, string> = {
+  '1': '#222222',
+  '2': '#222222',
+  '3': '#333333',
+  '4': '#555555',
+  '5': '#333333',
+  '6': '#333333',
+  '7': '#333333',
+};
+
+const CABIN_DEFAULT_COLOR = CABIN_COLOR_MAP['2'];
+const CABIN_PIXEL_SIZE = 0.75;
+const CABIN_WIDTH_SCALE = 1;
+const CABIN_HEIGHT_SCALE = 1.4;
+const CABIN_MARGIN_RIGHT = 24;
+const CABIN_COLS = CABIN_BITMAP.reduce((max, line) => Math.max(max, line.length), 0);
 
 function clamp01(value: number | undefined, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -114,6 +132,25 @@ function drawTreePlacement(request: TreePlacement): void {
   });
 }
 
+function drawCabin(groundLineY: number): void {
+  if (CABIN_COLS === 0) return;
+
+  const cabinWidth = CABIN_COLS * CABIN_PIXEL_SIZE * CABIN_WIDTH_SCALE;
+  const cabinX = 250;
+
+  void drawBitmap(ctx, {
+    pattern: CABIN_BITMAP,
+    x: cabinX,
+    y: groundLineY,
+    align: 'bottom',
+    pixelSize: 1.5,
+    widthScale: CABIN_WIDTH_SCALE,
+    heightScale: CABIN_HEIGHT_SCALE,
+    colorMap: CABIN_COLOR_MAP,
+    defaultColor: CABIN_DEFAULT_COLOR,
+  });
+}
+
 export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   const groundLineY = groundY - cameraY;
 
@@ -123,6 +160,8 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
       y: groundLineY,
     });
   });
+
+  drawCabin(groundLineY);
 
   drawTreePlacement({
     x: FEATURE_TREE_X,
