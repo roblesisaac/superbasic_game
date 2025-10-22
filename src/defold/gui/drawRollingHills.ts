@@ -11,7 +11,7 @@ interface RollingHillsOptions {
 
 const DEFAULTS = {
   baseOffset: 20,
-  hillHeight: 58,
+  hillHeight: 88,
   baseThickness: 20,
   baseColor: '#050505',
   ridgeColor: '#050505',
