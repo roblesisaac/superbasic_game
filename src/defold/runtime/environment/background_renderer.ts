@@ -61,11 +61,11 @@ const FEATURE_TREE_X = 110;
 const DEFAULT_TREE_KEY: TreeKey = 'tree1';
 
 const CABIN_COLOR_MAP: Record<string, string> = {
-  '1': '#4c4c4c',
+  '1': '#222222',
   '2': '#4c4c4c',
-  '3': '#2f2f2f',
-  '5': '#4c4c4c',
-  '7': '#2f2f2f',
+  '3': '#333333',
+  '5': '#999999',
+  '7': '#222222',
 };
 
 const CABIN_DEFAULT_COLOR = CABIN_COLOR_MAP['2'];
