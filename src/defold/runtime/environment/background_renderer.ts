@@ -24,14 +24,14 @@ type NormalizedTreeStyle = {
 };
 
 const FOREGROUND_TREE_POSITIONS = [30,
-  90, 
+  // 90, 
   150, 
-  200, 
+  // 200, 
   230, 
   300, 
-  330, 
+  // 330, 
   390, 
-  450
+  // 450
 ];
 
 const FOREGROUND_TREE_STYLE: TreeVisualStyle = {
