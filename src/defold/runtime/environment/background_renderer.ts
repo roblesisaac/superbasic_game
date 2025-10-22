@@ -50,7 +50,7 @@ const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
   align: 'bottom' as const,
   style: {
     ...FOREGROUND_TREE_STYLE,
-    darken: 0.7 + Math.random() * 0.2,
+    darken: 0.5 + Math.random() * 0.2,
     pixelSize: 0.6 + Math.random() * 0.2,
   },
 }));
