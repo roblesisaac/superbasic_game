@@ -411,7 +411,7 @@ export function updateBubbleField(env: BubbleEnvironment): void {
   const waterSurfaceY = getWellWaterSurfaceY(env.groundY, env.canvasHeight);
   const viewBottom = env.cameraY + env.canvasHeight * 2;
 
-  // ensureStaticBubbles(env, waterSurfaceY, viewBottom);
+  ensureStaticBubbles(env, waterSurfaceY, viewBottom);
   seedInitialRisingBubbles(env, waterSurfaceY);
 
   const timestamp = env.timestamp;

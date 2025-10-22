@@ -35,12 +35,29 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   drawBubbleField(ctx, bubbleEnv);
 
   drawTree(ctx, {
-    x: canvasWidth * 0.22,
+    x: canvasWidth * 0.23,
     groundY,
     cameraY,
-    size: 82,
+    size: 80,
     foliageDensity: 0.78,
-    bushiness: 1.25,
-    seed: 0x22b
+    bushiness: 0.90
+  });
+
+  drawTree(ctx, {
+    x: canvasWidth * 0.60,
+    groundY,
+    cameraY,
+    size: 80,
+    foliageDensity: 0.78,
+    bushiness: 0.90
+  });
+
+  drawTree(ctx, {
+    x: canvasWidth * 0.70,
+    groundY,
+    cameraY,
+    size: 80,
+    foliageDensity: 0.78,
+    bushiness: 0.90
   });
 }
