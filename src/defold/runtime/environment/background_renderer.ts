@@ -6,12 +6,6 @@ import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bu
 import { getWellBounds } from './well_layout.js';
 
 export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
-  drawGrass(ctx, {
-    width: canvasWidth,
-    groundY,
-    cameraY
-  });
-
   const well = getWellBounds(canvasWidth);
   const bubbleEnv: BubbleEnvironment = {
     timestamp,
@@ -37,4 +31,10 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   drawTree(ctx, { tree: 'tree2', x: 100, y: groundY - cameraY, pixelSize: 1.2, align: 'bottom' });
 
   drawTree(ctx, { tree: 'tree2', x: 300, y: groundY - cameraY, pixelSize: 1.5, align: 'bottom' });
+
+  drawGrass(ctx, {
+    width: canvasWidth,
+    groundY,
+    cameraY
+  });
 }
