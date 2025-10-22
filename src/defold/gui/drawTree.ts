@@ -183,7 +183,7 @@ function normalizeTreeStyle(style: TreeVisualStyle = {}): NormalizedTreeVisualSt
   };
 }
 
-function getTreePattern(tree: TreeKey): string[] {
+export function getTreePattern(tree: TreeKey): string[] {
   return TREES[tree] ?? TREES['tree1'] ?? [];
 }
 

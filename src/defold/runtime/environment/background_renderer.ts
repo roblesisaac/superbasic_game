@@ -1,11 +1,10 @@
 import { drawGrass } from '../../gui/drawGrass.js';
-import { createTreeBitmap, type TreeVisualStyle } from '../../gui/drawTree.js';
+import { drawBitmap } from '../../gui/drawBitmap.js';
+import { getTreePattern, type TreeKey, type TreeVisualStyle } from '../../gui/drawTree.js';
 import { drawWell } from '../../gui/drawWell.js';
 import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
 import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
 import { getWellBounds } from './well_layout.js';
-
-type TreeBitmap = ReturnType<typeof createTreeBitmap>;
 
 interface TreePlacement {
   x: number;
@@ -14,9 +13,15 @@ interface TreePlacement {
   style: TreeVisualStyle;
 }
 
-type TreeBitmapKey = string;
-
-const treeBitmapCache = new Map<TreeBitmapKey, TreeBitmap>();
+type NormalizedTreeStyle = {
+  tree: TreeKey;
+  pixelSize: number;
+  alpha: number;
+  widthScale: number;
+  heightScale: number;
+  brighten: number;
+  darken: number;
+};
 
 const FOREGROUND_TREE_POSITIONS = [30,
   90, 
@@ -52,61 +57,74 @@ const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
 
 const FEATURE_TREE_X = 110;
 
-function makeTreeKey(style: TreeVisualStyle): TreeBitmapKey {
-  return JSON.stringify({
-    tree: style.tree ?? 'tree1',
-    pixelSize: style.pixelSize ?? 4,
-    widthScale: style.widthScale ?? 1,
-    heightScale: style.heightScale ?? 1.5,
-    brighten: style.brighten ?? 0,
-    darken: style.darken ?? 0,
-    alpha: style.alpha ?? 1,
+const DEFAULT_TREE_KEY: TreeKey = 'tree1';
+
+function clamp01(value: number | undefined, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(1, Math.max(0, value as number));
+}
+
+function ensurePositive(value: number | undefined, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return value > 0 ? (value as number) : fallback;
+}
+
+function normalizeTreeStyle(style: TreeVisualStyle = {}): NormalizedTreeStyle {
+  const {
+    tree = DEFAULT_TREE_KEY,
+    pixelSize,
+    alpha,
+    widthScale,
+    heightScale,
+    brighten,
+    darken,
+  } = style;
+
+  return {
+    tree,
+    pixelSize: ensurePositive(pixelSize, 4),
+    alpha: clamp01(alpha, 1),
+    widthScale: ensurePositive(widthScale, 1),
+    heightScale: ensurePositive(heightScale, 1.5),
+    brighten: clamp01(brighten, 0),
+    darken: clamp01(darken, 0),
+  };
+}
+
+function drawTreePlacement(request: TreePlacement): void {
+  const normalized = normalizeTreeStyle(request.style);
+  let pattern = getTreePattern(normalized.tree);
+
+  if (!pattern.length && normalized.tree !== DEFAULT_TREE_KEY) {
+    pattern = getTreePattern(DEFAULT_TREE_KEY);
+  }
+  if (!pattern.length) return;
+
+  void drawBitmap(ctx, {
+    pattern,
+    x: request.x,
+    y: request.y,
+    align: request.align ?? 'bottom',
+    pixelSize: normalized.pixelSize,
+    alpha: normalized.alpha,
+    widthScale: normalized.widthScale,
+    heightScale: normalized.heightScale,
+    brighten: normalized.brighten,
+    darken: normalized.darken,
   });
-}
-
-function getTreeBitmap(style: TreeVisualStyle): TreeBitmap {
-  const key = makeTreeKey(style);
-  let bitmap = treeBitmapCache.get(key);
-  if (!bitmap) {
-    bitmap = createTreeBitmap(style);
-    treeBitmapCache.set(key, bitmap);
-  }
-  return bitmap;
-}
-
-function drawCachedTree(request: TreePlacement): void {
-  const bitmap = getTreeBitmap(request.style);
-  if (bitmap.width === 0 || bitmap.height === 0) return;
-
-  const align = request.align ?? 'bottom';
-  let drawX = request.x;
-  let drawY = request.y;
-
-  if (align === 'center') {
-    drawX = Math.round(request.x - bitmap.width / 2);
-    drawY = Math.round(request.y - bitmap.height / 2);
-  } else if (align === 'bottom') {
-    drawX = Math.round(request.x - bitmap.width / 2);
-    drawY = Math.round(request.y - bitmap.height);
-  } else {
-    drawX = Math.round(request.x);
-    drawY = Math.round(request.y);
-  }
-
-  ctx.drawImage(bitmap.canvas, drawX, drawY);
 }
 
 export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   const groundLineY = groundY - cameraY;
 
   foregroundTrees.forEach((placement) => {
-    drawCachedTree({
+    drawTreePlacement({
       ...placement,
       y: groundLineY,
     });
   });
 
-  drawCachedTree({
+  drawTreePlacement({
     x: FEATURE_TREE_X,
     y: groundLineY,
     align: 'bottom',
