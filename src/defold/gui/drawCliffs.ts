@@ -406,7 +406,7 @@ class CliffSegment {
     const cells = new Map<string, { x: number; y: number; side?: 'left' | 'right' }>();
     const segmentTop = cliffState.origin + this.y;
     const segmentBottom = segmentTop + this.verticalLen;
-    const { horizStartX, horizEndX, diagEndX, anchor } = this.computeGeometry();
+    const { horizEndX, diagEndX, anchor } = this.computeGeometry();
 
     const addCell = (x: number, y: number, side?: 'left' | 'right') => {
       const key = `${x}|${y}`;
@@ -417,32 +417,6 @@ class CliffSegment {
         existing.side = side;
       }
     };
-
-    // horizontal/top portion
-    const horizStart = Math.min(horizStartX, horizEndX);
-    const horizEnd = Math.max(horizStartX, horizEndX);
-    const horizBaseX = Math.round(horizStart);
-    const horizBaseY = Math.round(segmentTop);
-    let horizCursor = horizStart;
-    let horizShapeIndex = 0;
-
-    while (horizCursor < horizEnd) {
-      let cellsSet = generatePolyomino(this.seedBase + horizShapeIndex * 123, 4, 9);
-      cellsSet = flattenEdge(cellsSet, 'top');
-      const bounds = getBounds(cellsSet);
-      const shapeWidth = bounds.w * CELL_SIZE;
-      const cursorOffset = Math.round(horizCursor - horizStart);
-
-      for (const key of cellsSet) {
-        const [cx, cy] = key.split(',').map(Number);
-        const cellX = horizBaseX + cursorOffset + cx * CELL_SIZE;
-        const cellY = horizBaseY + cy * CELL_SIZE;
-        addCell(cellX, cellY);
-      }
-
-      horizCursor += Math.max(1, shapeWidth - 1);
-      horizShapeIndex += 1;
-    }
 
     // vertical/diagonal portion
     const vertStartX = horizEndX;
@@ -481,12 +455,15 @@ class CliffSegment {
       cellsSet = flattenEdge(cellsSet, anchor);
       const bounds = getBounds(cellsSet);
       const widthPixels = bounds.w * CELL_SIZE;
-
       const baseX = anchor === 'right' ? Math.round(x) - widthPixels : Math.round(x);
       const baseY = Math.round(y);
 
+      const targetCx =
+        anchor === 'right' ? bounds.maxX : anchor === 'left' ? bounds.minX : null;
+
       for (const key of cellsSet) {
         const [cx, cy] = key.split(',').map(Number);
+        if (targetCx !== null && cx !== targetCx) continue;
         const cellX = baseX + cx * CELL_SIZE;
         const cellY = baseY + cy * CELL_SIZE;
         addCell(cellX, cellY, this.side);
