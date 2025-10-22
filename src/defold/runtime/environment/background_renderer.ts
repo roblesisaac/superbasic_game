@@ -69,7 +69,6 @@ const CABIN_COLOR_MAP: Record<string, string> = {
 };
 
 const CABIN_DEFAULT_COLOR = CABIN_COLOR_MAP['2'];
-const CABIN_PIXEL_SIZE = 0.75;
 const CABIN_WIDTH_SCALE = 1;
 const CABIN_HEIGHT_SCALE = 1.5;
 const CABIN_COLS = CABIN_BITMAP.reduce((max, line) => Math.max(max, line.length), 0);
