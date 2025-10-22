@@ -44,19 +44,10 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   });
 
   drawTree(ctx, {
-    x: canvasWidth * 0.60,
-    groundY,
-    cameraY,
-    size: 80,
-    foliageDensity: 0.78,
-    bushiness: 0.90
-  });
-
-  drawTree(ctx, {
     x: canvasWidth * 0.70,
     groundY,
     cameraY,
-    size: 80,
+    size: 88,
     foliageDensity: 0.78,
     bushiness: 0.90
   });
