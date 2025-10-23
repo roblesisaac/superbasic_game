@@ -15,7 +15,7 @@ import {
   getPolyominoBounds,
   polyominoToOffsets,
   seededRandom
-} from '../../../modules/polyomino.js';
+} from '../geometry/polyomino.js';
 
 const WELL_COLOR_RIM_CAP = '#f6f6fb';
 const WELL_COLOR_RIM_COLLAR = '#d8dae4';

@@ -1,4 +1,4 @@
-import { CABIN_BITMAP } from '../../../modules/bitmaps/cabin.js';
+import { CABIN_BITMAP } from '../../../assets/bitmaps/cabin.js';
 
 const BUILTIN_BITMAPS: Record<string, string[]> = {
   cabin: CABIN_BITMAP

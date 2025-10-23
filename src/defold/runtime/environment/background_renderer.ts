@@ -5,7 +5,7 @@ import { drawWell } from './drawables/drawWell.js';
 import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
 import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
 import { getWellBounds } from './well_layout.js';
-import { CABIN_BITMAP } from '../../modules/bitmaps/cabin.js';
+import { CABIN_BITMAP } from '../../assets/bitmaps/cabin.js';
 import { drawRollingHills } from './drawables/drawRollingHills.js';
 import { drawCampfire } from './drawables/drawCampfire.js';
 
