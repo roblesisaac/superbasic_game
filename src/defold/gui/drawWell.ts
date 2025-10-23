@@ -2,8 +2,6 @@ import {
   WELL_COLLAR_HEIGHT,
   WELL_OPENING_WIDTH,
   WELL_RIM_THICKNESS,
-  WELL_SHAFT_COLUMN_INSET,
-  WELL_SHAFT_COLUMN_WIDTH,
   getWellExpansionBottomY,
   getWellExpansionTopY,
   getWellShaftBottomY,
@@ -11,7 +9,17 @@ import {
   ensureWellDepth,
   getCliffStartY
 } from '../runtime/environment/well_layout.js';
-import { drawCavernCliffs } from './drawCliffs.js';
+import {
+  CLIFF_CELL_SIZE,
+  drawCavernCliffs
+} from './drawCliffs.js';
+import {
+  flattenPolyominoEdge as flattenEdge,
+  generatePolyomino,
+  getPolyominoBounds,
+  polyominoToOffsets,
+  seededRandom
+} from '../modules/polyomino.js';
 
 interface DrawWellOptions {
   centerX: number;
@@ -19,6 +27,233 @@ interface DrawWellOptions {
   cameraY: number;
   canvasHeight: number;
   openingWidth?: number;
+}
+
+interface ShaftEdgeOptions {
+  innerLeft: number;
+  innerWidth: number;
+  top: number;
+  bottom: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  seedBase: number;
+}
+
+function drawWellShaftEdges(
+  ctx: CanvasRenderingContext2D,
+  options: ShaftEdgeOptions
+): void {
+  const {
+    innerLeft,
+    innerWidth,
+    top,
+    bottom,
+    canvasWidth,
+    canvasHeight,
+    seedBase
+  } = options;
+
+  if (!Number.isFinite(innerLeft) || !Number.isFinite(innerWidth)) return;
+  if (innerWidth <= CLIFF_CELL_SIZE) return;
+
+  const cellSize = CLIFF_CELL_SIZE;
+  const clampedTop = Math.max(0, Math.floor(top));
+  const clampedBottom = Math.min(canvasHeight, Math.ceil(bottom));
+  if (clampedBottom - clampedTop < cellSize) return;
+
+  const verticalSpan = clampedBottom - clampedTop;
+  const sampleStride = cellSize * 4;
+  const steps = Math.max(1, Math.ceil(verticalSpan / sampleStride));
+  const leftBoundary = Math.round(innerLeft);
+  const rightBoundary = Math.round(innerLeft + innerWidth);
+
+  ctx.save();
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.25;
+
+  for (let i = 0; i <= steps; i += 1) {
+    const t = steps === 0 ? 0 : i / steps;
+    const baseY = Math.round(clampedTop + t * verticalSpan);
+    const anchorY = Math.min(baseY, clampedBottom - cellSize);
+
+    {
+      let cells = generatePolyomino(seedBase + i * 211, 3, 6);
+      cells = flattenEdge(cells, 'left');
+      const bounds = getPolyominoBounds(cells);
+      const outwardCells = 1 + Math.floor(seededRandom(seedBase + i * 503) * 2);
+      const jitter = Math.round((seededRandom(seedBase + i * 617) - 0.5) * cellSize);
+      const pxBase = leftBoundary - (bounds.maxX + outwardCells) * cellSize + jitter;
+      const offsets = polyominoToOffsets(cells);
+
+      for (const [cx, cy] of offsets) {
+        const px = pxBase + cx * cellSize;
+        if (px >= leftBoundary) continue;
+        if (px + cellSize <= 0) continue;
+
+        const py = anchorY + cy * cellSize;
+        if (py >= clampedBottom || py + cellSize <= clampedTop) continue;
+
+        const drawTop = Math.max(py, clampedTop);
+        const drawHeight = Math.min(cellSize, clampedBottom - drawTop);
+        const drawX = Math.max(px, 0);
+        const drawWidth = Math.min(cellSize, leftBoundary - drawX);
+        if (drawHeight > 0 && drawWidth > 0) {
+          ctx.fillRect(drawX, drawTop, drawWidth, drawHeight);
+        }
+      }
+    }
+
+    {
+      let cells = generatePolyomino(seedBase + i * 211 + 97, 3, 6);
+      cells = flattenEdge(cells, 'right');
+      const bounds = getPolyominoBounds(cells);
+      const outwardCells = 1 + Math.floor(seededRandom(seedBase + i * 719) * 2);
+      const jitter = Math.round((seededRandom(seedBase + i * 829) - 0.5) * cellSize);
+      const pxBase = rightBoundary + cellSize * outwardCells + jitter;
+      const offsets = polyominoToOffsets(cells);
+
+      for (const [cx, cy] of offsets) {
+        const px = pxBase + cx * cellSize;
+        if (px + cellSize <= rightBoundary) continue;
+        if (px >= canvasWidth) continue;
+
+        const py = anchorY + cy * cellSize;
+        if (py >= clampedBottom || py + cellSize <= clampedTop) continue;
+
+        const drawTop = Math.max(py, clampedTop);
+        const drawHeight = Math.min(cellSize, clampedBottom - drawTop);
+        const drawX = Math.max(px, rightBoundary);
+        const drawWidth = Math.min(cellSize, canvasWidth - drawX);
+        if (drawHeight > 0 && drawWidth > 0) {
+          ctx.fillRect(drawX, drawTop, drawWidth, drawHeight);
+        }
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+interface ShaftArmOptions {
+  innerLeft: number;
+  innerWidth: number;
+  top: number;
+  height: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  seedBase: number;
+}
+
+function drawWellShaftArms(
+  ctx: CanvasRenderingContext2D,
+  options: ShaftArmOptions
+): void {
+  const {
+    innerLeft,
+    innerWidth,
+    top,
+    height,
+    canvasWidth,
+    canvasHeight,
+    seedBase
+  } = options;
+
+  if (!Number.isFinite(top) || !Number.isFinite(height)) return;
+
+  const cellSize = CLIFF_CELL_SIZE;
+  const leftBoundary = Math.round(innerLeft);
+  const rightBoundary = Math.round(innerLeft + innerWidth);
+  const clampedTop = Math.max(0, Math.floor(top));
+  const clampedBottom = Math.min(canvasHeight, Math.ceil(top + height));
+  if (clampedBottom - clampedTop < cellSize) return;
+
+  ctx.save();
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.35;
+
+  const drawCells = (
+    side: 'left' | 'right',
+    cells: ReturnType<typeof generatePolyomino>,
+    baseX: number
+  ) => {
+    const offsets = polyominoToOffsets(cells);
+    for (const [cx, cy] of offsets) {
+      const px = baseX + cx * cellSize;
+      const py = clampedTop + cy * cellSize;
+      if (px >= canvasWidth || px + cellSize <= 0) continue;
+      if (py >= clampedBottom || py + cellSize <= clampedTop) continue;
+      if (side === 'left' && px >= leftBoundary) continue;
+      if (side === 'right' && px + cellSize <= rightBoundary) continue;
+
+      const drawX = Math.max(px, 0);
+      const drawWidth = Math.min(cellSize, canvasWidth - drawX);
+      if (drawWidth <= 0) continue;
+
+      const drawTop = Math.max(py, clampedTop);
+      const drawBottom = Math.min(py + cellSize, clampedBottom);
+      const drawHeight = drawBottom - drawTop;
+      if (drawHeight <= 0) continue;
+
+      ctx.fillRect(drawX, drawTop, drawWidth, drawHeight);
+    }
+  };
+
+  const sides: Array<{
+    side: 'left' | 'right';
+    start: number;
+    advance: (pxMin: number, pxMax: number) => number;
+    limitReached: (pxMin: number, pxMax: number) => boolean;
+    flatten: 'left' | 'right';
+    seedOffset: number;
+  }> = [
+    {
+      side: 'left',
+      start: leftBoundary,
+    advance: (pxMin: number, _pxMax: number) => pxMin - cellSize,
+    limitReached: (_pxMin: number, pxMax: number) => pxMax <= 0,
+      flatten: 'right',
+      seedOffset: 0
+    },
+    {
+      side: 'right',
+      start: rightBoundary,
+    advance: (_pxMin: number, pxMax: number) => pxMax + cellSize,
+    limitReached: (pxMin: number, _pxMax: number) => pxMin >= canvasWidth,
+      flatten: 'left',
+      seedOffset: 971
+    }
+  ];
+
+  for (const config of sides) {
+    let cursor = config.start;
+    let iteration = 0;
+
+    while (iteration < 80) {
+      let cells = generatePolyomino(seedBase + config.seedOffset + iteration * 53, 5, 11);
+      cells = flattenEdge(cells, 'top');
+      cells = flattenEdge(cells, config.flatten);
+      const bounds = getPolyominoBounds(cells);
+      const width = bounds.w * cellSize;
+
+      const jitterSeed = seedBase + config.seedOffset + iteration * 71;
+      const jitter = Math.round((seededRandom(jitterSeed) - 0.5) * cellSize);
+      const baseX =
+        config.side === 'left'
+          ? cursor - width + jitter
+          : cursor + jitter;
+
+      drawCells(config.side, cells, baseX);
+
+      const pxMin = baseX;
+      const pxMax = baseX + width;
+      if (config.limitReached(pxMin, pxMax)) break;
+
+      cursor = config.advance(pxMin, pxMax);
+      iteration += 1;
+    }
+  }
+
+  ctx.restore();
 }
 
 export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions): void {
@@ -98,26 +333,22 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.fillRect(innerLeft, innerTop, normalizedOpeningWidth, Math.ceil(innerHeight * 0.45));
   ctx.globalAlpha = 1;
 
-  // Draw shaft guide bricks extending downward
-  const columnTop = Math.max(0, Math.min(screenGroundY, canvasHeight));
-  const columnBottomLimit = Math.min(expansionTopScreen - 1, shaftBottomScreen);
-  const columnBottom = Math.min(Math.max(columnBottomLimit, 0), canvasHeight);
-  const brickSize = WELL_SHAFT_COLUMN_WIDTH;
-  const brickGap = 1;
-  const columnInset = WELL_SHAFT_COLUMN_INSET;
-  const brickColumns = [
-    innerLeft + columnInset,
-    innerLeft + normalizedOpeningWidth - columnInset - brickSize
-  ];
-
-  for (const columnX of brickColumns) {
-    if (columnX + brickSize <= 0 || columnX >= canvasWidth) continue;
-    if (columnBottom <= columnTop) continue;
-
-    for (let y = columnTop; y < columnBottom; y += brickSize + brickGap) {
-      const drawHeight = Math.min(brickSize, columnBottom - y);
-      ctx.fillRect(Math.round(columnX), Math.round(y), brickSize, drawHeight);
-    }
+  const shaftTextureTop = shaftFillTop + CLIFF_CELL_SIZE;
+  const shaftTextureBottom = Number.isFinite(expansionTopScreen)
+    ? Math.min(shaftFillBottom, expansionTopScreen)
+    : shaftFillBottom;
+  const shaftSeedBase =
+    Math.floor(centerX * 977) + Math.floor(groundY * 613) + Math.floor(canvasHeight);
+  if (shaftTextureBottom > shaftTextureTop) {
+    drawWellShaftEdges(ctx, {
+      innerLeft,
+      innerWidth: normalizedOpeningWidth,
+      top: shaftTextureTop,
+      bottom: shaftTextureBottom,
+      canvasWidth,
+      canvasHeight,
+      seedBase: shaftSeedBase
+    });
   }
 
   // Paint the wider cavern section with subtle mortar bands for texture
@@ -154,34 +385,21 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     }
   }
 
-  // Cap the shaft where it opens into the wider cavern by bending each guide
-  // column outward so they form retro "L" shapes that frame the opening.
-  ctx.fillStyle = '#fff';
+  // Cap the shaft where it opens into the wider cavern by forming polyomino
+  // “L” shapes that frame the narrow shaft.
   if (Number.isFinite(expansionTopScreen)) {
-    const armHeight = brickSize;
-    const armTop = Math.round(expansionTopScreen - armHeight);
-    const drawTop = Math.max(armTop, 0);
-    const drawBottom = Math.min(armTop + armHeight, canvasHeight);
-    if (drawBottom > drawTop) {
-      const height = drawBottom - drawTop;
-      const leftColumnX = Math.round(brickColumns[0] ?? innerLeft + columnInset);
-      const rightColumnX = Math.round(brickColumns[1] ?? innerLeft + normalizedOpeningWidth - columnInset - brickSize);
-
-      const leftArmEnd = Math.max(0, leftColumnX + brickSize);
-      for (let x = leftArmEnd - brickSize; x >= 0; x -= brickSize + brickGap) {
-        const drawX = Math.max(x, 0);
-        const drawWidth = Math.min(brickSize, leftArmEnd - drawX);
-        if (drawWidth <= 0) continue;
-        ctx.fillRect(drawX, drawTop, drawWidth, height);
-      }
-
-      const rightArmStart = Math.max(0, rightColumnX);
-      for (let x = rightArmStart; x < canvasWidth; x += brickSize + brickGap) {
-        const drawWidth = Math.min(brickSize, canvasWidth - x);
-        if (drawWidth <= 0) break;
-        ctx.fillRect(Math.round(x), drawTop, drawWidth, height);
-      }
-    }
+    const armHeight = CLIFF_CELL_SIZE * 2;
+    const armTop = Math.round((expansionTopScreen ?? 0) - armHeight);
+    const armSeedBase = shaftSeedBase + 3571;
+    drawWellShaftArms(ctx, {
+      innerLeft,
+      innerWidth: normalizedOpeningWidth,
+      top: armTop,
+      height: armHeight,
+      canvasWidth,
+      canvasHeight,
+      seedBase: armSeedBase
+    });
   }
 
   // Reinforce the cavern floor with a bright edge to signify a stable landing surface

@@ -1,3 +1,9 @@
+import { CABIN_BITMAP } from '../modules/bitmaps/cabin.js';
+
+const BUILTIN_BITMAPS: Record<string, string[]> = {
+  cabin: CABIN_BITMAP
+};
+
 // ---- Caching + prerender helpers -------------------------------------------
 type BitmapCacheKey = string;
 const _bitmapCache = new Map<BitmapCacheKey, ImageBitmap>();
@@ -121,7 +127,7 @@ export async function drawBitmap(
     transparentChars = ' ',
   } = config;
 
-  const pattern = patternIn ?? (bitmap ? BITMAPS[bitmap] : undefined);
+  const pattern = patternIn ?? (bitmap ? BUILTIN_BITMAPS[bitmap] : undefined);
   if (!pattern || pattern.length === 0) return;
 
   const rows = pattern.length;

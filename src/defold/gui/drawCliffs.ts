@@ -1,5 +1,15 @@
+import {
+  type PolyominoEdge,
+  type PolyominoOffsets,
+  flattenPolyominoEdge as flattenEdge,
+  generatePolyomino,
+  getPolyominoBounds as getBounds,
+  polyominoToOffsets,
+  seededRandom
+} from '../modules/polyomino.js';
+
 type CliffSide = 'left' | 'right';
-type Edge = 'left' | 'right' | 'top' | 'bottom';
+type Edge = PolyominoEdge;
 
 const CELL_SIZE = 2;
 const USE_OFFSCREEN_CANVAS = false;
@@ -10,9 +20,6 @@ const SEGMENT_HEIGHT = 240;
 const BUFFER_SEGMENTS = 4;
 const CLIFF_CLEARANCE = CELL_SIZE;
 const CLIFF_LEDGE_THICKNESS = CELL_SIZE * 3;
-
-type PolyominoCellSet = Set<string>;
-type PolyominoOffsets = Array<readonly [number, number]>;
 
 export interface CliffLedge {
   left: number;
@@ -42,123 +49,6 @@ interface VerticalCacheEntry {
   anchor: Edge;
   widthPixels: number;
   cells: PolyominoOffsets;
-}
-
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
-}
-
-function randInt(min: number, max: number, seed: number): number {
-  return Math.floor(seededRandom(seed) * (max - min + 1)) + min;
-}
-
-function generatePolyomino(
-  seed: number,
-  minSize = 4,
-  maxSize = 9
-): PolyominoCellSet {
-  const target = randInt(minSize, maxSize, seed);
-  const cells = new Set<string>(['0,0']);
-  const dirs: Array<[number, number]> = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1]
-  ];
-
-  let attempts = 0;
-  while (cells.size < target && attempts < target * 10) {
-    const arr = Array.from(cells);
-    const anchorIndex = randInt(0, arr.length - 1, seed + attempts);
-    const [x, y] = arr[anchorIndex]?.split(',').map(Number) ?? [0, 0];
-    const dirIndex = randInt(0, dirs.length - 1, seed + attempts + 1000);
-    const [dx, dy] = dirs[dirIndex];
-    const nx = x + dx;
-    const ny = y + dy;
-    const key = `${nx},${ny}`;
-    if (!cells.has(key)) cells.add(key);
-    attempts += 1;
-  }
-
-  let minX = Infinity;
-  let minY = Infinity;
-  for (const key of cells) {
-    const [x, y] = key.split(',').map(Number);
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-  }
-
-  const normalized = new Set<string>();
-  for (const key of cells) {
-    const [x, y] = key.split(',').map(Number);
-    normalized.add(`${x - minX},${y - minY}`);
-  }
-
-  return normalized;
-}
-
-function getBounds(cells: PolyominoCellSet) {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  for (const key of cells) {
-    const [x, y] = key.split(',').map(Number);
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-  }
-
-  return { minX, minY, maxX, maxY, w: maxX - minX + 1, h: maxY - minY + 1 };
-}
-
-function flattenEdge(cells: PolyominoCellSet, side: Edge): PolyominoCellSet {
-  const bounds = getBounds(cells);
-  const map = new Map<number, number[]>();
-
-  for (const key of cells) {
-    const [x, y] = key.split(',').map(Number);
-    const primary = side === 'top' || side === 'bottom' ? x : y;
-    const secondary = side === 'top' || side === 'bottom' ? y : x;
-    const arr = map.get(primary);
-    if (arr) arr.push(secondary);
-    else map.set(primary, [secondary]);
-  }
-
-  const addCell = (x: number, y: number) => cells.add(`${x},${y}`);
-
-  if (side === 'right') {
-    for (let y = 0; y < bounds.h; y += 1) {
-      const arr = map.get(y) ?? [];
-      const max = arr.length ? Math.max(...arr) : -Infinity;
-      for (let x = max + 1; x <= bounds.maxX; x += 1) addCell(x, y);
-    }
-  } else if (side === 'left') {
-    for (let y = 0; y < bounds.h; y += 1) {
-      const arr = map.get(y) ?? [];
-      const min = arr.length ? Math.min(...arr) : Infinity;
-      const limit = Number.isFinite(min) ? min - 1 : bounds.maxX;
-      for (let x = 0; x <= limit; x += 1) addCell(x, y);
-    }
-  } else if (side === 'top') {
-    for (let x = 0; x < bounds.w; x += 1) {
-      const arr = map.get(x) ?? [];
-      const min = arr.length ? Math.min(...arr) : Infinity;
-      const limit = Number.isFinite(min) ? min - 1 : bounds.maxY;
-      for (let y = 0; y <= limit; y += 1) addCell(x, y);
-    }
-  } else if (side === 'bottom') {
-    for (let x = 0; x < bounds.w; x += 1) {
-      const arr = map.get(x) ?? [];
-      const max = arr.length ? Math.max(...arr) : -Infinity;
-      for (let y = max + 1; y <= bounds.maxY; y += 1) addCell(x, y);
-    }
-  }
-
-  return cells;
 }
 
 class CliffSegment {
@@ -678,10 +568,7 @@ class CliffSegment {
       const bounds = getBounds(cells);
       const shapeWidth = bounds.w * CELL_SIZE;
 
-      const offsets: PolyominoOffsets = Array.from(cells, (key) => {
-        const [cx, cy] = key.split(',').map(Number);
-        return [cx, cy] as const;
-      });
+      const offsets = polyominoToOffsets(cells);
 
       entries.push({
         offsetX: Math.round(x - start),
@@ -748,10 +635,7 @@ class CliffSegment {
       cells = flattenEdge(cells, anchor);
       const bounds = getBounds(cells);
 
-      const offsets: PolyominoOffsets = Array.from(cells, (key) => {
-        const [cx, cy] = key.split(',').map(Number);
-        return [cx, cy] as const;
-      });
+      const offsets = polyominoToOffsets(cells);
 
       entries.push({
         t,
