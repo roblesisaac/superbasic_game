@@ -1,7 +1,14 @@
 import { SPRITE_SIZE } from '../../../config/constants.js';
 
-// Keep the well roughly beneath the floating heart pickup which sits ~32px from the right edge.
-const WELL_CENTER_RIGHT_OFFSET = 32;
+/**
+ * Layout constants -----------------------------------------------------------
+ *
+ * The well is positioned relative to the screen rather than world space. Its
+ * horizontal placement hugs the right-hand side of the canvas while the
+ * vertical metrics are derived from the world-space `groundY`.
+ */
+
+const WELL_CENTER_RIGHT_OFFSET = 32; // keep the well near the floating heart pickup
 const EDGE_MARGIN = 4;
 
 export const WELL_OPENING_WIDTH = SPRITE_SIZE * 2;
@@ -21,19 +28,9 @@ const DEPTH_LOOKAHEAD_CHUNKS = 2;
 
 let cavernDepth = CAVERN_CHUNK_HEIGHT * MIN_CAVERN_CHUNKS;
 
-function roundToChunkHeight(value: number): number {
-  return Math.ceil(value / CAVERN_CHUNK_HEIGHT) * CAVERN_CHUNK_HEIGHT;
-}
-
-function baselineCavernDepth(canvasHeight: number): number {
-  const baseline = Math.max(CAVERN_CHUNK_HEIGHT * MIN_CAVERN_CHUNKS, Math.round(canvasHeight * 1.5));
-  return roundToChunkHeight(baseline);
-}
-
-function ensureBaselineDepth(canvasHeight: number): void {
-  const baseline = baselineCavernDepth(canvasHeight);
-  if (cavernDepth < baseline) cavernDepth = baseline;
-}
+/**
+ * Bounds --------------------------------------------------------------------
+ */
 
 export interface WellBounds {
   left: number;
@@ -45,8 +42,11 @@ export interface WellBounds {
   rimOuterWidth: number;
 }
 
-export function getWellBounds(canvasWidth: number): WellBounds {
-  const openingWidth = Math.round(WELL_OPENING_WIDTH);
+export function getWellBounds(
+  canvasWidth: number,
+  openingWidthOverride: number = WELL_OPENING_WIDTH
+): WellBounds {
+  const openingWidth = Math.round(openingWidthOverride);
   const rimOuterWidth = openingWidth + WELL_RIM_THICKNESS * 2;
   const desiredCenter = Math.round(canvasWidth - WELL_CENTER_RIGHT_OFFSET);
   const rimHalfWidth = Math.round(rimOuterWidth / 2);
@@ -55,11 +55,8 @@ export function getWellBounds(canvasWidth: number): WellBounds {
   const rimMaxLeft = Math.max(rimMinLeft, rimMaxRight - rimOuterWidth);
 
   let rimLeft = desiredCenter - rimHalfWidth;
-  if (rimLeft < rimMinLeft) {
-    rimLeft = rimMinLeft;
-  } else if (rimLeft > rimMaxLeft) {
-    rimLeft = rimMaxLeft;
-  }
+  if (rimLeft < rimMinLeft) rimLeft = rimMinLeft;
+  else if (rimLeft > rimMaxLeft) rimLeft = rimMaxLeft;
 
   const rimRight = rimLeft + rimOuterWidth;
   const left = rimLeft + WELL_RIM_THICKNESS;
@@ -89,13 +86,32 @@ export interface WellShaftSpan {
 export function getWellShaftSpan(bounds: WellBounds): WellShaftSpan {
   const interiorLeft = bounds.left + WELL_SHAFT_COLUMN_INSET + WELL_SHAFT_COLUMN_WIDTH;
   const interiorRight = bounds.right - WELL_SHAFT_COLUMN_INSET - WELL_SHAFT_COLUMN_WIDTH;
-
   if (interiorLeft > interiorRight) {
     const center = (bounds.left + bounds.right) / 2;
     return { interiorLeft: center, interiorRight: center };
   }
-
   return { interiorLeft, interiorRight };
+}
+
+/**
+ * Depth handling ------------------------------------------------------------
+ */
+
+function roundToChunkHeight(value: number): number {
+  return Math.ceil(value / CAVERN_CHUNK_HEIGHT) * CAVERN_CHUNK_HEIGHT;
+}
+
+function baselineCavernDepth(canvasHeight: number): number {
+  const baseline = Math.max(
+    CAVERN_CHUNK_HEIGHT * MIN_CAVERN_CHUNKS,
+    Math.round(canvasHeight * 1.5)
+  );
+  return roundToChunkHeight(baseline);
+}
+
+function ensureBaselineDepth(canvasHeight: number): void {
+  const baseline = baselineCavernDepth(canvasHeight);
+  if (cavernDepth < baseline) cavernDepth = baseline;
 }
 
 export function getWellNarrowShaftDepth(canvasHeight: number): number {
@@ -105,6 +121,10 @@ export function getWellNarrowShaftDepth(canvasHeight: number): number {
 export function getWellCavernDepth(canvasHeight: number): number {
   ensureBaselineDepth(canvasHeight);
   return cavernDepth;
+}
+
+export function getWellShaftDepth(canvasHeight: number): number {
+  return getWellNarrowShaftDepth(canvasHeight) + getWellCavernDepth(canvasHeight);
 }
 
 export function ensureWellDepth(
@@ -128,13 +148,13 @@ export function resetWellDepth(canvasHeight: number): void {
   cavernDepth = baselineCavernDepth(canvasHeight);
 }
 
-export function getWellShaftDepth(canvasHeight: number): number {
-  return getWellNarrowShaftDepth(canvasHeight) + getWellCavernDepth(canvasHeight);
-}
-
 export function getWellShaftBottomY(groundY: number, canvasHeight: number): number {
   return groundY + getWellShaftDepth(canvasHeight);
 }
+
+/**
+ * Cavern + water spans ------------------------------------------------------
+ */
 
 export function getWellExpansionSpan(canvasWidth: number): WellShaftSpan {
   return { interiorLeft: 0, interiorRight: Math.max(canvasWidth, 0) };
@@ -167,4 +187,79 @@ export function getWellWaterSurfaceY(groundY: number, canvasHeight: number): num
     cliffStart + Math.round(canvasHeight * WATER_SCREEN_OFFSET_FROM_CLIFF)
   );
   return Math.max(defaultSurface, delayedSurfaceTarget);
+}
+
+/**
+ * Aggregated geometry -------------------------------------------------------
+ *
+ * `getWellGeometry` gathers the individual measurements above into a single
+ * object so callers such as the renderer can compute projections and screen
+ * rectangles without re-deriving intermediate values. All horizontal positions
+ * are in screen space, while Y-coordinates remain in world space.
+ */
+
+export interface WellGeometry {
+  bounds: WellBounds;
+  shaft: {
+    span: WellShaftSpan;
+    narrowTop: number;
+    expansionTop: number;
+    expansionBottom: number;
+    bottom: number;
+  };
+  rim: {
+    outerTop: number;
+    outerBottom: number;
+    collarTop: number;
+    collarBottom: number;
+    innerTop: number;
+    innerBottom: number;
+  };
+  cavern: {
+    cliffStart: number;
+  };
+  waterSurfaceY: number;
+}
+
+export function getWellGeometry(
+  canvasWidth: number,
+  canvasHeight: number,
+  groundY: number,
+  openingWidthOverride: number = WELL_OPENING_WIDTH
+): WellGeometry {
+  const bounds = getWellBounds(canvasWidth, openingWidthOverride);
+  const span = getWellShaftSpan(bounds);
+
+  const rimOuterTop = getWellRimTopY(groundY);
+  const rimOuterBottom = rimOuterTop + WELL_RIM_THICKNESS;
+  const collarBottom = groundY;
+  const collarTop = collarBottom - WELL_COLLAR_HEIGHT;
+  const innerTop = groundY - Math.max(2, Math.floor(WELL_RIM_THICKNESS / 2)) - 1;
+  const innerBottom = innerTop + (WELL_COLLAR_HEIGHT + WELL_RIM_THICKNESS);
+
+  const expansionTop = getWellExpansionTopY(groundY, canvasHeight);
+  const expansionBottom = getWellExpansionBottomY(groundY, canvasHeight);
+
+  return {
+    bounds,
+    shaft: {
+      span,
+      narrowTop: collarTop,
+      expansionTop,
+      expansionBottom,
+      bottom: getWellShaftBottomY(groundY, canvasHeight)
+    },
+    rim: {
+      outerTop: rimOuterTop,
+      outerBottom: rimOuterBottom,
+      collarTop,
+      collarBottom,
+      innerTop,
+      innerBottom
+    },
+    cavern: {
+      cliffStart: getCliffStartY(groundY, canvasHeight)
+    },
+    waterSurfaceY: getWellWaterSurfaceY(groundY, canvasHeight)
+  };
 }
