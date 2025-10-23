@@ -66,20 +66,28 @@ async function prerenderBitmapToImageBitmap(
   }
   const adjustedDefault = hexToRGBA(net === 0 ? defaultColor : adjustHex(defaultColor, net));
 
-  const isTransparent = (ch: string) => transparentChars.includes(ch);
-
   for (let y = 0; y < rows; y++) {
     const line = pattern[y];
     for (let x = 0; x < cols; x++) {
-      const ch = line[x] ?? ' ';
+      const rawCh = line[x];
+      const ch = rawCh ?? ' ';
+      const colorKey =
+        rawCh === undefined || ch.trim().length === 0 ? 'null' : ch;
+      const hasMappedColor = Object.prototype.hasOwnProperty.call(adjustedMap, colorKey);
       const idx = (y * cols + x) * 4;
 
-      if (isTransparent(ch)) {
+      const shouldSkip =
+        !hasMappedColor &&
+        (rawCh === undefined
+          ? transparentChars.includes(' ')
+          : transparentChars.includes(ch));
+
+      if (shouldSkip) {
         data[idx+3] = 0; // fully transparent
         continue;
       }
 
-      const rgba = adjustedMap[ch] ?? adjustedDefault;
+      const rgba = hasMappedColor ? adjustedMap[colorKey] : adjustedDefault;
       data[idx+0] = rgba[0];
       data[idx+1] = rgba[1];
       data[idx+2] = rgba[2];
@@ -120,6 +128,7 @@ export async function drawBitmap(
     align = 'bottom',
     widthScale = 1,
     heightScale = 1.5,
+    // Provide a "null" key to color otherwise empty / undefined / whitespace pixels.
     colorMap = { '1': '#2f2f2f', '3': '#4c4c4c' },
     defaultColor = '#2f2f2f',
     brighten = 0,
