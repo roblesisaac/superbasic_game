@@ -49,6 +49,7 @@ import {
   CLIFF_LEDGE_TOLERANCE,
   getCliffCollisionRects
 } from '../gui/drawCliffs.js';
+import { getWellCollisionRects } from '../runtime/environment/well_collision.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';
 const spriteImg = new window.Image();
@@ -777,6 +778,27 @@ export class Sprite {
     }));
     if (cliffRects.length > 0) {
       surfaceCollections.push(cliffRects);
+    }
+
+    const wellRects = getWellCollisionRects({
+      rangeTop: collisionRangeTop,
+      rangeBottom: collisionRangeBottom,
+      canvasWidth,
+      canvasHeight,
+      groundY
+    }).map((rect) => ({
+      active: true,
+      collisionType: 'cliff',
+      floating: false,
+      speed: 0,
+      direction: 0,
+      rect,
+      getRects() {
+        return [this.rect];
+      }
+    }));
+    if (wellRects.length > 0) {
+      surfaceCollections.push(wellRects);
     }
 
     let landingCandidate = null;

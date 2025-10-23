@@ -68,8 +68,8 @@ function drawWellShaftEdges(
   const rightBoundary = Math.round(innerLeft + innerWidth);
 
   ctx.save();
-  ctx.fillStyle = '#fff';
-  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = '#fff'; // well shaft texture
+  ctx.globalAlpha = .3;
 
   for (let i = 0; i <= steps; i += 1) {
     const t = steps === 0 ? 0 : i / steps;
@@ -106,7 +106,6 @@ function drawWellShaftEdges(
     {
       let cells = generatePolyomino(seedBase + i * 211 + 97, 3, 6);
       cells = flattenEdge(cells, 'right');
-      const bounds = getPolyominoBounds(cells);
       const outwardCells = 1 + Math.floor(seededRandom(seedBase + i * 719) * 2);
       const jitter = Math.round((seededRandom(seedBase + i * 829) - 0.5) * cellSize);
       const pxBase = rightBoundary + cellSize * outwardCells + jitter;
@@ -168,7 +167,7 @@ function drawWellShaftArms(
   if (clampedBottom - clampedTop < cellSize) return;
 
   ctx.save();
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#fff'; // well shaft arms extending to screen edge
   ctx.globalAlpha = 0.35;
 
   const drawCells = (
@@ -293,19 +292,6 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
 
   ctx.save();
 
-  // Ensure grass and ground details behind the rim opening are cleared before painting the well
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.fillRect(
-    innerLeft - 1,
-    innerTop - 1,
-    normalizedOpeningWidth + 2,
-    innerHeight + 2
-  );
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = '#fff';
-
   const shaftFillTop = Math.max(rimTop - WELL_RIM_THICKNESS, 0);
   const shaftFillBottom = Math.min(shaftBottomScreen, canvasHeight);
   if (shaftFillBottom > shaftFillTop) {
@@ -313,7 +299,7 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     ctx.fillRect(innerLeft, shaftFillTop, normalizedOpeningWidth, shaftFillBottom - shaftFillTop);
   }
 
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#777';
 
   // Draw the rim cap
   ctx.fillRect(rimLeft, rimTop - WELL_RIM_THICKNESS, rimOuterWidth, WELL_RIM_THICKNESS);
@@ -325,11 +311,11 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ctx.fillRect(collarLeft, screenGroundY - collarHeight, collarWidth, collarHeight);
 
   // Darken the inner lip to give depth
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = '#111';
   ctx.fillRect(innerLeft, innerTop, normalizedOpeningWidth, innerHeight);
 
-  ctx.fillStyle = '#fff';
-  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = '#111';
+  ctx.globalAlpha = 1;
   ctx.fillRect(innerLeft, innerTop, normalizedOpeningWidth, Math.ceil(innerHeight * 0.45));
   ctx.globalAlpha = 1;
 
