@@ -18,14 +18,14 @@ The goal is to group browser-only scaffolding away from Defold-targeted runtime 
 
 ### Web Shell Extraction
 
-10. [ ] Move `src/defold/gui/settings_overlay.ts` → `src/web/ui/settings_overlay.ts` to isolate DOM overlay code.
-11. [ ] Move `src/defold/gui/notifications.ts` → `src/web/ui/notifications.ts` for DOM-based alerts.
-12. [ ] Move `src/defold/gui/starfield.ts` → `src/web/environment/starfield.ts` since it creates a browser canvas background.
-13. [ ] Move `src/defold/runtime/state/ui_state.ts` → `src/web/state/ui_state.ts` because it touches DOM elements.
-14. [ ] Move `src/defold/runtime/controllers/game_over_controller.ts` → `src/web/ui/game_over_screen.ts` to keep DOM composition outside the runtime.
-15. [ ] Move `src/styles/styles.css` → `src/web/styles/game.css` (adjust references) to signal web-only styling.
-16. [ ] Move `src/workers/service-worker.ts` → `src/web/workers/service-worker.ts` with other browser artifacts.
-17. [ ] Move `src/main.ts` → `src/web/main.ts` and update tooling configs accordingly.
+10. [x] Move `src/defold/gui/settings_overlay.ts` → `src/web/ui/settings_overlay.ts` to isolate DOM overlay code.
+11. [x] Move `src/defold/gui/notifications.ts` → `src/web/ui/notifications.ts` for DOM-based alerts.
+12. [x] Move `src/defold/gui/starfield.ts` → `src/web/environment/starfield.ts` since it creates a browser canvas background.
+13. [x] Move `src/defold/runtime/state/ui_state.ts` → `src/web/state/ui_state.ts` because it touches DOM elements.
+14. [x] Move `src/defold/runtime/controllers/game_over_controller.ts` → `src/web/ui/game_over_screen.ts` to keep DOM composition outside the runtime.
+15. [x] Move `src/styles/styles.css` → `src/web/styles/game.css` (adjust references) to signal web-only styling.
+16. [x] Move `src/workers/service-worker.ts` → `src/web/workers/service-worker.ts` with other browser artifacts.
+17. [x] Move `src/main.ts` → `src/web/main.ts` and update tooling configs accordingly.
 
 ### Follow-up Actions For Each Task
 

@@ -8,7 +8,7 @@ import { canvas, canvasWidth } from './state/rendering_state.js';
 import { cameraY } from './state/camera_state.js';
 import type { GameWorldState } from './state/game_state.js';
 import { createRideFromInput, countActiveMovingRides } from '../game_objects/rides.js';
-import { showSettings, toggleSettings, hideSettings } from '../gui/settings_overlay.js';
+import { showSettings, toggleSettings, hideSettings } from '../../web/ui/settings_overlay.js';
 
 type PointSample = { x: number; y: number; time: number };
 

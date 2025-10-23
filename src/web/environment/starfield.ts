@@ -1,5 +1,5 @@
-import { groundY } from '../runtime/state/rendering_state.js';
-import { cameraY } from '../runtime/state/camera_state.js';
+import { groundY } from '../../defold/runtime/state/rendering_state.js';
+import { cameraY } from '../../defold/runtime/state/camera_state.js';
 
 const STARFIELD_CANVAS_ID = 'starfieldCanvas';
 

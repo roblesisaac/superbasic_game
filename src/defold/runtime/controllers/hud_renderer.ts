@@ -1,7 +1,7 @@
 import { PIXELS_PER_FOOT } from '../../config/constants.js';
 import { ctx, canvasWidth, canvasHeight, groundY } from '../state/rendering_state.js';
 import { gameWorld } from '../state/game_state.js';
-import { drawSettingsIcon } from '../../gui/settings_overlay.js';
+import { drawSettingsIcon } from '../../../web/ui/settings_overlay.js';
 import { getCurrentCard } from './card_controller.js';
 
 function lightenColor(hex: string, ratio = 0.5): string {

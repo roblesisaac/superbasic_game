@@ -1,10 +1,10 @@
-import { canvasWidth } from '../runtime/state/rendering_state.js';
+import { canvasWidth } from '../../defold/runtime/state/rendering_state.js';
 import {
   getBudgetData,
   hideSettings,
   showSettings,
   toggleSettings
-} from '../runtime/state/settings_state.js';
+} from '../../defold/runtime/state/settings_state.js';
 
 let overlay: HTMLDivElement | null = null;
 

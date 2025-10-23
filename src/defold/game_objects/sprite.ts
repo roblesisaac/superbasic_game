@@ -25,7 +25,7 @@ import {
 import { clamp } from '../shared/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
-import { showHeartGainNotification } from '../gui/notifications.js';
+import { showHeartGainNotification } from '../../web/ui/notifications.js';
 import { HeartPickup } from './heartPickup.js';
 import {
   handleSpriteBubbleCollisions,
