@@ -1,5 +1,5 @@
 import { gameOverContainer, gameOverPanel } from '../state/ui_state.js';
-import { gameStats } from '../../modules/budget.js';
+import { gameStats } from './budget_controller.js';
 
 export type GameOverRestartHandler = () => void;
 

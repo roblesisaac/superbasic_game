@@ -84,18 +84,6 @@ export const ITEM_SIZE = 12;
 export const GROUP_SPACING = 60;
 export const ITEM_SPACING = 16;
 
-export const DEFAULT_BUDGET_DATA: ReadonlyArray<readonly [string, number]> = [
-  ["Salary", 1225],
-  ["McDonald's", -25],
-  ["Amazon", -150],
-  ["Gas", -60],
-  ["Bonus", 500],
-  ["Rent", -1500],
-  ["Gas", -300],
-  ["Groceries", -350],
-  ["Insurance", -400]
-];
-
 // Camera
 export const CAM_TOP = 0.35;
 export const CAM_BOTTOM = 0.65;

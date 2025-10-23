@@ -2,7 +2,7 @@ import {
   initializeCardStack,
   updateCardStack,
   type CardInstance
-} from '../../modules/cards.js';
+} from './card_stack.js';
 import type { Gate } from '../../game_objects/gates.js';
 
 let currentCard: CardInstance | null = null;

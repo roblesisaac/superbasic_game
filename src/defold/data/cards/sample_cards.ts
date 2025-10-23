@@ -1,4 +1,4 @@
-import type { CardBlueprint } from './cards.js';
+import type { CardBlueprint } from '../../runtime/controllers/card_stack.js';
 
 export const SAMPLE_CARDS: CardBlueprint[] = [
   {

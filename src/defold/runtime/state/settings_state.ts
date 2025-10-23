@@ -1,4 +1,4 @@
-import { budgetData } from '../../modules/budget.js';
+import { budgetData } from '../controllers/budget_controller.js';
 
 export let showSettings = false;
 

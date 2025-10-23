@@ -9,9 +9,9 @@ The goal is to group browser-only scaffolding away from Defold-targeted runtime 
 1. [x] Move `src/config/constants.ts` → `src/defold/config/constants.ts` to keep gameplay tuning under the Defold namespace.
 2. [x] Move `src/utils/utils.ts` → `src/defold/shared/utils.ts` so shared helpers live beside the runtime.
 3. [x] Move `src/defold/modules/settings_state.ts` → `src/defold/runtime/state/settings_state.ts` with the other state singletons.
-4. [ ] Move `src/defold/modules/cards.ts` → `src/defold/runtime/controllers/card_stack.ts` (rename) to reflect that it runs live card logic.
-5. [ ] Move `src/defold/modules/sampleCardsDb.ts` → `src/defold/data/cards/sample_cards.ts` to isolate pure data.
-6. [ ] Move `src/defold/modules/budget.ts` → `src/defold/runtime/controllers/budget_controller.ts` and split defaults into `src/defold/data/budget/presets.ts`.
+4. [x] Move `src/defold/modules/cards.ts` → `src/defold/runtime/controllers/card_stack.ts` (rename) to reflect that it runs live card logic.
+5. [x] Move `src/defold/modules/sampleCardsDb.ts` → `src/defold/data/cards/sample_cards.ts` to isolate pure data.
+6. [x] Move `src/defold/modules/budget.ts` → `src/defold/runtime/controllers/budget_controller.ts` and split defaults into `src/defold/data/budget/presets.ts`.
 7. [ ] Move `src/defold/modules/polyomino.ts` → `src/defold/runtime/environment/geometry/polyomino.ts` to sit with environment drawables.
 8. [ ] Move `src/defold/modules/bitmaps/*` → `src/defold/assets/bitmaps/*` so bitmap patterns are treated as assets.
 9. [ ] Move `src/defold/modules/trees/*` → `src/defold/assets/trees/*` for the same asset grouping.

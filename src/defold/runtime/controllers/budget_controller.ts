@@ -3,15 +3,15 @@ import {
   MAX_ITEMS_PER_SECTION,
   GROUP_SPACING,
   ITEM_SPACING,
-  PIXELS_PER_FOOT,
-  DEFAULT_BUDGET_DATA
-} from '../config/constants.js';
+  PIXELS_PER_FOOT
+} from '../../config/constants.js';
+import { DEFAULT_BUDGET_DATA } from '../../data/budget/presets.js';
 import {
   Collectible,
   type CollectibleType,
   type GameStats
-} from '../game_objects/collectibles.js';
-import { groundY, canvasWidth } from '../runtime/state/rendering_state.js';
+} from '../../game_objects/collectibles.js';
+import { groundY, canvasWidth } from '../state/rendering_state.js';
 
 export type BudgetEntry = [string, number];
 

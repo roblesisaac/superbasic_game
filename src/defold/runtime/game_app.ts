@@ -24,7 +24,7 @@ import {
   drawEnemies,
   pruneInactiveEnemies
 } from '../game_objects/enemies.js';
-import { collectibles, gameStats, resetBudgetContainers } from '../modules/budget.js';
+import { collectibles, gameStats, resetBudgetContainers } from './controllers/budget_controller.js';
 import {
   ctx,
   canvasWidth,
