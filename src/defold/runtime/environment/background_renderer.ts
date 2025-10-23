@@ -7,6 +7,7 @@ import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bu
 import { getWellBounds } from './well_layout.js';
 import { CABIN_BITMAP } from '../../modules/bitmaps/cabin.js';
 import { drawRollingHills } from '../../gui/drawRollingHills.js';
+import { drawCampfire } from '../../gui/drawCampfire.js';
 
 interface TreePlacement {
   x: number;
@@ -58,6 +59,7 @@ const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
 }));
 
 const FEATURE_TREE_X = 110;
+const CAMPFIRE_X = 190;
 
 const DEFAULT_TREE_KEY: TreeKey = 'tree1';
 
@@ -164,6 +166,12 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   });
 
   drawCabin(groundLineY);
+
+  drawCampfire(ctx, {
+    x: CAMPFIRE_X,
+    groundLineY,
+    timestamp,
+  });
 
   drawTreePlacement({
     x: FEATURE_TREE_X,
