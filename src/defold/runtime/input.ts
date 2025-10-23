@@ -3,7 +3,7 @@ import {
   MIN_SWIPE_TIME,
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
-} from '../../config/constants.js';
+} from '../config/constants.js';
 import { canvas, canvasWidth } from './state/rendering_state.js';
 import { cameraY } from './state/camera_state.js';
 import type { GameWorldState } from './state/game_state.js';

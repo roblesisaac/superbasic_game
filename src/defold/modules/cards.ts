@@ -1,4 +1,4 @@
-import { GATE_THICKNESS } from '../../config/constants.js';
+import { GATE_THICKNESS } from '../config/constants.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import {
   createGateForCardTop,

@@ -1,4 +1,4 @@
-import { SPRITE_SIZE } from '../../../config/constants.js';
+import { SPRITE_SIZE } from '../../config/constants.js';
 
 /**
  * Layout constants -----------------------------------------------------------

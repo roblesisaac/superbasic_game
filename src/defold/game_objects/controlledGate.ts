@@ -2,7 +2,7 @@ import {
   GATE_THICKNESS,
   PIXELS_PER_FOOT,
   GATE_GAP_WIDTH,
-} from '../../config/constants.js';
+} from '../config/constants.js';
 import { drawGateVisuals } from './gateRenderer.js';
 import { HeartPickup } from './heartPickup.js';
 import {

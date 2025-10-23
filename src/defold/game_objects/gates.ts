@@ -4,7 +4,7 @@ import {
   GATE_EVERY_FEET,
   GATE_GAP_WIDTH,
   USE_RANDOM_GATES,
-} from '../../config/constants.js';
+} from '../config/constants.js';
 import {
   ControlledGateGenerator,
   type CollisionRect,

@@ -1,4 +1,4 @@
-import { now } from '../../utils/utils.js';
+import { now } from '../shared/utils.js';
 import { drawBackgroundGrid } from './environment/background_renderer.js';
 import { drawHUD } from './controllers/hud_renderer.js';
 import { updateCameraForSprite, resetCameraController } from './controllers/camera_controller.js';

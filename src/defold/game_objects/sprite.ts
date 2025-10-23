@@ -21,8 +21,8 @@ import {
   BUBBLE_SHRINK_RATE_PER_SECOND,
   BUBBLE_SHRINK_OXYGEN_MULTIPLIER,
   BUBBLE_EXIT_PADDING
-} from '../../config/constants.js';
-import { clamp } from '../../utils/utils.js';
+} from '../config/constants.js';
+import { clamp } from '../shared/utils.js';
 import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import { showHeartGainNotification } from '../gui/notifications.js';

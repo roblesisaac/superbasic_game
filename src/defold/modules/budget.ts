@@ -5,7 +5,7 @@ import {
   ITEM_SPACING,
   PIXELS_PER_FOOT,
   DEFAULT_BUDGET_DATA
-} from '../../config/constants.js';
+} from '../config/constants.js';
 import {
   Collectible,
   type CollectibleType,

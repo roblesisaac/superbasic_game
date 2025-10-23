@@ -1,5 +1,5 @@
-import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../../config/constants.js';
-import { clamp, now } from '../../utils/utils.js';
+import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../config/constants.js';
+import { clamp, now } from '../shared/utils.js';
 import { gameOverContainer } from '../runtime/state/ui_state.js';
 import {
   drawPixelatedHeart,

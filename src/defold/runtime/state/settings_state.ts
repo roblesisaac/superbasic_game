@@ -1,4 +1,4 @@
-import { budgetData } from './budget.js';
+import { budgetData } from '../../modules/budget.js';
 
 export let showSettings = false;
 

@@ -1,5 +1,5 @@
-import { clamp } from '../../../utils/utils.js';
-import { SMALL_BUBBLE_OXYGEN_MULTIPLIER } from '../../../config/constants.js';
+import { clamp } from '../../shared/utils.js';
+import { SMALL_BUBBLE_OXYGEN_MULTIPLIER } from '../../config/constants.js';
 import {
   getWellExpansionSpan,
   getWellExpansionTopY,

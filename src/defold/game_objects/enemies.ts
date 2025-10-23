@@ -1,4 +1,4 @@
-import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../../config/constants.js';
+import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../config/constants.js';
 import { canvasHeight } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import type { GameWorldState } from '../runtime/state/game_state.js';

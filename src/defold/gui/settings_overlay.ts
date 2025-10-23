@@ -4,7 +4,7 @@ import {
   hideSettings,
   showSettings,
   toggleSettings
-} from '../modules/settings_state.js';
+} from '../runtime/state/settings_state.js';
 
 let overlay: HTMLDivElement | null = null;
 

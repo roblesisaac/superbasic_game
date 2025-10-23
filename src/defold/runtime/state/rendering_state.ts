@@ -1,4 +1,4 @@
-import { CANVAS_MAX_WIDTH } from '../../../config/constants.js';
+import { CANVAS_MAX_WIDTH } from '../../config/constants.js';
 import { resetBubbleField } from '../environment/bubble_field.js';
 import { resetWellDepth } from '../environment/well_layout.js';
 import { resetCliffs } from '../environment/drawables/drawCliffs.js';

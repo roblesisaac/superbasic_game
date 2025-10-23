@@ -1,4 +1,4 @@
-import { CAM_TOP, CAM_BOTTOM, SPRITE_SIZE } from '../../../config/constants.js';
+import { CAM_TOP, CAM_BOTTOM, SPRITE_SIZE } from '../../config/constants.js';
 import { canvasHeight, groundY } from '../state/rendering_state.js';
 import { cameraY, setCameraY, clampCameraToGround } from '../state/camera_state.js';
 import type { Sprite } from '../../game_objects/sprite.js';

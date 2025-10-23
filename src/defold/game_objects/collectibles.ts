@@ -1,4 +1,4 @@
-import { ITEM_SIZE, SPRITE_SIZE } from '../../config/constants.js';
+import { ITEM_SIZE, SPRITE_SIZE } from '../config/constants.js';
 import { canvasHeight } from '../runtime/state/rendering_state.js';
 import { cameraY } from '../runtime/state/camera_state.js';
 import type { GameWorldState } from '../runtime/state/game_state.js';

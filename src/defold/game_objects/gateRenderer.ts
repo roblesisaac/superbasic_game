@@ -1,11 +1,11 @@
-import { GATE_THICKNESS } from '../../config/constants.js';
+import { GATE_THICKNESS } from '../config/constants.js';
 import {
   drawPixelatedHeart,
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
   computeHeartBobOffset,
 } from '../gui/drawPixelatedHeart.js';
-import { now } from '../../utils/utils.js';
+import { now } from '../shared/utils.js';
 
 export interface GateVisualRect {
   x: number;

@@ -19,8 +19,8 @@ import {
   RIDE_LAUNCH_SETTLE_DURATION,
   RIDE_LAUNCH_LIFT_INTENSITY,
   RIDE_LAUNCH_VELOCITY_FACTOR,
-} from '../../config/constants.js';
-import { clamp, rectsIntersect } from '../../utils/utils.js';
+} from '../config/constants.js';
+import { clamp, rectsIntersect } from '../shared/utils.js';
 
 type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
 type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';

@@ -8,7 +8,7 @@ import {
   DisintegrateEffect,
   buildPixelsFromPattern
 } from './disintegrate_effect.js';
-import { now } from '../../../utils/utils.js';
+import { now } from '../../shared/utils.js';
 
 export interface HeartEffectSystemOptions {
   color?: string;
