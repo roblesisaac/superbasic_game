@@ -6,7 +6,7 @@ import {
   getPolyominoBounds as getBounds,
   polyominoToOffsets,
   seededRandom
-} from '../modules/polyomino.js';
+} from '../../../modules/polyomino.js';
 
 type CliffSide = 'left' | 'right';
 type Edge = PolyominoEdge;

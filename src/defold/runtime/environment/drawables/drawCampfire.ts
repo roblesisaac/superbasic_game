@@ -1,4 +1,4 @@
-import { FIRE_BITMAP } from '../modules/bitmaps/fire-bitmap.js';
+import { FIRE_BITMAP } from '../../../modules/bitmaps/fire-bitmap.js';
 
 const COLOR_MAP: Record<string, string> = {
   '0': '#ffffff',

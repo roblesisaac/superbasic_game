@@ -1,7 +1,7 @@
 ## Cliff Collision Status – Notes (2025-10-20)
 
 ### Current Approach
-- Cliffs are generated procedurally in `src/defold/gui/drawCliffs.ts`.
+- Cliffs are generated procedurally in `src/defold/runtime/environment/drawables/drawCliffs.ts`.
 - Rendering still uses the polyomino-based segments (horizontal and diagonal/arc pieces).
 - For collision we now export helper functions:
   - `prepareCliffField(canvasWidth, cliffStartWorld, expansionBottomWorld)` ensures segments exist down to the depth we care about.

@@ -7,7 +7,7 @@ import {
   WELL_COLLAR_HEIGHT,
   WELL_RIM_THICKNESS
 } from './well_layout.js';
-import { CLIFF_CELL_SIZE } from '../../gui/drawCliffs.js';
+import { CLIFF_CELL_SIZE } from './drawables/drawCliffs.js';
 
 export interface WellCollisionRect {
   x: number;

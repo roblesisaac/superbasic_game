@@ -1,7 +1,7 @@
 import { CANVAS_MAX_WIDTH } from '../../../config/constants.js';
 import { resetBubbleField } from '../environment/bubble_field.js';
 import { resetWellDepth } from '../environment/well_layout.js';
-import { resetCliffs } from '../../gui/drawCliffs.js';
+import { resetCliffs } from '../environment/drawables/drawCliffs.js';
 
 const canvasElement = document.getElementById('gameCanvas');
 if (!(canvasElement instanceof HTMLCanvasElement)) {

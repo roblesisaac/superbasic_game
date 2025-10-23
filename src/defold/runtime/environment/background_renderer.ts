@@ -1,13 +1,13 @@
-import { drawGrass } from '../../gui/drawGrass.js';
-import { drawBitmap } from '../../gui/drawBitmap.js';
-import { getTreePattern, type TreeKey, type TreeVisualStyle } from '../../gui/drawTree.js';
-import { drawWell } from '../../gui/drawWell.js';
+import { drawGrass } from './drawables/drawGrass.js';
+import { drawBitmap } from './drawables/drawBitmap.js';
+import { getTreePattern, type TreeKey, type TreeVisualStyle } from './drawables/drawTree.js';
+import { drawWell } from './drawables/drawWell.js';
 import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
 import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
 import { getWellBounds } from './well_layout.js';
 import { CABIN_BITMAP } from '../../modules/bitmaps/cabin.js';
-import { drawRollingHills } from '../../gui/drawRollingHills.js';
-import { drawCampfire } from '../../gui/drawCampfire.js';
+import { drawRollingHills } from './drawables/drawRollingHills.js';
+import { drawCampfire } from './drawables/drawCampfire.js';
 
 interface TreePlacement {
   x: number;

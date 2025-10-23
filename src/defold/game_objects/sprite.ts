@@ -48,7 +48,7 @@ import {
   getCliffInteriorBoundsAtY,
   CLIFF_LEDGE_TOLERANCE,
   getCliffCollisionRects
-} from '../gui/drawCliffs.js';
+} from '../runtime/environment/drawables/drawCliffs.js';
 import { getWellCollisionRects } from '../runtime/environment/well_collision.js';
 
 const SPRITE_SRC = '/icons/sprite.svg';

@@ -1,6 +1,6 @@
 export type TreeKey = 'tree1' | 'tree2' | (string & {});
-import { TREE1 } from '../modules/trees/tree1.js';
-import { TREE2 } from '../modules/trees/tree2.js';
+import { TREE1 } from '../../../modules/trees/tree1.js';
+import { TREE2 } from '../../../modules/trees/tree2.js';
 
 const TREES: Record<string, string[]> = {
   tree1: TREE1,
