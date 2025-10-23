@@ -59,7 +59,7 @@ const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
 }));
 
 const FEATURE_TREE_X = 110;
-const CAMPFIRE_X = 190;
+const CAMPFIRE_X = 150;
 
 const DEFAULT_TREE_KEY: TreeKey = 'tree1';
 
