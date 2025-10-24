@@ -49,6 +49,24 @@ export interface SceneDimensions {
   pixelSize: number;
 }
 
+export interface PixelRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface MoonRenderData {
+  centerX: number;
+  centerY: number;
+  radius: number;
+  pixelSize: number;
+  body: PixelRect[];
+  shadow: PixelRect[];
+  craters: PixelRect[];
+  arc: PixelRect[];
+}
+
 export const DEFAULT_STARFIELD_CONFIG: StarfieldConfig = {
   baseWidth: 1024,
   baseHeight: 768,
@@ -214,4 +232,124 @@ export function computeGroundLineY(
   const line = baseGround - camera;
   if (!Number.isFinite(line)) return fallback;
   return line;
+}
+
+function sampleFilledDisc(
+  cx: number,
+  cy: number,
+  radius: number,
+  pixelSize: number
+): PixelRect[] {
+  const cells: PixelRect[] = [];
+
+  for (let px = cx - radius; px <= cx + radius; px += pixelSize) {
+    for (let py = cy - radius; py <= cy + radius; py += pixelSize) {
+      const dx = px - cx;
+      const dy = py - cy;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= radius) {
+        cells.push({
+          x: px,
+          y: py,
+          width: pixelSize,
+          height: pixelSize,
+        });
+      }
+    }
+  }
+
+  return cells;
+}
+
+function sampleCrater(
+  cx: number,
+  cy: number,
+  radius: number,
+  pixelSize: number,
+  dithered: boolean
+): PixelRect[] {
+  const cells: PixelRect[] = [];
+
+  for (let px = cx - radius; px <= cx + radius; px += pixelSize) {
+    for (let py = cy - radius; py <= cy + radius; py += pixelSize) {
+      const dx = px - cx;
+      const dy = py - cy;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= radius) {
+        const isEven =
+          (Math.floor(px / pixelSize) + Math.floor(py / pixelSize)) % 2 === 0;
+        if (!dithered || isEven) {
+          cells.push({
+            x: px,
+            y: py,
+            width: pixelSize,
+            height: pixelSize,
+          });
+        }
+      }
+    }
+  }
+
+  return cells;
+}
+
+function sampleArc(
+  cx: number,
+  cy: number,
+  radius: number,
+  pixelSize: number
+): PixelRect[] {
+  const cells: PixelRect[] = [];
+
+  for (let angle = 0; angle < Math.PI; angle += 0.2) {
+    const px = cx + Math.cos(angle) * radius;
+    const py = cy + Math.sin(angle) * radius;
+    cells.push({
+      x: px,
+      y: py,
+      width: pixelSize,
+      height: pixelSize,
+    });
+  }
+
+  return cells;
+}
+
+export function generateMoonRenderData(scene: SceneDimensions): MoonRenderData {
+  const x = Math.floor(scene.moonX);
+  const y = Math.floor(scene.moonY);
+  const r = scene.moonRadius;
+  const px = scene.pixelSize;
+
+  const body = sampleFilledDisc(x, y, r, px);
+
+  const shadowOffsetX = r * 0.42;
+  const shadowOffsetY = -r * 0.08;
+  const shadow = sampleFilledDisc(
+    x + shadowOffsetX,
+    y + shadowOffsetY,
+    r,
+    px
+  );
+
+  const craterRadius = r * 0.3;
+  const craters = [
+    ...sampleCrater(x - r * 0.3, y - r * 0.1, craterRadius, px, true),
+    ...sampleCrater(x + r * 0.15, y + r * 0.2, craterRadius * 0.7, px, false),
+  ];
+
+  const arc = sampleArc(x + r * 0.25, y - r * 0.35, craterRadius * 0.8, px);
+
+  return {
+    centerX: x,
+    centerY: y,
+    radius: r,
+    pixelSize: px,
+    body,
+    shadow,
+    craters,
+    arc,
+  };
 }

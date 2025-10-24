@@ -5,6 +5,7 @@ import {
   updateStarfield,
   computeSceneDimensions,
   computeGroundLineY,
+  generateMoonRenderData,
   DEFAULT_STARFIELD_CONFIG,
   DEFAULT_GROUND_OFFSET,
   type StarfieldState,
@@ -91,86 +92,29 @@ function update(dt: number): void {
   updateStarfield(starfieldState, dimensions, dt);
 }
 
-function drawPixelatedCrater(
-  cx: number,
-  cy: number,
-  radius: number,
-  pixelSize: number,
-  dithered: boolean
-): void {
-  if (!ctx) return;
-
-  ctx.fillStyle = '#000';
-
-  for (let px = cx - radius; px <= cx + radius; px += pixelSize) {
-    for (let py = cy - radius; py <= cy + radius; py += pixelSize) {
-      const dx = px - cx;
-      const dy = py - cy;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance <= radius) {
-        if (!dithered || (Math.floor(px / pixelSize) + Math.floor(py / pixelSize)) % 2 === 0) {
-          ctx.fillRect(px, py, pixelSize, pixelSize);
-        }
-      }
-    }
-  }
-}
-
-function drawPixelatedArc(cx: number, cy: number, radius: number, pixelSize: number): void {
-  if (!ctx) return;
-
-  ctx.fillStyle = '#000';
-
-  for (let angle = 0; angle < Math.PI; angle += 0.2) {
-    const px = Math.floor(cx + Math.cos(angle) * radius);
-    const py = Math.floor(cy + Math.sin(angle) * radius);
-    ctx.fillRect(px, py, pixelSize, pixelSize);
-  }
-}
-
 function drawMoon(): void {
   if (!ctx) return;
 
   const scene = computeSceneDimensions(getCanvasDimensions());
-  const x = Math.floor(scene.moonX);
-  const y = Math.floor(scene.moonY);
-  const r = scene.moonRadius;
+  const moon = generateMoonRenderData(scene);
 
   ctx.fillStyle = '#fff';
-
-  for (let px = x - r; px <= x + r; px += scene.pixelSize) {
-    for (let py = y - r; py <= y + r; py += scene.pixelSize) {
-      const dx = px - x;
-      const dy = py - y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance <= r) {
-        ctx.fillRect(px, py, scene.pixelSize, scene.pixelSize);
-      }
-    }
+  for (const cell of moon.body) {
+    ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
   }
 
   ctx.fillStyle = '#000';
-  const shadowOffsetX = r * 0.42;
-  const shadowOffsetY = -r * 0.08;
-
-  for (let px = x - r; px <= x + r; px += scene.pixelSize) {
-    for (let py = y - r; py <= y + r; py += scene.pixelSize) {
-      const dx = px - (x + shadowOffsetX);
-      const dy = py - (y + shadowOffsetY);
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance <= r) {
-        ctx.fillRect(px, py, scene.pixelSize, scene.pixelSize);
-      }
-    }
+  for (const cell of moon.shadow) {
+    ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
   }
 
-  const craterRadius = r * 0.3;
-  drawPixelatedCrater(x - r * 0.3, y - r * 0.1, craterRadius, scene.pixelSize, true);
-  drawPixelatedCrater(x + r * 0.15, y + r * 0.2, craterRadius * 0.7, scene.pixelSize, false);
-  drawPixelatedArc(x + r * 0.25, y - r * 0.35, craterRadius * 0.8, scene.pixelSize);
+  for (const cell of moon.craters) {
+    ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
+  }
+
+  for (const cell of moon.arc) {
+    ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
+  }
 }
 
 function drawStars(): void {
