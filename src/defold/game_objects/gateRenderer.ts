@@ -6,6 +6,10 @@ import {
   computeHeartBobOffset,
 } from "../gui/drawPixelatedHeart.js";
 import { now } from "../shared/utils.js";
+import {
+  computePixelStripGlow,
+  drawPixelStripDots,
+} from "./rendering/pixelStrip.js";
 
 export interface GateVisualRect {
   x: number;
@@ -52,50 +56,6 @@ export function drawGateVisuals({
   const damagedColor = "#ffd400";
   const gateColor = asciiDamaged ? damagedColor : defaultColor;
 
-  const pixelSizeForThickness = (thickness: number) =>
-    Math.max(1, Math.min(thickness, 3));
-
-  const drawPixelatedStrip = (
-    startX: number,
-    startY: number,
-    length: number,
-    thickness: number,
-    orientation: "horizontal" | "vertical",
-  ) => {
-    if (length <= 0 || thickness <= 0) return;
-
-    const pixelSize = pixelSizeForThickness(thickness);
-    const pixelSpacing = pixelSize + 1;
-
-    if (orientation === "horizontal") {
-      const endX = startX + length;
-      const rowY = Math.round(startY + thickness / 2 - pixelSize / 2);
-      for (let px = startX; px < endX; px += pixelSpacing) {
-        const remaining = endX - px;
-        const drawWidth = Math.min(pixelSize, remaining);
-        ctx.fillRect(px, rowY, drawWidth, pixelSize);
-      }
-      return;
-    }
-
-    const endY = startY + length;
-    const columnX = Math.round(startX + thickness / 2 - pixelSize / 2);
-    for (let py = startY; py < endY; py += pixelSpacing) {
-      const remaining = endY - py;
-      const drawHeight = Math.min(pixelSize, remaining);
-      ctx.fillRect(columnX, py, pixelSize, drawHeight);
-    }
-  };
-
-  const toRoundedRange = (start: number, length: number) => {
-    const roundedStart = Math.round(start);
-    const roundedEnd = Math.round(start + length);
-    return {
-      start: roundedStart,
-      length: Math.max(0, roundedEnd - roundedStart),
-    };
-  };
-
   const drawSegments = () => {
     for (const rect of rects) {
       if (rect.w <= 0 || rect.h <= 0) continue;
@@ -104,23 +64,32 @@ export function drawGateVisuals({
       if (isHorizontal) {
         const height = Math.min(visualThickness, rect.h);
         const offsetY = (rect.h - height) / 2;
-        const startY = Math.round(rect.y - cameraY + offsetY);
-        const { start: startX, length } = toRoundedRange(rect.x, rect.w);
-        drawPixelatedStrip(startX, startY, length, height, "horizontal");
+        drawPixelStripDots({
+          ctx,
+          startX: rect.x,
+          startY: rect.y - cameraY + offsetY,
+          length: rect.w,
+          thickness: height,
+          orientation: "horizontal",
+        });
       } else {
         const width = Math.min(visualThickness, rect.w);
         const offsetX = (rect.w - width) / 2;
-        const startX = Math.round(rect.x + offsetX);
-        const { start: startY, length } = toRoundedRange(
-          rect.y - cameraY,
-          rect.h,
-        );
-        drawPixelatedStrip(startX, startY, length, width, "vertical");
+        drawPixelStripDots({
+          ctx,
+          startX: rect.x + offsetX,
+          startY: rect.y - cameraY,
+          length: rect.h,
+          thickness: width,
+          orientation: "vertical",
+        });
       }
     }
   };
 
-  const glowBlur = Math.max(visualThickness * 3, asciiDamaged ? 18 : 12);
+  const glowBlur = computePixelStripGlow(visualThickness, {
+    damaged: asciiDamaged,
+  });
   const glowColor = asciiDamaged ? "rgba(255,212,0,1)" : "rgba(255,255,255,1)";
 
   ctx.save();

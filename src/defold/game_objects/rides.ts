@@ -21,6 +21,10 @@ import {
   RIDE_LAUNCH_VELOCITY_FACTOR,
 } from "../config/constants.js";
 import { clamp, rectsIntersect } from "../shared/utils.js";
+import {
+  computePixelStripGlow,
+  drawPixelStripDots,
+} from "./rendering/pixelStrip.js";
 
 type LandingPhase = "idle" | "impact" | "absorption" | "recovery" | "settle";
 type LaunchPhase = "idle" | "lift" | "release" | "settle";
@@ -130,19 +134,17 @@ export class Ride {
 
     const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
     const offsetY = this.y - cameraY - visualThickness / 2;
-    const pixelSize = Math.max(1, Math.min(visualThickness, 3));
-    const pixelSpacing = pixelSize + 1;
-    const drawRide = () => {
-      const endX = this.x + this.width;
-      const rowY = Math.round(offsetY + visualThickness / 2 - pixelSize / 2);
-      for (let px = this.x; px < endX; px += pixelSpacing) {
-        const remaining = endX - px;
-        const drawWidth = Math.min(pixelSize, remaining);
-        ctx.fillRect(px, rowY, drawWidth, pixelSize);
-      }
-    };
+    const drawRide = () =>
+      drawPixelStripDots({
+        ctx,
+        startX: this.x,
+        startY: offsetY,
+        length: this.width,
+        thickness: visualThickness,
+        orientation: "horizontal",
+      });
 
-    const glowBlur = Math.max(visualThickness * 3, 12);
+    const glowBlur = computePixelStripGlow(visualThickness);
 
     ctx.save();
     ctx.fillStyle = color;
