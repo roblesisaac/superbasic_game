@@ -102,15 +102,19 @@ export const CAM_BOTTOM = 0.65;
 
 export const MOVEMENT_MIN = 300;
 export const MOVEMENT_MAX = 1000;
+export const MOVEMENT_DRAG_MAX_DISTANCE = 120;
+export const MOVEMENT_FORCE_ENERGY_BONUS = 0.6;
+export const MOVEMENT_FORCE_DRAG_BONUS = 0.35;
+export const MOVEMENT_MAX_VELOCITY_BONUS = 0.7;
 
 // Water physics
 export const WATER_GRAVITY_FACTOR = 0.15;
 export const WATER_BUOYANCY_ACCEL = 360;
-export const WATER_LINEAR_DAMPING = 3.0;
-export const WATER_MAX_SPEED = 420;
-export const WATER_STROKE_FORCE_SCALE = 0.55;
+export const WATER_LINEAR_DAMPING = 1.6;
+export const WATER_MAX_SPEED = 720;
+export const WATER_STROKE_FORCE_SCALE = 0.9;
 export const WATER_ENTRY_DAMPING = 0.45;
-export const WATER_MAX_SINK_SPEED = 260;
+export const WATER_MAX_SINK_SPEED = 340;
 export const WATER_PIXELS_PER_METER = 10;
 export const WATER_SURFACE_TOLERANCE = 2;
 
