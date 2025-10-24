@@ -1,6 +1,6 @@
 const DEFAULT_DURATION = 1800;
-const ENTER_CLASS = 'game-alert--visible';
-const EXIT_CLASS = 'game-alert--leaving';
+const ENTER_CLASS = "game-alert--visible";
+const EXIT_CLASS = "game-alert--leaving";
 
 export type NotificationOptions = {
   duration?: number;
@@ -15,14 +15,14 @@ class NotificationManager {
   }
 
   notify(message: string, options: NotificationOptions = {}): void {
-    const { duration = DEFAULT_DURATION, variant = 'default' } = options;
+    const { duration = DEFAULT_DURATION, variant = "default" } = options;
     if (!this.container || !message) return;
 
-    const alert = document.createElement('div');
+    const alert = document.createElement("div");
     alert.className = `game-alert game-alert--${variant}`;
     alert.textContent = message;
-    alert.setAttribute('role', 'status');
-    alert.setAttribute('aria-live', 'polite');
+    alert.setAttribute("role", "status");
+    alert.setAttribute("aria-live", "polite");
 
     this.container.appendChild(alert);
 
@@ -39,7 +39,7 @@ class NotificationManager {
     };
 
     const remove = () => {
-      alert.removeEventListener('transitionend', onTransitionEnd);
+      alert.removeEventListener("transitionend", onTransitionEnd);
       if (alert.parentElement === this.container) {
         this.container.removeChild(alert);
       }
@@ -52,27 +52,33 @@ class NotificationManager {
     };
 
     const onTransitionEnd = (event: TransitionEvent) => {
-      if (event.propertyName === 'opacity' && alert.classList.contains(EXIT_CLASS)) {
+      if (
+        event.propertyName === "opacity" &&
+        alert.classList.contains(EXIT_CLASS)
+      ) {
         remove();
       }
     };
 
-    const timeoutId = window.setTimeout(() => {
-      hide();
-      window.clearTimeout(timeoutId);
-    }, Math.max(0, duration));
+    const timeoutId = window.setTimeout(
+      () => {
+        hide();
+        window.clearTimeout(timeoutId);
+      },
+      Math.max(0, duration),
+    );
 
-    alert.addEventListener('transitionend', onTransitionEnd);
+    alert.addEventListener("transitionend", onTransitionEnd);
   }
 
   private _resolveContainer(): HTMLDivElement {
-    const existing = document.getElementById('gameAlerts');
+    const existing = document.getElementById("gameAlerts");
     if (existing instanceof HTMLDivElement) return existing;
 
-    const fallback = document.createElement('div');
-    fallback.id = 'gameAlerts';
-    fallback.className = 'game-alerts';
-    fallback.setAttribute('aria-live', 'polite');
+    const fallback = document.createElement("div");
+    fallback.id = "gameAlerts";
+    fallback.className = "game-alerts";
+    fallback.setAttribute("aria-live", "polite");
     document.body.appendChild(fallback);
     return fallback;
   }
@@ -80,10 +86,13 @@ class NotificationManager {
 
 const notificationManager = new NotificationManager();
 
-export function showNotification(message: string, options?: NotificationOptions): void {
+export function showNotification(
+  message: string,
+  options?: NotificationOptions,
+): void {
   notificationManager.notify(message, options);
 }
 
 export function showHeartGainNotification(): void {
-  showNotification('+1 HEART', { variant: 'heart' });
+  showNotification("+1 HEART", { variant: "heart" });
 }

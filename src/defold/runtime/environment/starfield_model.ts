@@ -1,4 +1,4 @@
-export type StarType = 'small' | 'bright';
+export type StarType = "small" | "bright";
 
 export interface Star {
   x: number;
@@ -87,7 +87,7 @@ function defaultRng(): number {
 
 export function computeStarCounts(
   dimensions: Dimensions,
-  config: StarfieldConfig = DEFAULT_STARFIELD_CONFIG
+  config: StarfieldConfig = DEFAULT_STARFIELD_CONFIG,
 ): { small: number; bright: number } {
   const area = Math.max(dimensions.width * dimensions.height, 1);
   const baseArea = config.baseWidth * config.baseHeight;
@@ -101,7 +101,7 @@ export function computeStarCounts(
 
 export function computeSceneDimensions(
   dimensions: Dimensions,
-  config: StarfieldConfig = DEFAULT_STARFIELD_CONFIG
+  config: StarfieldConfig = DEFAULT_STARFIELD_CONFIG,
 ): SceneDimensions {
   const moonRadius =
     (Math.min(dimensions.width, dimensions.height) / config.baseHeight) *
@@ -122,7 +122,7 @@ export function computeSceneDimensions(
 function createStars(
   dimensions: Dimensions,
   config: StarfieldConfig,
-  rng: () => number
+  rng: () => number,
 ): Star[] {
   const stars: Star[] = [];
   const { small, bright } = computeStarCounts(dimensions, config);
@@ -131,7 +131,7 @@ function createStars(
     stars.push({
       x: rng() * dimensions.width,
       y: rng() * dimensions.height,
-      type: 'small',
+      type: "small",
       baseAlpha: rng() * 0.5,
       twinkleSpeed: 1 + rng() * 2,
       offset: rng() * Math.PI * 2,
@@ -142,7 +142,7 @@ function createStars(
     stars.push({
       x: rng() * dimensions.width,
       y: rng() * dimensions.height,
-      type: 'bright',
+      type: "bright",
       baseAlpha: 0.7 + rng() * 0.3,
       twinkleSpeed: 0.5 + rng(),
       offset: rng() * Math.PI * 2,
@@ -155,7 +155,7 @@ function createStars(
 function createClouds(
   dimensions: Dimensions,
   config: StarfieldConfig,
-  rng: () => number
+  rng: () => number,
 ): Cloud[] {
   const clouds: Cloud[] = [];
 
@@ -183,7 +183,7 @@ function createClouds(
 export function createStarfieldState(
   dimensions: Dimensions,
   options: Partial<StarfieldConfig> = {},
-  rng: () => number = defaultRng
+  rng: () => number = defaultRng,
 ): StarfieldState {
   const config: StarfieldConfig = {
     ...DEFAULT_STARFIELD_CONFIG,
@@ -201,7 +201,7 @@ export function createStarfieldState(
 export function updateStarfield(
   state: StarfieldState,
   dimensions: Dimensions,
-  dt: number
+  dt: number,
 ): void {
   for (const star of state.stars) {
     star.offset += dt * star.twinkleSpeed;
@@ -225,7 +225,7 @@ export function computeGroundLineY(
   canvasHeight: number,
   ground: number,
   camera: number,
-  fallbackOffset: number = DEFAULT_GROUND_OFFSET
+  fallbackOffset: number = DEFAULT_GROUND_OFFSET,
 ): number {
   const fallback = canvasHeight - fallbackOffset;
   const baseGround = Number.isFinite(ground) && ground > 0 ? ground : fallback;
@@ -238,7 +238,7 @@ function sampleFilledDisc(
   cx: number,
   cy: number,
   radius: number,
-  pixelSize: number
+  pixelSize: number,
 ): PixelRect[] {
   const cells: PixelRect[] = [];
 
@@ -267,7 +267,7 @@ function sampleCrater(
   cy: number,
   radius: number,
   pixelSize: number,
-  dithered: boolean
+  dithered: boolean,
 ): PixelRect[] {
   const cells: PixelRect[] = [];
 
@@ -299,7 +299,7 @@ function sampleArc(
   cx: number,
   cy: number,
   radius: number,
-  pixelSize: number
+  pixelSize: number,
 ): PixelRect[] {
   const cells: PixelRect[] = [];
 
@@ -327,12 +327,7 @@ export function generateMoonRenderData(scene: SceneDimensions): MoonRenderData {
 
   const shadowOffsetX = r * 0.42;
   const shadowOffsetY = -r * 0.08;
-  const shadow = sampleFilledDisc(
-    x + shadowOffsetX,
-    y + shadowOffsetY,
-    r,
-    px
-  );
+  const shadow = sampleFilledDisc(x + shadowOffsetX, y + shadowOffsetY, r, px);
 
   const craterRadius = r * 0.3;
   const craters = [

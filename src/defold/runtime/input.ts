@@ -3,12 +3,19 @@ import {
   MIN_SWIPE_TIME,
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
-} from '../config/constants.js';
-import { canvas, canvasWidth } from './state/rendering_state.js';
-import { cameraY } from './state/camera_state.js';
-import type { GameWorldState } from './state/game_state.js';
-import { createRideFromInput, countActiveMovingRides } from '../game_objects/rides.js';
-import { showSettings, toggleSettings, hideSettings } from '../../web/ui/settings_overlay.js';
+} from "../config/constants.js";
+import { canvas, canvasWidth } from "./state/rendering_state.js";
+import { cameraY } from "./state/camera_state.js";
+import type { GameWorldState } from "./state/game_state.js";
+import {
+  createRideFromInput,
+  countActiveMovingRides,
+} from "../game_objects/rides.js";
+import {
+  showSettings,
+  toggleSettings,
+  hideSettings,
+} from "../../web/ui/settings_overlay.js";
 
 type PointSample = { x: number; y: number; time: number };
 
@@ -37,13 +44,13 @@ function drawDPadBase(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  radius: number
+  radius: number,
 ): void {
   const pixel = JOYSTICK_PIXEL_SIZE;
   const maxOffset = Math.floor(radius / pixel) * pixel;
   const halfThickness = pixel;
 
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = "#ffffff";
 
   for (let px = -halfThickness; px <= halfThickness; px += pixel) {
     for (let py = -maxOffset; py <= maxOffset; py += pixel) {
@@ -57,7 +64,7 @@ function drawDPadBase(
     }
   }
 
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = "#000000";
 
   const innerOffset = Math.max(0, maxOffset - pixel);
 
@@ -87,14 +94,19 @@ function drawPixelCircle(
   x: number,
   y: number,
   radius: number,
-  fill = false
+  fill = false,
 ): void {
   if (fill) {
     for (let px = -radius; px <= radius; px += JOYSTICK_PIXEL_SIZE) {
       for (let py = -radius; py <= radius; py += JOYSTICK_PIXEL_SIZE) {
         const distance = Math.sqrt(px * px + py * py);
         if (distance <= radius - JOYSTICK_PIXEL_SIZE / 2) {
-          ctx.fillRect(x + px, y + py, JOYSTICK_PIXEL_SIZE, JOYSTICK_PIXEL_SIZE);
+          ctx.fillRect(
+            x + px,
+            y + py,
+            JOYSTICK_PIXEL_SIZE,
+            JOYSTICK_PIXEL_SIZE,
+          );
         }
       }
     }
@@ -203,7 +215,12 @@ export class InputHandler {
     this.bind();
   }
 
-  calculateDirection(startX: number, startY: number, currentX: number, currentY: number) {
+  calculateDirection(
+    startX: number,
+    startY: number,
+    currentX: number,
+    currentY: number,
+  ) {
     const dx = currentX - startX;
     const dy = currentY - startY;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -250,17 +267,18 @@ export class InputHandler {
   drawJoystick(ctx: CanvasRenderingContext2D) {
     if (!this.joystick.active || showSettings) return;
 
-    const { baseX, baseY, baseRadius, stickX, stickY, stickRadius } = this.joystick;
+    const { baseX, baseY, baseRadius, stickX, stickY, stickRadius } =
+      this.joystick;
 
     drawDPadBase(ctx, baseX, baseY, baseRadius);
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = "#ffffff";
     drawPixelCircle(ctx, stickX, stickY, stickRadius, true);
   }
 
   bind() {
     canvas.addEventListener(
-      'touchstart',
+      "touchstart",
       (e) => {
         e.preventDefault();
         const touch = e.touches[0];
@@ -296,11 +314,11 @@ export class InputHandler {
           this.game.sprite.startGliding();
         }
       },
-      { passive: false }
+      { passive: false },
     );
 
     canvas.addEventListener(
-      'touchmove',
+      "touchmove",
       (e) => {
         e.preventDefault();
         if (!this.touchStart || showSettings) return;
@@ -321,7 +339,7 @@ export class InputHandler {
           this.touchStart.x,
           this.touchStart.y,
           sample.x,
-          sample.y
+          sample.y,
         );
         const dt = sample.time - this.touchStart.time;
 
@@ -359,11 +377,11 @@ export class InputHandler {
           sprite.startGliding();
         }
       },
-      { passive: false }
+      { passive: false },
     );
 
     canvas.addEventListener(
-      'touchend',
+      "touchend",
       (e) => {
         e.preventDefault();
         if (!this.touchStart || showSettings) {
@@ -376,16 +394,12 @@ export class InputHandler {
         const spriteSwimming = !!(sprite && sprite.inWater);
 
         const endTime = Date.now();
-        const last = this.touchSamples[this.touchSamples.length - 1] || this.touchStart;
+        const last =
+          this.touchSamples[this.touchSamples.length - 1] || this.touchStart;
         const dx = last.x - this.touchStart.x;
         const total = Math.max(1, endTime - this.touchStart.time);
 
-        if (
-          this.touchSwipe &&
-          sprite &&
-          spriteAirborne &&
-          !spriteSwimming
-        ) {
+        if (this.touchSwipe && sprite && spriteAirborne && !spriteSwimming) {
           this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
@@ -400,10 +414,10 @@ export class InputHandler {
         this.touchSwipe = false;
         this.isJoystickMode = false;
       },
-      { passive: false }
+      { passive: false },
     );
 
-    canvas.addEventListener('mousedown', (e) => {
+    canvas.addEventListener("mousedown", (e) => {
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
@@ -438,7 +452,7 @@ export class InputHandler {
       }
     });
 
-    canvas.addEventListener('mousemove', (e) => {
+    canvas.addEventListener("mousemove", (e) => {
       if (!this.isMouseDragging || showSettings || !this.mouseStart) return;
 
       const r = canvas.getBoundingClientRect();
@@ -456,7 +470,7 @@ export class InputHandler {
         this.mouseStart.x,
         this.mouseStart.y,
         sample.x,
-        sample.y
+        sample.y,
       );
       const dt = sample.time - this.mouseStart.time;
 
@@ -495,14 +509,15 @@ export class InputHandler {
       }
     });
 
-    canvas.addEventListener('mouseup', () => {
+    canvas.addEventListener("mouseup", () => {
       if (!this.mouseStart || showSettings) {
         this.endJoystick();
         return;
       }
 
       const endTime = Date.now();
-      const last = this.mouseSamples[this.mouseSamples.length - 1] || this.mouseStart;
+      const last =
+        this.mouseSamples[this.mouseSamples.length - 1] || this.mouseStart;
       const dx = last.x - this.mouseStart.x;
       const total = Math.max(1, endTime - this.mouseStart.time);
 
@@ -510,12 +525,7 @@ export class InputHandler {
       const spriteAirborne = !!(sprite && !sprite.onGround);
       const spriteSwimming = !!(sprite && sprite.inWater);
 
-      if (
-        this.mouseSwipe &&
-        sprite &&
-        spriteAirborne &&
-        !spriteSwimming
-      ) {
+      if (this.mouseSwipe && sprite && spriteAirborne && !spriteSwimming) {
         this.spawnRideFromGesture(dx, total, last.y);
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
@@ -533,11 +543,14 @@ export class InputHandler {
     });
 
     canvas.addEventListener(
-      'wheel',
+      "wheel",
       (e) => {
         if (showSettings) return;
 
-        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
+        if (
+          Math.abs(e.deltaX) > Math.abs(e.deltaY) &&
+          Math.abs(e.deltaX) > 10
+        ) {
           e.preventDefault();
 
           if (!this.trackpadGestureActive) {
@@ -567,15 +580,15 @@ export class InputHandler {
           this.trackpadGestureActive = false;
         }
       },
-      { passive: false }
+      { passive: false },
     );
 
-    canvas.addEventListener('mouseleave', () => {
+    canvas.addEventListener("mouseleave", () => {
       this.trackpadGestureActive = false;
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && !showSettings && !this.keyboardCharging) {
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !showSettings && !this.keyboardCharging) {
         e.preventDefault();
         this.keyboardCharging = true;
         this.keyboardChargeStart = Date.now();
@@ -590,30 +603,40 @@ export class InputHandler {
         }
       }
 
-      if (!showSettings && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      if (
+        !showSettings &&
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)
+      ) {
         e.preventDefault();
         this.pressedKeys.add(e.code);
 
         if (!this.keyboardMovementCharging) {
           this.keyboardMovementCharging = true;
           this.updateKeyboardMovementDirection();
-          this.game.sprite?.startMovementCharging(this.keyboardMovementDirection);
+          this.game.sprite?.startMovementCharging(
+            this.keyboardMovementDirection,
+          );
         } else {
           this.updateKeyboardMovementDirection();
-          this.game.sprite?.updateMovementCharging(this.keyboardMovementDirection);
+          this.game.sprite?.updateMovementCharging(
+            this.keyboardMovementDirection,
+          );
         }
       }
     });
 
-    document.addEventListener('keyup', (e) => {
-      if (e.code === 'Space' && !showSettings && this.keyboardCharging) {
+    document.addEventListener("keyup", (e) => {
+      if (e.code === "Space" && !showSettings && this.keyboardCharging) {
         e.preventDefault();
         this.keyboardCharging = false;
         this.game.sprite?.releaseJump();
         this.game.sprite?.stopGliding();
       }
 
-      if (!showSettings && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      if (
+        !showSettings &&
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)
+      ) {
         e.preventDefault();
         this.pressedKeys.delete(e.code);
 
@@ -622,13 +645,18 @@ export class InputHandler {
           this.game.sprite?.releaseMovement();
         } else if (this.keyboardMovementCharging) {
           this.updateKeyboardMovementDirection();
-          this.game.sprite?.updateMovementCharging(this.keyboardMovementDirection);
+          this.game.sprite?.updateMovementCharging(
+            this.keyboardMovementDirection,
+          );
         }
       }
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.code === "Space" ||
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)
+      ) {
         e.preventDefault();
       }
     });
@@ -638,10 +666,10 @@ export class InputHandler {
     let x = 0;
     let y = 0;
 
-    if (this.pressedKeys.has('ArrowLeft')) x -= 1;
-    if (this.pressedKeys.has('ArrowRight')) x += 1;
-    if (this.pressedKeys.has('ArrowUp')) y -= 1;
-    if (this.pressedKeys.has('ArrowDown')) y += 1;
+    if (this.pressedKeys.has("ArrowLeft")) x -= 1;
+    if (this.pressedKeys.has("ArrowRight")) x += 1;
+    if (this.pressedKeys.has("ArrowUp")) y -= 1;
+    if (this.pressedKeys.has("ArrowDown")) y += 1;
 
     const length = Math.sqrt(x * x + y * y);
     if (length > 0) {

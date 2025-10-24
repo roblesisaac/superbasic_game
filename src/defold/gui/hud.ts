@@ -1,13 +1,17 @@
-import { ENERGY_MAX, ENERGY_REGEN_RATE, COOLDOWN_TIME } from '../config/constants.js';
-import { clamp, now } from '../shared/utils.js';
-import { gameOverContainer } from '../../web/state/ui_state.js';
+import {
+  ENERGY_MAX,
+  ENERGY_REGEN_RATE,
+  COOLDOWN_TIME,
+} from "../config/constants.js";
+import { clamp, now } from "../shared/utils.js";
+import { gameOverContainer } from "../../web/state/ui_state.js";
 import {
   drawPixelatedHeart,
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
   computeHeartBobOffset,
-} from './drawPixelatedHeart.js';
-type EnergySegmentState = 'filled' | 'empty';
+} from "./drawPixelatedHeart.js";
+type EnergySegmentState = "filled" | "empty";
 
 interface EnergySegment {
   x: number;
@@ -20,14 +24,14 @@ const ENERGY_SEGMENT_COUNT = 10;
 const ENERGY_SEGMENT_SIZE = 7;
 const ENERGY_SEGMENT_SPACING = 2;
 const ENERGY_BAR_HEIGHT = 14;
-const ENERGY_BAR_BG = 'rgba(255,255,255,0)';
-const ENERGY_SEGMENT_COLOR = '#ffffff';
-const ENERGY_SEGMENT_PARTIAL_COLOR = '#ffe68b';
-const ENERGY_SEGMENT_EMPTY_SHADE = 'rgba(255,255,255,0)';
+const ENERGY_BAR_BG = "rgba(255,255,255,0)";
+const ENERGY_SEGMENT_COLOR = "#ffffff";
+const ENERGY_SEGMENT_PARTIAL_COLOR = "#ffe68b";
+const ENERGY_SEGMENT_EMPTY_SHADE = "rgba(255,255,255,0)";
 
 export class EnergyBar {
   energy: number;
-  state: 'active' | 'cooldown';
+  state: "active" | "cooldown";
   cooldown: number;
   private readonly segments: EnergySegment[];
   private readonly segmentCapacity: number;
@@ -37,7 +41,7 @@ export class EnergyBar {
 
   constructor() {
     this.energy = ENERGY_MAX * 0.9;
-    this.state = 'active';
+    this.state = "active";
     this.cooldown = 0;
     this.barWidth =
       ENERGY_SEGMENT_COUNT * ENERGY_SEGMENT_SIZE +
@@ -49,45 +53,54 @@ export class EnergyBar {
   }
 
   canUse() {
-    return this.state === 'active' && this.energy > 0;
+    return this.state === "active" && this.energy > 0;
   }
 
   drain(amount: number) {
-    if (this.state !== 'active') return;
+    if (this.state !== "active") return;
     this.energy = clamp(this.energy - amount, 0, ENERGY_MAX);
     if (this.energy <= 0) this.startCooldown();
     this.syncSegmentsToEnergy();
   }
 
   startCooldown() {
-    this.state = 'cooldown';
+    this.state = "cooldown";
     this.cooldown = COOLDOWN_TIME;
     this.energy = 0;
     this.syncSegmentsToEnergy();
   }
 
   extendCooldown(dt: number) {
-    if (this.state === 'cooldown') this.cooldown += dt;
+    if (this.state === "cooldown") this.cooldown += dt;
   }
 
   update(dt: number, canRecharge: boolean) {
-    if (this.state === 'cooldown') {
+    if (this.state === "cooldown") {
       this.cooldown -= dt;
       if (this.cooldown <= 0) {
-        this.state = 'active';
+        this.state = "active";
         this.cooldown = 0;
       } else {
         this.energy = 0;
       }
     } else if (canRecharge) {
-      this.energy = clamp(this.energy + ENERGY_REGEN_RATE * 0.3 * dt, 0, ENERGY_MAX);
+      this.energy = clamp(
+        this.energy + ENERGY_REGEN_RATE * 0.3 * dt,
+        0,
+        ENERGY_MAX,
+      );
     }
 
     this.syncSegmentsToEnergy();
   }
 
   getBounds(): { x: number; y: number; width: number; height: number } {
-    return { x: this.x, y: this.y, width: this.barWidth, height: ENERGY_BAR_HEIGHT };
+    return {
+      x: this.x,
+      y: this.y,
+      width: this.barWidth,
+      height: ENERGY_BAR_HEIGHT,
+    };
   }
 
   draw(ctx: CanvasRenderingContext2D) {
@@ -110,10 +123,15 @@ export class EnergyBar {
       ctx.fillStyle = ENERGY_SEGMENT_EMPTY_SHADE;
       ctx.fillRect(x, y, size, size);
 
-      if (state === 'filled') {
+      if (state === "filled") {
         ctx.fillStyle = ENERGY_SEGMENT_COLOR;
         ctx.fillRect(x, y, size, size);
-      } else if (state === 'empty' && i === segmentsToFill && partialRatio > 0 && partialRatio < 1) {
+      } else if (
+        state === "empty" &&
+        i === segmentsToFill &&
+        partialRatio > 0 &&
+        partialRatio < 1
+      ) {
         const partialWidth = Math.max(1, Math.round(size * partialRatio));
         ctx.fillStyle = ENERGY_SEGMENT_PARTIAL_COLOR;
         ctx.fillRect(x, y, partialWidth, size);
@@ -123,12 +141,12 @@ export class EnergyBar {
       // ctx.strokeRect(x - 0.5, y - 0.5, size + 1, size + 1);
     }
 
-    if (this.state === 'cooldown') {
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    if (this.state === "cooldown") {
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
       ctx.font = '10px "Tiny5", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText('COOLING…', barX + this.barWidth + 8, barY - 1);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("COOLING…", barX + this.barWidth + 8, barY - 1);
     }
   }
 
@@ -137,15 +155,12 @@ export class EnergyBar {
     const baseY = this.y + (ENERGY_BAR_HEIGHT - ENERGY_SEGMENT_SIZE) / 2;
 
     for (let i = 0; i < ENERGY_SEGMENT_COUNT; i += 1) {
-      const x =
-        this.x +
-        i * ENERGY_SEGMENT_SIZE +
-        i * ENERGY_SEGMENT_SPACING;
+      const x = this.x + i * ENERGY_SEGMENT_SIZE + i * ENERGY_SEGMENT_SPACING;
       segments.push({
         x,
         y: baseY,
         size: ENERGY_SEGMENT_SIZE,
-        state: 'empty',
+        state: "empty",
       });
     }
 
@@ -156,7 +171,7 @@ export class EnergyBar {
     const target = this.getTargetSegmentCount();
     for (let i = 0; i < this.segments.length; i += 1) {
       const segment = this.segments[i];
-      segment.state = i < target ? 'filled' : 'empty';
+      segment.state = i < target ? "filled" : "empty";
     }
   }
 
@@ -166,18 +181,20 @@ export class EnergyBar {
     for (let i = 0; i < this.segments.length; i += 1) {
       const segment = this.segments[i];
 
-      segment.state = i < targetCount ? 'filled' : 'empty';
+      segment.state = i < targetCount ? "filled" : "empty";
     }
   }
 
   private getTargetSegmentCount(): number {
-    if (!Number.isFinite(this.segmentCapacity) || this.segmentCapacity <= 0) return 0;
+    if (!Number.isFinite(this.segmentCapacity) || this.segmentCapacity <= 0)
+      return 0;
     const raw = Math.floor(this.energy / this.segmentCapacity);
     return clamp(raw, 0, this.segments.length);
   }
 
   private getPartialRatio(): number {
-    if (!Number.isFinite(this.segmentCapacity) || this.segmentCapacity <= 0) return 0;
+    if (!Number.isFinite(this.segmentCapacity) || this.segmentCapacity <= 0)
+      return 0;
     const fullSegments = this.getTargetSegmentCount();
     if (fullSegments >= this.segments.length) return 0;
     const remaining = this.energy - fullSegments * this.segmentCapacity;
@@ -197,7 +214,7 @@ export class Hearts {
 
   takeDamage(onZero?: () => void) {
     this.value = Math.max(0, this.value - 1);
-    if (this.value === 0 && typeof onZero === 'function') onZero();
+    if (this.value === 0 && typeof onZero === "function") onZero();
   }
 
   gain(amount = 1) {
@@ -215,7 +232,7 @@ export class Hearts {
     const activeTime = Number.isFinite(timeMs) ? timeMs : now();
 
     for (let i = 0; i < this.max; i += 1) {
-      const color = i < this.value ? '#ff5b6e' : 'rgba(255,255,255,0.2)';
+      const color = i < this.value ? "#ff5b6e" : "rgba(255,255,255,0.2)";
       const x = x0 + i * (heartWidth + pad);
       const y = y0 + (heartHeight < 16 ? (16 - heartHeight) / 2 : 0);
       const bob = computeHeartBobOffset(activeTime, pixelSize, i * 120);

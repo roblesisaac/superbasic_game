@@ -1,18 +1,33 @@
-import { drawGrass } from './drawables/drawGrass.js';
-import { drawBitmap } from './drawables/drawBitmap.js';
-import { getTreePattern, type TreeKey, type TreeVisualStyle } from './drawables/drawTree.js';
-import { drawWell } from './drawables/drawWell.js';
-import { ctx, canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
-import { drawBubbleField, updateBubbleField, type BubbleEnvironment } from './bubble_field.js';
-import { getWellBounds } from './well_layout.js';
-import { CABIN_BITMAP } from '../../assets/bitmaps/cabin.js';
-import { drawRollingHills } from './drawables/drawRollingHills.js';
-import { drawCampfire } from './drawables/drawCampfire.js';
+import { drawGrass } from "./drawables/drawGrass.js";
+import { drawBitmap } from "./drawables/drawBitmap.js";
+import { drawBitmap2 } from "./drawables/drawBitmap2.js";
+import {
+  getTreePattern,
+  type TreeKey,
+  type TreeVisualStyle,
+} from "./drawables/drawTree.js";
+import { drawWell } from "./drawables/drawWell.js";
+import {
+  ctx,
+  canvasHeight,
+  canvasWidth,
+  groundY,
+} from "../state/rendering_state.js";
+import {
+  drawBubbleField,
+  updateBubbleField,
+  type BubbleEnvironment,
+} from "./bubble_field.js";
+import { getWellBounds } from "./well_layout.js";
+import { CABIN_BITMAP } from "../../assets/bitmaps/cabin.js";
+import cabinRaw from '../../assets/bitmaps/cabin.txt?raw';
+import { drawRollingHills } from "./drawables/drawRollingHills.js";
+import { drawCampfire } from "./drawables/drawCampfire.js";
 
 interface TreePlacement {
   x: number;
   y: number;
-  align?: 'top-left' | 'center' | 'bottom';
+  align?: "top-left" | "center" | "bottom";
   style: TreeVisualStyle;
 }
 
@@ -26,31 +41,31 @@ type NormalizedTreeStyle = {
   darken: number;
 };
 
-const FOREGROUND_TREE_POSITIONS = [30,
-  // 90, 
-  150, 
-  // 200, 
-  // 230, 
-  // 300, 
-  360, 
-  390, 
+const FOREGROUND_TREE_POSITIONS = [
+  30,
+  // 90,
+  150,
+  // 200,
+  // 230,
+  // 300,
+  360, 390,
   // 450
 ];
 
 const FOREGROUND_TREE_STYLE: TreeVisualStyle = {
-  tree: 'tree1',
-  heightScale: 1.7
+  tree: "tree1",
+  heightScale: 1.7,
 };
 
 const FEATURE_TREE_STYLE: TreeVisualStyle = {
-  tree: 'tree2',
+  tree: "tree2",
   pixelSize: 1.5,
   heightScale: 1.5,
 };
 
 const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
   x,
-  align: 'bottom' as const,
+  align: "bottom" as const,
   style: {
     ...FOREGROUND_TREE_STYLE,
     darken: 0.5 + Math.random() * 0.2,
@@ -61,20 +76,23 @@ const foregroundTrees = FOREGROUND_TREE_POSITIONS.map((x) => ({
 const FEATURE_TREE_X = 110;
 const CAMPFIRE_X = 150;
 
-const DEFAULT_TREE_KEY: TreeKey = 'tree1';
+const DEFAULT_TREE_KEY: TreeKey = "tree1";
 
 const CABIN_COLOR_MAP: Record<string, string> = {
-  '1': '#222222',
-  '2': '#4c4c4c',
-  '3': '#333333',
-  '5': '#999999',
-  '7': '#222222',
+  "1": "#222222",
+  "2": "#4c4c4c",
+  "3": "#333333",
+  "5": "#999999",
+  "7": "#222222",
 };
 
-const CABIN_DEFAULT_COLOR = CABIN_COLOR_MAP['2'];
+const CABIN_DEFAULT_COLOR = "#000000";
 const CABIN_WIDTH_SCALE = 1;
 const CABIN_HEIGHT_SCALE = 1.5;
-const CABIN_COLS = CABIN_BITMAP.reduce((max, line) => Math.max(max, line.length), 0);
+const CABIN_COLS = CABIN_BITMAP.reduce(
+  (max, line) => Math.max(max, line.length),
+  0,
+);
 
 function clamp01(value: number | undefined, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -121,7 +139,7 @@ function drawTreePlacement(request: TreePlacement): void {
     pattern,
     x: request.x,
     y: request.y,
-    align: request.align ?? 'bottom',
+    align: request.align ?? "bottom",
     pixelSize: normalized.pixelSize,
     alpha: normalized.alpha,
     widthScale: normalized.widthScale,
@@ -136,17 +154,27 @@ function drawCabin(groundLineY: number): void {
 
   const cabinX = 270;
 
-  void drawBitmap(ctx, {
-    pattern: CABIN_BITMAP,
+  void drawBitmap2(ctx, {
+    pattern: cabinRaw,
     x: cabinX,
     y: groundLineY,
-    align: 'bottom',
-    pixelSize: 1.5,
+    align: "bottom",
+    pixelSize: 1.3,
     widthScale: CABIN_WIDTH_SCALE,
     heightScale: CABIN_HEIGHT_SCALE,
-    colorMap: CABIN_COLOR_MAP,
-    defaultColor: CABIN_DEFAULT_COLOR,
   });
+
+  // void drawBitmap(ctx, {
+  //   pattern: CABIN_BITMAP,
+  //   x: cabinX,
+  //   y: groundLineY,
+  //   align: "bottom",
+  //   pixelSize: 1.5,
+  //   widthScale: CABIN_WIDTH_SCALE,
+  //   heightScale: CABIN_HEIGHT_SCALE,
+  //   colorMap: CABIN_COLOR_MAP,
+  //   defaultColor: CABIN_DEFAULT_COLOR,
+  // });
 }
 
 export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
@@ -176,7 +204,7 @@ export function drawBackgroundGrid(cameraY: number, timestamp: number): void {
   drawTreePlacement({
     x: FEATURE_TREE_X,
     y: groundLineY,
-    align: 'bottom',
+    align: "bottom",
     style: FEATURE_TREE_STYLE,
   });
 

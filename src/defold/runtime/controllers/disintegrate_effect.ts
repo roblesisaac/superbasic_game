@@ -4,7 +4,7 @@ interface PixelDefinition {
   size: number;
 }
 
-export type DisintegrateMode = 'disintegrate' | 'integrate';
+export type DisintegrateMode = "disintegrate" | "integrate";
 
 export interface DisintegrateEffectOptions {
   pixels: PixelDefinition[];
@@ -26,12 +26,20 @@ export class DisintegrateEffect {
   private totalDuration: number;
   private mode: DisintegrateMode;
 
-  constructor({ pixels, color, interval = DEFAULT_INTERVAL, mode = 'disintegrate' }: DisintegrateEffectOptions) {
+  constructor({
+    pixels,
+    color,
+    interval = DEFAULT_INTERVAL,
+    mode = "disintegrate",
+  }: DisintegrateEffectOptions) {
     const orderedPixels = shufflePixels(pixels, interval);
     this.pixels = orderedPixels;
     this.color = color;
     this.mode = mode;
-    this.totalDuration = orderedPixels.length === 0 ? 0 : orderedPixels[orderedPixels.length - 1].orderTimestamp + interval;
+    this.totalDuration =
+      orderedPixels.length === 0
+        ? 0
+        : orderedPixels[orderedPixels.length - 1].orderTimestamp + interval;
   }
 
   update(dt: number): void {
@@ -47,7 +55,7 @@ export class DisintegrateEffect {
 
     for (const pixel of this.pixels) {
       const shouldDraw =
-        this.mode === 'disintegrate'
+        this.mode === "disintegrate"
           ? this.elapsed < pixel.orderTimestamp
           : this.elapsed >= pixel.orderTimestamp;
 
@@ -64,7 +72,10 @@ export class DisintegrateEffect {
   }
 }
 
-function shufflePixels(pixels: PixelDefinition[], interval: number): AnimatedPixel[] {
+function shufflePixels(
+  pixels: PixelDefinition[],
+  interval: number,
+): AnimatedPixel[] {
   const indices = pixels.map((_, index) => index);
   for (let i = indices.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -75,7 +86,7 @@ function shufflePixels(pixels: PixelDefinition[], interval: number): AnimatedPix
     const pixel = pixels[originalIndex];
     return {
       ...pixel,
-      orderTimestamp: (order + 1) * interval
+      orderTimestamp: (order + 1) * interval,
     };
   });
 }
@@ -83,7 +94,7 @@ function shufflePixels(pixels: PixelDefinition[], interval: number): AnimatedPix
 export function buildPixelsFromPattern(
   rect: { x: number; y: number; width: number; height: number },
   pixelSize: number,
-  pattern: ReadonlyArray<ReadonlyArray<number>>
+  pattern: ReadonlyArray<ReadonlyArray<number>>,
 ): PixelDefinition[] {
   const pixels: PixelDefinition[] = [];
   const baseSize = Math.max(1, pixelSize);
@@ -95,7 +106,7 @@ export function buildPixelsFromPattern(
       pixels.push({
         x: rect.x + col * baseSize,
         y: rect.y + row * baseSize,
-        size: baseSize
+        size: baseSize,
       });
     }
   }
@@ -105,7 +116,7 @@ export function buildPixelsFromPattern(
 
 export function buildPixelsForRect(
   rect: { x: number; y: number; width: number; height: number },
-  pixelSize: number
+  pixelSize: number,
 ): PixelDefinition[] {
   const pixels: PixelDefinition[] = [];
   const size = Math.max(1, pixelSize);
@@ -117,7 +128,7 @@ export function buildPixelsForRect(
       pixels.push({
         x: rect.x + col * size,
         y: rect.y + row * size,
-        size
+        size,
       });
     }
   }

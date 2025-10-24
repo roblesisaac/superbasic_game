@@ -1,11 +1,11 @@
-import type { Sprite } from '../../game_objects/sprite.js';
-import type { Ride } from '../../game_objects/rides.js';
-import type { Gate } from '../../game_objects/gates.js';
-import type { ControlledGate } from '../../game_objects/controlledGate.js';
-import type { InputHandler } from '../input.js';
-import type { EnergyBar, Hearts } from '../../gui/hud.js';
-import type { HeartPickup } from '../../game_objects/heartPickup.js';
-import type { HeartEffectSystem } from '../controllers/heart_effects.js';
+import type { Sprite } from "../../game_objects/sprite.js";
+import type { Ride } from "../../game_objects/rides.js";
+import type { Gate } from "../../game_objects/gates.js";
+import type { ControlledGate } from "../../game_objects/controlledGate.js";
+import type { InputHandler } from "../input.js";
+import type { EnergyBar, Hearts } from "../../gui/hud.js";
+import type { HeartPickup } from "../../game_objects/heartPickup.js";
+import type { HeartEffectSystem } from "../controllers/heart_effects.js";
 
 export interface GameWorldState {
   sprite: Sprite | null;
@@ -30,7 +30,7 @@ export const gameWorld: GameWorldState = {
   hearts: null,
   heartEffects: null,
   lastTime: 0,
-  running: true
+  running: true,
 };
 
 export function resetGameWorld(): void {

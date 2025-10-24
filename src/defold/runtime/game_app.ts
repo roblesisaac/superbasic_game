@@ -1,38 +1,62 @@
-import { now } from '../shared/utils.js';
-import { drawBackgroundGrid } from './environment/background_renderer.js';
-import { drawHUD } from './controllers/hud_renderer.js';
-import { updateCameraForSprite, resetCameraController } from './controllers/camera_controller.js';
-import { bootstrapCards, syncCards, resetCardController } from './controllers/card_controller.js';
-import { presentGameOverScreen, hideGameOverScreen } from '../../web/ui/game_over_screen.js';
-import { HeartEffectSystem } from './controllers/heart_effects.js';
-import { ensureSettingsOverlay, showSettings } from '../../web/ui/settings_overlay.js';
-import { EnergyBar, Hearts } from '../gui/hud.js';
-import { InputHandler } from './input.js';
-import { Sprite } from '../game_objects/sprite.js';
-import { HeartPickup } from '../game_objects/heartPickup.js';
-import { drawPixelatedHeart, computeHeartBobOffset } from '../gui/drawPixelatedHeart.js';
+import { now } from "../shared/utils.js";
+import { drawBackgroundGrid } from "./environment/background_renderer.js";
+import { drawHUD } from "./controllers/hud_renderer.js";
+import {
+  updateCameraForSprite,
+  resetCameraController,
+} from "./controllers/camera_controller.js";
+import {
+  bootstrapCards,
+  syncCards,
+  resetCardController,
+} from "./controllers/card_controller.js";
+import {
+  presentGameOverScreen,
+  hideGameOverScreen,
+} from "../../web/ui/game_over_screen.js";
+import { HeartEffectSystem } from "./controllers/heart_effects.js";
+import {
+  ensureSettingsOverlay,
+  showSettings,
+} from "../../web/ui/settings_overlay.js";
+import { EnergyBar, Hearts } from "../gui/hud.js";
+import { InputHandler } from "./input.js";
+import { Sprite } from "../game_objects/sprite.js";
+import { HeartPickup } from "../game_objects/heartPickup.js";
+import {
+  drawPixelatedHeart,
+  computeHeartBobOffset,
+} from "../gui/drawPixelatedHeart.js";
 import {
   updateRides,
   pruneInactiveRides,
   drawRides,
-  mergeCollidingRides
-} from '../game_objects/rides.js';
-import { updateGates, pruneInactiveGates, drawGates } from '../game_objects/gates.js';
+  mergeCollidingRides,
+} from "../game_objects/rides.js";
+import {
+  updateGates,
+  pruneInactiveGates,
+  drawGates,
+} from "../game_objects/gates.js";
 import {
   resetEnemies,
   updateEnemies,
   drawEnemies,
-  pruneInactiveEnemies
-} from '../game_objects/enemies.js';
-import { collectibles, gameStats, resetBudgetContainers } from './controllers/budget_controller.js';
+  pruneInactiveEnemies,
+} from "../game_objects/enemies.js";
+import {
+  collectibles,
+  gameStats,
+  resetBudgetContainers,
+} from "./controllers/budget_controller.js";
 import {
   ctx,
   canvasWidth,
   canvasHeight,
-  groundY
-} from './state/rendering_state.js';
-import { cameraY } from './state/camera_state.js';
-import { gameWorld } from './state/game_state.js';
+  groundY,
+} from "./state/rendering_state.js";
+import { cameraY } from "./state/camera_state.js";
+import { gameWorld } from "./state/game_state.js";
 
 const MAX_DELTA_SECONDS = 0.04;
 let animationHandle: number | null = null;
@@ -42,7 +66,7 @@ function buildSprite(): Sprite {
   const hearts = gameWorld.hearts;
 
   if (!energyBar || !hearts) {
-    throw new Error('UI elements must be prepared before creating the sprite.');
+    throw new Error("UI elements must be prepared before creating the sprite.");
   }
 
   const onGameOver = () => {
@@ -56,7 +80,7 @@ function buildSprite(): Sprite {
     onGameOver,
     getRides: () => gameWorld.rides,
     getGates: () => gameWorld.gates,
-    getHeartPickups: () => gameWorld.heartPickups
+    getHeartPickups: () => gameWorld.heartPickups,
   });
 
   return sprite;
@@ -125,12 +149,24 @@ function updateHeartPickups(dt: number): void {
 }
 
 function drawHeartPickups(): void {
-  const timeMs = Number.isFinite(gameWorld.lastTime) ? gameWorld.lastTime : now();
+  const timeMs = Number.isFinite(gameWorld.lastTime)
+    ? gameWorld.lastTime
+    : now();
   for (const heart of gameWorld.heartPickups) {
     if (!heart.isActive()) continue;
     const bounds = heart.getBounds();
-    const bob = computeHeartBobOffset(timeMs, heart.pixelSize, heart.x + heart.y);
-    drawPixelatedHeart(ctx, bounds.x, bounds.y - cameraY + bob, heart.pixelSize, '#ff5b6e');
+    const bob = computeHeartBobOffset(
+      timeMs,
+      heart.pixelSize,
+      heart.x + heart.y,
+    );
+    drawPixelatedHeart(
+      ctx,
+      bounds.x,
+      bounds.y - cameraY + bob,
+      heart.pixelSize,
+      "#ff5b6e",
+    );
   }
 }
 
@@ -170,11 +206,13 @@ function updateWorld(dt: number): void {
 }
 
 function drawWorld(): void {
-  const timeMs = Number.isFinite(gameWorld.lastTime) ? gameWorld.lastTime : now();
+  const timeMs = Number.isFinite(gameWorld.lastTime)
+    ? gameWorld.lastTime
+    : now();
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   drawBackgroundGrid(cameraY, timeMs);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.beginPath();
   ctx.moveTo(0, groundY - cameraY);
   ctx.lineTo(canvasWidth, groundY - cameraY);
@@ -205,7 +243,10 @@ function loop(): void {
   }
 
   const timestamp = now();
-  const dt = Math.min(MAX_DELTA_SECONDS, (timestamp - gameWorld.lastTime) / 1000);
+  const dt = Math.min(
+    MAX_DELTA_SECONDS,
+    (timestamp - gameWorld.lastTime) / 1000,
+  );
   gameWorld.lastTime = timestamp;
 
   updateWorld(dt);
@@ -226,14 +267,14 @@ function startLoop(): void {
 initializeGameState();
 startLoop();
 
-window.addEventListener('budget-changed', () => {
+window.addEventListener("budget-changed", () => {
   resetGame();
 });
 
 if (navigator.serviceWorker) {
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SW_UPDATE_AVAILABLE') {
-      if (window.confirm('A new version is available. Reload now?')) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "SW_UPDATE_AVAILABLE") {
+      if (window.confirm("A new version is available. Reload now?")) {
         window.location.reload();
       }
     }

@@ -1,11 +1,11 @@
-import { GATE_THICKNESS } from '../config/constants.js';
+import { GATE_THICKNESS } from "../config/constants.js";
 import {
   drawPixelatedHeart,
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
   computeHeartBobOffset,
-} from '../gui/drawPixelatedHeart.js';
-import { now } from '../shared/utils.js';
+} from "../gui/drawPixelatedHeart.js";
+import { now } from "../shared/utils.js";
 
 export interface GateVisualRect {
   x: number;
@@ -15,7 +15,7 @@ export interface GateVisualRect {
 }
 
 export interface GateVisualGapInfo {
-  type: 'H' | 'V';
+  type: "H" | "V";
   gapX: number;
   gapY: number;
   gapWidth: number;
@@ -32,7 +32,7 @@ export interface DrawGateVisualsOptions {
 }
 
 export interface GateGapRewardInfo {
-  type: 'heart';
+  type: "heart";
   color?: string;
   pixelSize?: number;
   rect?: { x: number; y: number; width: number; height: number };
@@ -48,8 +48,8 @@ export function drawGateVisuals({
   timeMs,
 }: DrawGateVisualsOptions) {
   const visualThickness = Math.max(1, Math.round(GATE_THICKNESS / 5));
-  const defaultColor = '#fff';
-  const damagedColor = '#ffd400';
+  const defaultColor = "#fff";
+  const damagedColor = "#ffd400";
   const gateColor = asciiDamaged ? damagedColor : defaultColor;
 
   const drawSegments = () => {
@@ -70,7 +70,7 @@ export function drawGateVisuals({
   };
 
   const glowBlur = Math.max(visualThickness * 3, asciiDamaged ? 18 : 12);
-  const glowColor = asciiDamaged ? 'rgba(255,212,0,1)' : 'rgba(255,255,255,1)';
+  const glowColor = asciiDamaged ? "rgba(255,212,0,1)" : "rgba(255,255,255,1)";
 
   ctx.save();
   ctx.fillStyle = gateColor;
@@ -87,12 +87,17 @@ export function drawGateVisuals({
   if (!gapInfo) return;
 
   const gapHighlightColor = asciiDamaged
-    ? 'rgba(255,212,0,0.3)'
-    : 'rgba(255,255,255,0.18)';
+    ? "rgba(255,212,0,0.3)"
+    : "rgba(255,255,255,0.18)";
   ctx.fillStyle = gapHighlightColor;
-  if (gapInfo.type === 'H') {
+  if (gapInfo.type === "H") {
     ctx.fillRect(gapInfo.gapX, gapInfo.gapY - cameraY, 1, GATE_THICKNESS);
-    ctx.fillRect(gapInfo.gapX + gapInfo.gapWidth, gapInfo.gapY - cameraY, 1, GATE_THICKNESS);
+    ctx.fillRect(
+      gapInfo.gapX + gapInfo.gapWidth,
+      gapInfo.gapY - cameraY,
+      1,
+      GATE_THICKNESS,
+    );
   } else {
     ctx.fillRect(gapInfo.gapX, gapInfo.gapY - cameraY, GATE_THICKNESS, 1);
     ctx.fillRect(
@@ -103,7 +108,7 @@ export function drawGateVisuals({
     );
   }
 
-  if (!gapReward || gapReward.type !== 'heart') return;
+  if (!gapReward || gapReward.type !== "heart") return;
 
   let pixelSize = Math.max(
     1,
@@ -133,7 +138,7 @@ export function drawGateVisuals({
     let centerX: number;
     let centerYWorld: number;
 
-    if (gapInfo.type === 'H') {
+    if (gapInfo.type === "H") {
       centerX = gapInfo.gapX + gapInfo.gapWidth / 2;
       centerYWorld = gapInfo.gapY + GATE_THICKNESS / 2;
     } else {
@@ -146,7 +151,7 @@ export function drawGateVisuals({
     phaseSeed = centerX + centerYWorld;
   }
 
-  const color = gapReward.color ?? '#ff5b6e';
+  const color = gapReward.color ?? "#ff5b6e";
 
   const activeTime = Number.isFinite(timeMs) ? timeMs : now();
   const bobOffset = computeHeartBobOffset(activeTime, pixelSize, phaseSeed);

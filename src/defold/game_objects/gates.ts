@@ -4,23 +4,23 @@ import {
   GATE_EVERY_FEET,
   GATE_GAP_WIDTH,
   USE_RANDOM_GATES,
-} from '../config/constants.js';
+} from "../config/constants.js";
 import {
   ControlledGateGenerator,
   type CollisionRect,
   CONTROLLED_GATE_PATTERNS,
   ControlledGate,
-  type ControlledGateDefinition
-} from './controlledGate.js';
-import { drawGateVisuals } from './gateRenderer.js';
-import { HeartPickup } from './heartPickup.js';
+  type ControlledGateDefinition,
+} from "./controlledGate.js";
+import { drawGateVisuals } from "./gateRenderer.js";
+import { HeartPickup } from "./heartPickup.js";
 import {
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
-} from '../gui/drawPixelatedHeart.js';
+} from "../gui/drawPixelatedHeart.js";
 
 type GateRect = {
-  type: 'H' | 'V';
+  type: "H" | "V";
   index: number | string;
   x: number;
   y: number;
@@ -28,7 +28,7 @@ type GateRect = {
   h: number;
 };
 
-type GateGapInfo = { type: 'H' | 'V'; index: number | string } | null;
+type GateGapInfo = { type: "H" | "V"; index: number | string } | null;
 
 const GAP_REWARD_RESPAWN_DELAY = 5;
 const GAP_HEART_PIXEL_SIZE = 2;
@@ -55,7 +55,12 @@ export class Gate {
   gapHeartPixelSize: number;
   nonTopContactTriggered: boolean;
 
-  constructor({ y, canvasWidth, gapWidth, segmentCount }: {
+  constructor({
+    y,
+    canvasWidth,
+    gapWidth,
+    segmentCount,
+  }: {
     y: number;
     canvasWidth: number;
     gapWidth: number;
@@ -91,7 +96,7 @@ export class Gate {
   startFloating() {}
 
   handleBottomCollision() {
-    this.notifyContact('bottom');
+    this.notifyContact("bottom");
     if (!this.asciiDamaged) {
       this.asciiDamaged = true;
     }
@@ -99,8 +104,8 @@ export class Gate {
     if (this.gapHeart) this.gapHeart.kill();
   }
 
-  notifyContact(contactType: 'top' | 'side' | 'bottom') {
-    if (contactType !== 'top') {
+  notifyContact(contactType: "top" | "side" | "bottom") {
+    if (contactType !== "top") {
       this.nonTopContactTriggered = true;
     }
   }
@@ -123,9 +128,13 @@ export class Gate {
     return this.gapHeart.collect();
   }
 
-  getHeartPickup():
-    | { x: number; y: number; width: number; height: number; respawns: boolean }
-    | null {
+  getHeartPickup(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    respawns: boolean;
+  } | null {
     if (!this.gapHeart || !this.gapHeart.isActive()) return null;
     const bounds = this.gapHeart.getBounds();
     return {
@@ -157,13 +166,16 @@ export class Gate {
     });
   }
 
-  private _computeGapHeartBounds():
-    | { x: number; y: number; width: number; height: number }
-    | null {
+  private _computeGapHeartBounds(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null {
     if (!this.gapInfo) return null;
     const { width, height } = HeartPickup.getDimensions(this.gapHeartPixelSize);
 
-    if (this.gapInfo.type === 'H') {
+    if (this.gapInfo.type === "H") {
       const centerX = this.gapX + this.gapWidth / 2;
       const centerY = this.gapY + GATE_THICKNESS / 2;
       return {
@@ -198,9 +210,9 @@ export class Gate {
     const shares = [
       cuts[0],
       ...cuts.slice(1).map((value, index) => value - cuts[index]),
-      1 - cuts[cuts.length - 1]
+      1 - cuts[cuts.length - 1],
     ];
-    const extraSpans = shares.map(share => share * remaining);
+    const extraSpans = shares.map((share) => share * remaining);
 
     this.horizontalSegments = [];
     for (let i = 0; i < segments; i++) {
@@ -224,12 +236,12 @@ export class Gate {
     for (let i = 0; i < segments; i++) {
       const width = this.horizontalSegments[i];
       const horizontalRect: GateRect = {
-        type: 'H',
+        type: "H",
         index: i,
         x: cursorX,
         y: currentY - thickness / 2,
         w: width,
-        h: thickness
+        h: thickness,
       };
       this.rects.push(horizontalRect);
 
@@ -237,12 +249,12 @@ export class Gate {
         const nextY = currentY + this.verticalOffsets[i];
         const top = Math.min(currentY, nextY) - thickness / 2;
         const verticalRect: GateRect = {
-          type: 'V',
+          type: "V",
           index: i,
           x: cursorX + width - thickness / 2,
           y: top,
           w: thickness,
-          h: Math.abs(nextY - currentY) + thickness
+          h: Math.abs(nextY - currentY) + thickness,
         };
         this.rects.push(verticalRect);
         currentY = nextY;
@@ -253,25 +265,32 @@ export class Gate {
   }
 
   _chooseGap() {
-    const candidates = this.rects.filter(rect => (
-      (rect.type === 'H' && rect.w > this.gapWidth + 10) ||
-      (rect.type === 'V' && rect.h > this.gapWidth + 10)
-    ));
+    const candidates = this.rects.filter(
+      (rect) =>
+        (rect.type === "H" && rect.w > this.gapWidth + 10) ||
+        (rect.type === "V" && rect.h > this.gapWidth + 10),
+    );
     const target = candidates.length
       ? candidates[Math.floor(Math.random() * candidates.length)]
       : this.rects[0];
 
     this.gapInfo = { type: target.type, index: target.index };
 
-    if (target.type === 'H') {
+    if (target.type === "H") {
       const minX = target.x + 5;
       const maxX = target.x + target.w - this.gapWidth - 5;
-      this.gapX = Math.max(minX, Math.min(maxX, minX + Math.random() * (maxX - minX)));
+      this.gapX = Math.max(
+        minX,
+        Math.min(maxX, minX + Math.random() * (maxX - minX)),
+      );
       this.gapY = target.y;
     } else {
       const minY = target.y + 5;
       const maxY = target.y + target.h - this.gapWidth - 5;
-      this.gapY = Math.max(minY, Math.min(maxY, minY + Math.random() * (maxY - minY)));
+      this.gapY = Math.max(
+        minY,
+        Math.min(maxY, minY + Math.random() * (maxY - minY)),
+      );
       this.gapX = target.x;
     }
   }
@@ -280,17 +299,41 @@ export class Gate {
     const output: CollisionRect[] = [];
 
     for (const rect of this.rects) {
-      if (this.gapInfo && rect.type === this.gapInfo.type && rect.index === this.gapInfo.index) {
-        if (rect.type === 'H') {
+      if (
+        this.gapInfo &&
+        rect.type === this.gapInfo.type &&
+        rect.index === this.gapInfo.index
+      ) {
+        if (rect.type === "H") {
           const leftWidth = Math.max(0, this.gapX - rect.x);
-          const rightWidth = Math.max(0, rect.x + rect.w - (this.gapX + this.gapWidth));
-          if (leftWidth > 0) output.push({ x: rect.x, y: rect.y, w: leftWidth, h: rect.h });
-          if (rightWidth > 0) output.push({ x: this.gapX + this.gapWidth, y: rect.y, w: rightWidth, h: rect.h });
+          const rightWidth = Math.max(
+            0,
+            rect.x + rect.w - (this.gapX + this.gapWidth),
+          );
+          if (leftWidth > 0)
+            output.push({ x: rect.x, y: rect.y, w: leftWidth, h: rect.h });
+          if (rightWidth > 0)
+            output.push({
+              x: this.gapX + this.gapWidth,
+              y: rect.y,
+              w: rightWidth,
+              h: rect.h,
+            });
         } else {
           const topHeight = Math.max(0, this.gapY - rect.y);
-          const bottomHeight = Math.max(0, rect.y + rect.h - (this.gapY + this.gapWidth));
-          if (topHeight > 0) output.push({ x: rect.x, y: rect.y, w: rect.w, h: topHeight });
-          if (bottomHeight > 0) output.push({ x: rect.x, y: this.gapY + this.gapWidth, w: rect.w, h: bottomHeight });
+          const bottomHeight = Math.max(
+            0,
+            rect.y + rect.h - (this.gapY + this.gapWidth),
+          );
+          if (topHeight > 0)
+            output.push({ x: rect.x, y: rect.y, w: rect.w, h: topHeight });
+          if (bottomHeight > 0)
+            output.push({
+              x: rect.x,
+              y: this.gapY + this.gapWidth,
+              w: rect.w,
+              h: bottomHeight,
+            });
         }
       } else {
         output.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h });
@@ -329,7 +372,7 @@ export class Gate {
         : undefined,
       gapReward: heartRenderInfo
         ? {
-            type: 'heart',
+            type: "heart",
             pixelSize: heartRenderInfo.pixelSize,
             rect: heartRenderInfo.rect,
           }
@@ -340,9 +383,9 @@ export class Gate {
 }
 
 function deepClone<T>(value: T): T {
-  if (value == null || typeof value !== 'object') return value;
+  if (value == null || typeof value !== "object") return value;
   if (Array.isArray(value)) {
-    return value.map(item => deepClone(item)) as unknown as T;
+    return value.map((item) => deepClone(item)) as unknown as T;
   }
 
   const output: Record<string, unknown> = {};
@@ -362,7 +405,7 @@ export function resetCardGateFactory() {
 export function createGateForCardTop({
   y,
   canvasWidth,
-  definition
+  definition,
 }: {
   y: number;
   canvasWidth: number;
@@ -374,7 +417,7 @@ export function createGateForCardTop({
       y,
       canvasWidth,
       gapWidth: GATE_GAP_WIDTH,
-      segmentCount
+      segmentCount,
     });
   }
 
@@ -382,7 +425,10 @@ export function createGateForCardTop({
   if (definition != null) {
     gateDefinition = deepClone(definition);
   } else {
-    const pattern = CONTROLLED_GATE_PATTERNS[nextCardGatePatternIndex % CONTROLLED_GATE_PATTERNS.length];
+    const pattern =
+      CONTROLLED_GATE_PATTERNS[
+        nextCardGatePatternIndex % CONTROLLED_GATE_PATTERNS.length
+      ];
     nextCardGatePatternIndex += 1;
     gateDefinition = deepClone(pattern);
   }
@@ -390,7 +436,7 @@ export function createGateForCardTop({
   return new ControlledGate({
     y,
     canvasWidth,
-    definition: gateDefinition ?? { width: 100 }
+    definition: gateDefinition ?? { width: 100 },
   });
 }
 
@@ -441,8 +487,14 @@ export class GateGenerator {
     }
   }
 
-  ensureGates({ spriteY, groundY }: { spriteY: number; groundY: number }): any[] {
-    if (typeof spriteY !== 'number' || typeof groundY !== 'number') return [];
+  ensureGates({
+    spriteY,
+    groundY,
+  }: {
+    spriteY: number;
+    groundY: number;
+  }): any[] {
+    if (typeof spriteY !== "number" || typeof groundY !== "number") return [];
 
     if (!USE_RANDOM_GATES) {
       if (!this.controlledGenerator) {
@@ -455,7 +507,10 @@ export class GateGenerator {
       return this.controlledGenerator.ensureGates({ spriteY, groundY });
     }
 
-    const currentFeet = Math.max(0, Math.floor((groundY - spriteY) / PIXELS_PER_FOOT));
+    const currentFeet = Math.max(
+      0,
+      Math.floor((groundY - spriteY) / PIXELS_PER_FOOT),
+    );
     const index = Math.floor(currentFeet / this.spacingFeet);
     const baseFeet = Math.max(this.spacingFeet, index * this.spacingFeet);
     const nextFeet = (index + 1) * this.spacingFeet;

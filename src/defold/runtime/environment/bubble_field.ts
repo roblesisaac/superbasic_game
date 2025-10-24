@@ -1,12 +1,12 @@
-import { clamp } from '../../shared/utils.js';
-import { SMALL_BUBBLE_OXYGEN_MULTIPLIER } from '../../config/constants.js';
+import { clamp } from "../../shared/utils.js";
+import { SMALL_BUBBLE_OXYGEN_MULTIPLIER } from "../../config/constants.js";
 import {
   getWellExpansionSpan,
   getWellExpansionTopY,
   getWellShaftSpan,
   getWellWaterSurfaceY,
-  type WellBounds
-} from './well_layout.js';
+  type WellBounds,
+} from "./well_layout.js";
 
 interface StaticBubble {
   x: number;
@@ -85,24 +85,24 @@ const bubblePattern: ReadonlyArray<ReadonlyArray<BubblePatternCell>> = [
   [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
   [0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
   [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
-  [0, 0, 0, 1, 1, 1, 1, 0, 0, 0]
+  [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
 ];
 
 const trailPatterns: ReadonlyArray<ReadonlyArray<ReadonlyArray<number>>> = [
   [
     [0, 1, 0],
     [1, 0, 1],
-    [0, 1, 0]
+    [0, 1, 0],
   ],
   [
     [1, 1],
-    [1, 1]
+    [1, 1],
   ],
-  [[1]]
+  [[1]],
 ];
 
-const BUBBLE_BASE_COLOR = '#689fda';
-const BUBBLE_HIGHLIGHT_COLOR = 'rgba(104, 159, 218, 0.6)';
+const BUBBLE_BASE_COLOR = "#689fda";
+const BUBBLE_HIGHLIGHT_COLOR = "rgba(104, 159, 218, 0.6)";
 
 let staticBubbles: StaticBubble[] = [];
 let risingBubbles: RisingBubble[] = [];
@@ -121,18 +121,22 @@ function interiorSpanForY(worldY: number, env: BubbleEnvironment) {
     const span = getWellShaftSpan(env.wellBounds);
     return {
       left: span.interiorLeft,
-      right: span.interiorRight
+      right: span.interiorRight,
     };
   }
 
   const expansionSpan = getWellExpansionSpan(env.canvasWidth);
   return {
     left: expansionSpan.interiorLeft,
-    right: expansionSpan.interiorRight
+    right: expansionSpan.interiorRight,
   };
 }
 
-function ensureStaticBubbles(env: BubbleEnvironment, waterSurfaceY: number, viewBottom: number): void {
+function ensureStaticBubbles(
+  env: BubbleEnvironment,
+  waterSurfaceY: number,
+  viewBottom: number,
+): void {
   if (viewBottom <= waterSurfaceY) {
     return;
   }
@@ -155,7 +159,7 @@ function ensureStaticBubbles(env: BubbleEnvironment, waterSurfaceY: number, view
       staticBubbles.push({
         x: left + Math.random() * width,
         worldY,
-        brightness: 0.3 + Math.random() * 0.7
+        brightness: 0.3 + Math.random() * 0.7,
       });
     }
 
@@ -163,7 +167,11 @@ function ensureStaticBubbles(env: BubbleEnvironment, waterSurfaceY: number, view
   }
 }
 
-function createRisingBubble(env: BubbleEnvironment, waterSurfaceY: number, viewBottom: number): void {
+function createRisingBubble(
+  env: BubbleEnvironment,
+  waterSurfaceY: number,
+  viewBottom: number,
+): void {
   if (risingBubbles.length >= MAX_RISING_BUBBLES) {
     return;
   }
@@ -190,11 +198,14 @@ function createRisingBubble(env: BubbleEnvironment, waterSurfaceY: number, viewB
     speed: randomInRange(BUBBLE_MIN_SPEED, BUBBLE_MAX_SPEED),
     trailSpacingFrames: 15 + Math.random() * 10,
     trailCounter: 0,
-    trail: []
+    trail: [],
   });
 }
 
-function seedInitialRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number): void {
+function seedInitialRisingBubbles(
+  env: BubbleEnvironment,
+  waterSurfaceY: number,
+): void {
   if (seededInitialBubbles) {
     return;
   }
@@ -206,7 +217,11 @@ function seedInitialRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number)
   }
 }
 
-function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: number): void {
+function updateRisingBubbles(
+  env: BubbleEnvironment,
+  waterSurfaceY: number,
+  dt: number,
+): void {
   const viewBottom = env.cameraY + env.canvasHeight;
 
   if (RISING_BUBBLE_SPAWNS_PER_SECOND > 0) {
@@ -231,7 +246,10 @@ function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: 
         worldY: bubble.worldY + bubble.radius + 5,
         life: 1,
         patternIndex: Math.floor(Math.random() * trailPatterns.length),
-        offsetX: randomInRange(-TRAIL_HORIZONTAL_JITTER, TRAIL_HORIZONTAL_JITTER)
+        offsetX: randomInRange(
+          -TRAIL_HORIZONTAL_JITTER,
+          TRAIL_HORIZONTAL_JITTER,
+        ),
       });
       bubble.trailCounter = 0;
     }
@@ -278,7 +296,8 @@ function updateRisingBubbles(env: BubbleEnvironment, waterSurfaceY: number, dt: 
 
       const absorbed = risingBubbles[absorbedIndex];
       const volumeIncrease =
-        (absorbed.radius * absorbed.radius) / (absorber.radius * absorber.radius);
+        (absorbed.radius * absorbed.radius) /
+        (absorber.radius * absorber.radius);
       absorber.radius += absorbed.radius * 0.4 * volumeIncrease;
       risingBubbles.splice(absorbedIndex, 1);
 
@@ -304,7 +323,7 @@ function drawPixelatedBubble(
   radius: number,
   drawTrail: boolean,
   trail: BubbleTrail[],
-  cameraY: number
+  cameraY: number,
 ): void {
   const patternSize = bubblePattern.length;
   const scale = (radius * 2) / (patternSize * STATIC_PIXEL_SIZE);
@@ -322,7 +341,7 @@ function drawPixelatedBubble(
         x - radius + col * scaledPixel,
         y - radius + row * scaledPixel,
         scaledPixel,
-        scaledPixel
+        scaledPixel,
       );
     }
   }
@@ -352,7 +371,7 @@ function drawPixelatedBubble(
           originX + col * trailPixel,
           screenY + row * trailPixel,
           trailPixel,
-          trailPixel
+          trailPixel,
         );
       }
     }
@@ -360,7 +379,7 @@ function drawPixelatedBubble(
 }
 
 export function handleSpriteBubbleCollisions(
-  context: SpriteBubbleCollisionContext
+  context: SpriteBubbleCollisionContext,
 ): SpriteBubbleCollisionResult {
   let inBubble = context.isInBubble;
   let bubbleRadius = context.bubbleRadius;
@@ -383,7 +402,10 @@ export function handleSpriteBubbleCollisions(
     const dist = Math.hypot(dx, dy);
 
     if (!inBubble) {
-      if (bubble.radius <= spriteRadius && dist < bubble.radius + spriteRadius) {
+      if (
+        bubble.radius <= spriteRadius &&
+        dist < bubble.radius + spriteRadius
+      ) {
         oxygenDelta += bubble.radius * SMALL_BUBBLE_OXYGEN_MULTIPLIER;
         risingBubbles.splice(i, 1);
         continue;
@@ -397,7 +419,8 @@ export function handleSpriteBubbleCollisions(
       }
     } else {
       if (dist < bubbleRadius + bubble.radius) {
-        const volumeIncrease = (bubble.radius * bubble.radius) / (bubbleRadius * bubbleRadius);
+        const volumeIncrease =
+          (bubble.radius * bubble.radius) / (bubbleRadius * bubbleRadius);
         bubbleRadius += bubble.radius * 0.4 * volumeIncrease;
         risingBubbles.splice(i, 1);
       }
@@ -430,7 +453,10 @@ export function updateBubbleField(env: BubbleEnvironment): void {
   updateRisingBubbles(env, waterSurfaceY, dt);
 }
 
-export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnvironment): void {
+export function drawBubbleField(
+  ctx: CanvasRenderingContext2D,
+  env: BubbleEnvironment,
+): void {
   const waterSurfaceY = getWellWaterSurfaceY(env.groundY, env.canvasHeight);
 
   ctx.save();
@@ -441,7 +467,10 @@ export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnviro
       continue;
     }
     const screenY = bubble.worldY - env.cameraY;
-    if (screenY < -STATIC_PIXEL_SIZE || screenY > env.canvasHeight + STATIC_PIXEL_SIZE) {
+    if (
+      screenY < -STATIC_PIXEL_SIZE ||
+      screenY > env.canvasHeight + STATIC_PIXEL_SIZE
+    ) {
       continue;
     }
 
@@ -454,7 +483,10 @@ export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnviro
       continue;
     }
     const screenY = bubble.worldY - env.cameraY;
-    if (screenY < -bubble.radius || screenY > env.canvasHeight + bubble.radius + 64) {
+    if (
+      screenY < -bubble.radius ||
+      screenY > env.canvasHeight + bubble.radius + 64
+    ) {
       continue;
     }
 
@@ -465,7 +497,7 @@ export function drawBubbleField(ctx: CanvasRenderingContext2D, env: BubbleEnviro
       bubble.radius,
       true,
       bubble.trail,
-      env.cameraY
+      env.cameraY,
     );
   }
 
@@ -476,7 +508,7 @@ export function drawEncasingBubble(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  radius: number
+  radius: number,
 ): void {
   drawPixelatedBubble(ctx, x, y, radius, false, [], 0);
 }

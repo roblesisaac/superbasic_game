@@ -5,10 +5,10 @@ import {
   generatePolyomino,
   getPolyominoBounds as getBounds,
   polyominoToOffsets,
-  seededRandom
-} from '../geometry/polyomino.js';
+  seededRandom,
+} from "../geometry/polyomino.js";
 
-type CliffSide = 'left' | 'right';
+type CliffSide = "left" | "right";
 type Edge = PolyominoEdge;
 
 const CELL_SIZE = 2;
@@ -32,7 +32,7 @@ export interface CliffCollisionRect {
   y: number;
   w: number;
   h: number;
-  side?: 'left' | 'right';
+  side?: "left" | "right";
 }
 
 export const CLIFF_CELL_SIZE = CELL_SIZE;
@@ -77,7 +77,7 @@ class CliffSegment {
     side: CliffSide,
     prevSegment: CliffSegment | null,
     canvasWidth: number,
-    seedBase: number
+    seedBase: number,
   ) {
     this.side = side;
     this.seedBase = seedBase;
@@ -97,7 +97,8 @@ class CliffSegment {
 
     if (!prevSegment) {
       this.y = 0;
-      this.currentWidth = seededRandom(seedBase) * maxWidth * 0.3 + maxWidth * 0.2;
+      this.currentWidth =
+        seededRandom(seedBase) * maxWidth * 0.3 + maxWidth * 0.2;
     } else {
       this.y = prevSegment.y + prevSegment.height;
       this.currentWidth = prevSegment.endWidth;
@@ -128,7 +129,7 @@ class CliffSegment {
           const minWidth = Math.max(maxWidth * 0.1, 1);
           horizontalLen = Math.max(
             1,
-            Math.min(horizontalLen, this.currentWidth - minWidth)
+            Math.min(horizontalLen, this.currentWidth - minWidth),
           );
         } else if (this.currentWidth - horizontalLen < maxWidth * 0.1) {
           moveInward = true;
@@ -148,12 +149,12 @@ class CliffSegment {
     if (moveInward) {
       widthAfterHorizontal = Math.min(
         maxWidth,
-        this.currentWidth + this.horizontalLen
+        this.currentWidth + this.horizontalLen,
       );
     } else {
       widthAfterHorizontal = Math.max(
         maxWidth * 0.1,
-        this.currentWidth - this.horizontalLen
+        this.currentWidth - this.horizontalLen,
       );
     }
 
@@ -172,9 +173,15 @@ class CliffSegment {
       this.angle = (seededRandom(seedBase + 400) - 0.5) * angleRange;
       const diagDisplacement = Math.tan(this.angle) * this.verticalLen;
       if (this.angle > 0) {
-        this.endWidth = Math.min(maxWidth, widthAfterHorizontal + diagDisplacement);
+        this.endWidth = Math.min(
+          maxWidth,
+          widthAfterHorizontal + diagDisplacement,
+        );
       } else {
-        this.endWidth = Math.max(maxWidth * 0.05, widthAfterHorizontal + diagDisplacement);
+        this.endWidth = Math.max(
+          maxWidth * 0.05,
+          widthAfterHorizontal + diagDisplacement,
+        );
       }
     }
 
@@ -191,10 +198,13 @@ class CliffSegment {
     let horizEndX: number;
     let diagEndX: number;
 
-    if (this.side === 'left') {
+    if (this.side === "left") {
       horizStartX = this.currentWidth;
       horizEndX = this.moveInward
-        ? Math.min(this.currentWidth + this.horizontalLen, this.canvasWidth * MAX_WIDTH_RATIO)
+        ? Math.min(
+            this.currentWidth + this.horizontalLen,
+            this.canvasWidth * MAX_WIDTH_RATIO,
+          )
         : Math.max(this.currentWidth - this.horizontalLen, 10);
       diagEndX = Math.min(this.endWidth, this.canvasWidth * MAX_WIDTH_RATIO);
     } else {
@@ -202,16 +212,19 @@ class CliffSegment {
       horizEndX = this.moveInward
         ? Math.max(
             this.canvasWidth - this.currentWidth - this.horizontalLen,
-            this.canvasWidth * (1 - MAX_WIDTH_RATIO)
+            this.canvasWidth * (1 - MAX_WIDTH_RATIO),
           )
         : Math.min(
             this.canvasWidth - this.currentWidth + this.horizontalLen,
-            this.canvasWidth - 10
+            this.canvasWidth - 10,
           );
-      diagEndX = Math.max(this.canvasWidth - this.endWidth, this.canvasWidth * (1 - MAX_WIDTH_RATIO));
+      diagEndX = Math.max(
+        this.canvasWidth - this.endWidth,
+        this.canvasWidth * (1 - MAX_WIDTH_RATIO),
+      );
     }
 
-    const anchor: Edge = this.side === 'left' ? 'right' : 'left';
+    const anchor: Edge = this.side === "left" ? "right" : "left";
 
     return { horizStartX, horizEndX, diagEndX, anchor };
   }
@@ -223,7 +236,7 @@ class CliffSegment {
       return;
     }
 
-    const arcDirection = this.side === 'left' ? 1 : -1;
+    const arcDirection = this.side === "left" ? 1 : -1;
     const startX = horizEndX;
     const startY = this.y;
     const endX = diagEndX;
@@ -252,11 +265,11 @@ class CliffSegment {
 
     const { horizStartX, horizEndX, diagEndX } = this.computeGeometry();
     const startEdge =
-      this.side === 'left'
+      this.side === "left"
         ? Math.max(horizStartX, horizEndX)
         : Math.min(horizStartX, horizEndX);
     const endEdge =
-      this.side === 'left'
+      this.side === "left"
         ? Math.max(diagEndX, horizEndX)
         : Math.min(diagEndX, horizEndX);
 
@@ -264,7 +277,7 @@ class CliffSegment {
     const clamped = Math.min(Math.max(t, 0), 1);
 
     if (this.hasArc) {
-      const arcDirection = this.side === 'left' ? 1 : -1;
+      const arcDirection = this.side === "left" ? 1 : -1;
       const startX = startEdge;
       const endX = endEdge;
       const startY = segmentTop;
@@ -273,7 +286,8 @@ class CliffSegment {
       const midY = (startY + endY) / 2;
       const angle = Math.atan2(endY - startY, endX - startX);
       const perpAngle = angle + Math.PI / 2;
-      const controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
+      const controlX =
+        midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
       const oneMinusT = 1 - clamped;
       return (
         oneMinusT * oneMinusT * startX +
@@ -293,12 +307,15 @@ class CliffSegment {
   }
 
   private buildCollisionRects(): CliffCollisionRect[] {
-    const cells = new Map<string, { x: number; y: number; side?: 'left' | 'right' }>();
+    const cells = new Map<
+      string,
+      { x: number; y: number; side?: "left" | "right" }
+    >();
     const segmentTop = cliffState.origin + this.y;
     const segmentBottom = segmentTop + this.verticalLen;
     const { horizEndX, diagEndX, anchor } = this.computeGeometry();
 
-    const addCell = (x: number, y: number, side?: 'left' | 'right') => {
+    const addCell = (x: number, y: number, side?: "left" | "right") => {
       const key = `${x}|${y}`;
       const existing = cells.get(key);
       if (!existing) {
@@ -318,14 +335,18 @@ class CliffSegment {
 
     const shouldArc = this.hasArc;
     const arcAmount = this.arcAmount;
-    const arcDirection = this.side === 'left' ? 1 : -1;
+    const arcDirection = this.side === "left" ? 1 : -1;
 
     const midX = (vertStartX + vertEndX) / 2;
     const midY = (vertStartY + vertEndY) / 2;
     const angle = Math.atan2(vertEndY - vertStartY, vertEndX - vertStartX);
     const perpAngle = angle + Math.PI / 2;
-    const controlX = shouldArc ? midX + Math.cos(perpAngle) * arcAmount * arcDirection : 0;
-    const controlY = shouldArc ? midY + Math.sin(perpAngle) * arcAmount * arcDirection : 0;
+    const controlX = shouldArc
+      ? midX + Math.cos(perpAngle) * arcAmount * arcDirection
+      : 0;
+    const controlY = shouldArc
+      ? midY + Math.sin(perpAngle) * arcAmount * arcDirection
+      : 0;
 
     for (let i = 0; i <= steps; i += 1) {
       const t = i / steps;
@@ -334,8 +355,14 @@ class CliffSegment {
 
       if (shouldArc) {
         const oneMinusT = 1 - t;
-        x = oneMinusT * oneMinusT * vertStartX + 2 * oneMinusT * t * controlX + t * t * vertEndX;
-        y = oneMinusT * oneMinusT * vertStartY + 2 * oneMinusT * t * controlY + t * t * vertEndY;
+        x =
+          oneMinusT * oneMinusT * vertStartX +
+          2 * oneMinusT * t * controlX +
+          t * t * vertEndX;
+        y =
+          oneMinusT * oneMinusT * vertStartY +
+          2 * oneMinusT * t * controlY +
+          t * t * vertEndY;
       } else {
         x = vertStartX + (vertEndX - vertStartX) * t;
         y = vertStartY + (vertEndY - vertStartY) * t;
@@ -345,14 +372,19 @@ class CliffSegment {
       cellsSet = flattenEdge(cellsSet, anchor);
       const bounds = getBounds(cellsSet);
       const widthPixels = bounds.w * CELL_SIZE;
-      const baseX = anchor === 'right' ? Math.round(x) - widthPixels : Math.round(x);
+      const baseX =
+        anchor === "right" ? Math.round(x) - widthPixels : Math.round(x);
       const baseY = Math.round(y);
 
       const targetCx =
-        anchor === 'right' ? bounds.maxX : anchor === 'left' ? bounds.minX : null;
+        anchor === "right"
+          ? bounds.maxX
+          : anchor === "left"
+            ? bounds.minX
+            : null;
 
       for (const key of cellsSet) {
-        const [cx, cy] = key.split(',').map(Number);
+        const [cx, cy] = key.split(",").map(Number);
         if (targetCx !== null && cx !== targetCx) continue;
         const cellX = baseX + cx * CELL_SIZE;
         const cellY = baseY + cy * CELL_SIZE;
@@ -360,7 +392,10 @@ class CliffSegment {
       }
     }
 
-    const columns = new Map<number, Array<{ y: number; side?: 'left' | 'right' }>>();
+    const columns = new Map<
+      number,
+      Array<{ y: number; side?: "left" | "right" }>
+    >();
     for (const cell of cells.values()) {
       const list = columns.get(cell.x);
       if (list) list.push({ y: cell.y, side: cell.side });
@@ -381,20 +416,36 @@ class CliffSegment {
         if (y === runEnd && side === runSide) {
           runEnd += CELL_SIZE;
         } else {
-          rects.push({ x, y: runStart, w: CELL_SIZE, h: runEnd - runStart, side: runSide });
+          rects.push({
+            x,
+            y: runStart,
+            w: CELL_SIZE,
+            h: runEnd - runStart,
+            side: runSide,
+          });
           runStart = y;
           runEnd = y + CELL_SIZE;
           runSide = side;
         }
       }
 
-      rects.push({ x, y: runStart, w: CELL_SIZE, h: runEnd - runStart, side: runSide });
+      rects.push({
+        x,
+        y: runStart,
+        w: CELL_SIZE,
+        h: runEnd - runStart,
+        side: runSide,
+      });
     }
 
     return rects;
   }
 
-  draw(ctx: CanvasRenderingContext2D, canvasWidth: number, scrollY: number): void {
+  draw(
+    ctx: CanvasRenderingContext2D,
+    canvasWidth: number,
+    scrollY: number,
+  ): void {
     const screenY = this.y - scrollY;
 
     const inwardLimitLeft = canvasWidth * MAX_WIDTH_RATIO;
@@ -404,7 +455,7 @@ class CliffSegment {
     let horizEndX: number;
     let diagEndX: number;
 
-    if (this.side === 'left') {
+    if (this.side === "left") {
       horizStartX = this.currentWidth;
       horizEndX = this.moveInward
         ? Math.min(this.currentWidth + this.horizontalLen, inwardLimitLeft)
@@ -415,11 +466,11 @@ class CliffSegment {
       horizEndX = this.moveInward
         ? Math.max(
             canvasWidth - this.currentWidth - this.horizontalLen,
-            inwardLimitRight
+            inwardLimitRight,
           )
         : Math.min(
             canvasWidth - this.currentWidth + this.horizontalLen,
-            canvasWidth - 10
+            canvasWidth - 10,
           );
       diagEndX = Math.max(canvasWidth - this.endWidth, inwardLimitRight);
     }
@@ -430,7 +481,7 @@ class CliffSegment {
       screenY,
       horizStartX,
       horizEndX,
-      diagEndX
+      diagEndX,
     );
 
     if (!this.horizontalCache) {
@@ -438,12 +489,18 @@ class CliffSegment {
         horizStartX,
         screenY,
         horizEndX,
-        this.seedBase
+        this.seedBase,
       );
     }
-    this.renderHorizontalCache(ctx, this.horizontalCache, horizStartX, screenY, horizEndX);
+    this.renderHorizontalCache(
+      ctx,
+      this.horizontalCache,
+      horizStartX,
+      screenY,
+      horizEndX,
+    );
 
-    const verticalAnchor: Edge = this.side === 'left' ? 'right' : 'left';
+    const verticalAnchor: Edge = this.side === "left" ? "right" : "left";
     if (!this.verticalCache) {
       this.verticalCache = this.buildVerticalCache(
         horizEndX,
@@ -451,7 +508,7 @@ class CliffSegment {
         diagEndX,
         screenY + this.verticalLen,
         this.seedBase + 1000,
-        verticalAnchor
+        verticalAnchor,
       );
     }
     this.renderVerticalCache(
@@ -460,7 +517,7 @@ class CliffSegment {
       horizEndX,
       screenY,
       diagEndX,
-      screenY + this.verticalLen
+      screenY + this.verticalLen,
     );
   }
 
@@ -470,12 +527,12 @@ class CliffSegment {
     screenY: number,
     horizStartX: number,
     horizEndX: number,
-    diagEndX: number
+    diagEndX: number,
   ): void {
-    ctx.fillStyle = '#6ba1d7';
+    ctx.fillStyle = "#6ba1d7";
     const textureCount = Math.floor(this.height * 0.15);
     const padding = 12;
-    const arcDirection = this.side === 'left' ? 1 : -1;
+    const arcDirection = this.side === "left" ? 1 : -1;
 
     this.controlX = null;
     this.controlY = null;
@@ -488,8 +545,10 @@ class CliffSegment {
       const midY = (screenY + bottomY) / 2;
       const angle = Math.atan2(bottomY - screenY, bottomX - topX);
       const perpAngle = angle + Math.PI / 2;
-      this.controlX = midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
-      this.controlY = midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
+      this.controlX =
+        midX + Math.cos(perpAngle) * this.arcAmount * arcDirection;
+      this.controlY =
+        midY + Math.sin(perpAngle) * this.arcAmount * arcDirection;
     }
 
     for (let i = 0; i < textureCount; i += 1) {
@@ -500,7 +559,7 @@ class CliffSegment {
       let maxX: number;
 
       if (y < screenY + 5) {
-        if (this.side === 'left') {
+        if (this.side === "left") {
           minX = padding;
           maxX = horizEndX - padding;
         } else {
@@ -520,7 +579,7 @@ class CliffSegment {
           edgeX = topX + (bottomX - topX) * diagT;
         }
 
-        if (this.side === 'left') {
+        if (this.side === "left") {
           minX = padding;
           maxX = edgeX - padding;
         } else {
@@ -542,8 +601,7 @@ class CliffSegment {
       if (type < 0.6) {
         ctx.fillRect(drawX, drawY, 3, 3);
       } else {
-        const dashLen =
-          8 + seededRandom(this.seedBase + 8000 + i * 67) * 16;
+        const dashLen = 8 + seededRandom(this.seedBase + 8000 + i * 67) * 16;
         ctx.fillRect(drawX, drawY, Math.round(dashLen), 3);
       }
     }
@@ -553,7 +611,7 @@ class CliffSegment {
     x1: number,
     y1: number,
     x2: number,
-    seed: number
+    seed: number,
   ): HorizontalCacheEntry[] {
     const start = Math.min(x1, x2);
     const baseY = Math.round(y1);
@@ -564,7 +622,7 @@ class CliffSegment {
     const entries: HorizontalCacheEntry[] = [];
     while (x < end) {
       let cells = generatePolyomino(seed + shapeIndex * 123, 4, 9);
-      cells = flattenEdge(cells, 'top');
+      cells = flattenEdge(cells, "top");
       const bounds = getBounds(cells);
       const shapeWidth = bounds.w * CELL_SIZE;
 
@@ -573,7 +631,7 @@ class CliffSegment {
       entries.push({
         offsetX: Math.round(x - start),
         offsetY: Math.round(y1) - baseY,
-        cells: offsets
+        cells: offsets,
       });
 
       x += Math.max(1, shapeWidth - 1);
@@ -589,14 +647,14 @@ class CliffSegment {
     x2: number,
     y2: number,
     seed: number,
-    anchor: Edge
+    anchor: Edge,
   ): VerticalCacheEntry[] {
     const dist = Math.hypot(x2 - x1, y2 - y1);
     const steps = Math.max(1, Math.ceil(dist / (CELL_SIZE * 6)));
 
     const shouldArc = this.hasArc;
     const arcAmount = this.arcAmount;
-    const arcDirection = this.side === 'left' ? 1 : -1;
+    const arcDirection = this.side === "left" ? 1 : -1;
 
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
@@ -641,7 +699,7 @@ class CliffSegment {
         t,
         anchor,
         widthPixels: bounds.w * CELL_SIZE,
-        cells: offsets
+        cells: offsets,
       });
     }
 
@@ -653,7 +711,7 @@ class CliffSegment {
     cache: HorizontalCacheEntry[] | null,
     x1: number,
     y1: number,
-    x2: number
+    x2: number,
   ): void {
     if (USE_OFFSCREEN_CANVAS) {
       // TODO: draw cliffs into an offscreen canvas and blit them to improve fillRect throughput.
@@ -662,7 +720,7 @@ class CliffSegment {
     const start = Math.round(Math.min(x1, x2));
     const baseY = Math.round(y1);
 
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = "#FFFFFF";
     for (const entry of cache) {
       const px = start + entry.offsetX;
       const py = baseY + entry.offsetY;
@@ -671,7 +729,7 @@ class CliffSegment {
           px + cx * CELL_SIZE,
           py + cy * CELL_SIZE,
           CELL_SIZE,
-          CELL_SIZE
+          CELL_SIZE,
         );
       }
     }
@@ -683,7 +741,7 @@ class CliffSegment {
     x1: number,
     y1: number,
     x2: number,
-    y2: number
+    y2: number,
   ): void {
     if (!cache) return;
 
@@ -691,7 +749,7 @@ class CliffSegment {
     const controlX = this.controlX;
     const controlY = this.controlY;
 
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = "#FFFFFF";
     for (const entry of cache) {
       const t = entry.t;
       let x: number;
@@ -713,7 +771,7 @@ class CliffSegment {
       }
 
       const px =
-        entry.anchor === 'right'
+        entry.anchor === "right"
           ? Math.round(x) - entry.widthPixels
           : Math.round(x);
       const py = Math.round(y);
@@ -723,7 +781,7 @@ class CliffSegment {
           px + cx * CELL_SIZE,
           py + cy * CELL_SIZE,
           CELL_SIZE,
-          CELL_SIZE
+          CELL_SIZE,
         );
       }
     }
@@ -733,10 +791,11 @@ class CliffSegment {
 export function prepareCliffField(
   canvasWidth: number,
   cliffTopWorld: number,
-  targetBottomWorld: number
+  targetBottomWorld: number,
 ): void {
   if (!Number.isFinite(canvasWidth) || canvasWidth <= 0) return;
-  if (!Number.isFinite(cliffTopWorld) || !Number.isFinite(targetBottomWorld)) return;
+  if (!Number.isFinite(cliffTopWorld) || !Number.isFinite(targetBottomWorld))
+    return;
 
   const requiredHeight = Math.max(0, targetBottomWorld - cliffTopWorld);
   if (requiredHeight <= 0) return;
@@ -751,17 +810,23 @@ export function prepareCliffField(
     cliffState.cavernHeight = requiredHeight;
   }
 
-  const targetDepth = Math.max(0, targetBottomWorld - cliffState.origin) + SEGMENT_HEIGHT * BUFFER_SEGMENTS;
+  const targetDepth =
+    Math.max(0, targetBottomWorld - cliffState.origin) +
+    SEGMENT_HEIGHT * BUFFER_SEGMENTS;
   ensureSegments(targetDepth);
 }
 
-export function getCliffInteriorBoundsAtY(y: number): { left: number; right: number } {
+export function getCliffInteriorBoundsAtY(y: number): {
+  left: number;
+  right: number;
+} {
   if (!cliffState.initialized || !Number.isFinite(y)) {
     return { left: 0, right: Infinity };
   }
 
   let leftBoundary = 0;
-  let rightBoundary = cliffState.canvasWidth > 0 ? cliffState.canvasWidth : Infinity;
+  let rightBoundary =
+    cliffState.canvasWidth > 0 ? cliffState.canvasWidth : Infinity;
 
   for (const segment of cliffState.leftSegments) {
     const edge = segment.getInteriorEdgeAt(y);
@@ -784,20 +849,32 @@ export function getCliffInteriorBoundsAtY(y: number): { left: number; right: num
   return { left: leftBoundary, right: rightBoundary };
 }
 
-export function getCliffLedgesInRange(rangeTop: number, rangeBottom: number): CliffLedge[] {
+export function getCliffLedgesInRange(
+  rangeTop: number,
+  rangeBottom: number,
+): CliffLedge[] {
   const ledges: CliffLedge[] = [];
   if (!cliffState.initialized) return ledges;
-  if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom)) return ledges;
+  if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom))
+    return ledges;
 
   for (const segment of cliffState.leftSegments) {
     const { left, right, y } = segment.getLedgeBounds();
-    if (y < rangeTop - CLIFF_LEDGE_TOLERANCE || y > rangeBottom + CLIFF_LEDGE_TOLERANCE) continue;
+    if (
+      y < rangeTop - CLIFF_LEDGE_TOLERANCE ||
+      y > rangeBottom + CLIFF_LEDGE_TOLERANCE
+    )
+      continue;
     ledges.push({ left, right, y });
   }
 
   for (const segment of cliffState.rightSegments) {
     const { left, right, y } = segment.getLedgeBounds();
-    if (y < rangeTop - CLIFF_LEDGE_TOLERANCE || y > rangeBottom + CLIFF_LEDGE_TOLERANCE) continue;
+    if (
+      y < rangeTop - CLIFF_LEDGE_TOLERANCE ||
+      y > rangeBottom + CLIFF_LEDGE_TOLERANCE
+    )
+      continue;
     ledges.push({ left, right, y });
   }
 
@@ -806,7 +883,7 @@ export function getCliffLedgesInRange(rangeTop: number, rangeBottom: number): Cl
 
 export function getCliffCollisionRects(
   rangeTop: number,
-  rangeBottom: number
+  rangeBottom: number,
 ): CliffCollisionRect[] {
   const rects: CliffCollisionRect[] = [];
   if (!cliffState.initialized) return rects;
@@ -829,7 +906,7 @@ export function getCliffCollisionRects(
         y: clippedTop,
         w: rect.w,
         h: clippedHeight,
-        side: rect.side
+        side: rect.side,
       });
     }
 
@@ -843,7 +920,7 @@ export function getCliffCollisionRects(
         x: ledge.left,
         y: ledge.y,
         w: width,
-        h: CLIFF_LEDGE_THICKNESS
+        h: CLIFF_LEDGE_THICKNESS,
       });
     }
   };
@@ -874,7 +951,7 @@ const cliffState: CliffRenderState = {
   canvasWidth: 0,
   cavernHeight: 0,
   leftSegments: [],
-  rightSegments: []
+  rightSegments: [],
 };
 
 export function resetCliffs(): void {
@@ -886,7 +963,11 @@ export function resetCliffs(): void {
   cliffState.rightSegments = [];
 }
 
-function initializeCliffs(origin: number, canvasWidth: number, cavernHeight: number): void {
+function initializeCliffs(
+  origin: number,
+  canvasWidth: number,
+  cavernHeight: number,
+): void {
   cliffState.initialized = true;
   cliffState.origin = origin;
   cliffState.canvasWidth = canvasWidth;
@@ -894,22 +975,33 @@ function initializeCliffs(origin: number, canvasWidth: number, cavernHeight: num
   cliffState.leftSegments = [];
   cliffState.rightSegments = [];
 
-  const numSegments = Math.max(1, Math.ceil(cavernHeight / SEGMENT_HEIGHT) + BUFFER_SEGMENTS);
+  const numSegments = Math.max(
+    1,
+    Math.ceil(cavernHeight / SEGMENT_HEIGHT) + BUFFER_SEGMENTS,
+  );
   for (let i = 0; i < numSegments; i += 1) {
-    const prevLeft = cliffState.leftSegments[cliffState.leftSegments.length - 1] ?? null;
-    cliffState.leftSegments.push(new CliffSegment('left', prevLeft, canvasWidth, i * 7919));
+    const prevLeft =
+      cliffState.leftSegments[cliffState.leftSegments.length - 1] ?? null;
+    cliffState.leftSegments.push(
+      new CliffSegment("left", prevLeft, canvasWidth, i * 7919),
+    );
 
-    const prevRight = cliffState.rightSegments[cliffState.rightSegments.length - 1] ?? null;
+    const prevRight =
+      cliffState.rightSegments[cliffState.rightSegments.length - 1] ?? null;
     cliffState.rightSegments.push(
-      new CliffSegment('right', prevRight, canvasWidth, i * 7919 + 3571)
+      new CliffSegment("right", prevRight, canvasWidth, i * 7919 + 3571),
     );
   }
 }
 
 function ensureSegments(targetDepth: number): void {
-  const lists: Array<{ segments: CliffSegment[]; offset: number; side: CliffSide }> = [
-    { segments: cliffState.leftSegments, offset: 0, side: 'left' },
-    { segments: cliffState.rightSegments, offset: 3571, side: 'right' }
+  const lists: Array<{
+    segments: CliffSegment[];
+    offset: number;
+    side: CliffSide;
+  }> = [
+    { segments: cliffState.leftSegments, offset: 0, side: "left" },
+    { segments: cliffState.rightSegments, offset: 3571, side: "right" },
   ];
 
   for (const list of lists) {
@@ -921,7 +1013,12 @@ function ensureSegments(targetDepth: number): void {
       const index = list.segments.length;
       const prev = list.segments[index - 1] ?? null;
       const seedBase = index * 7919 + list.offset;
-      const segment = new CliffSegment(list.side, prev, cliffState.canvasWidth, seedBase);
+      const segment = new CliffSegment(
+        list.side,
+        prev,
+        cliffState.canvasWidth,
+        seedBase,
+      );
       list.segments.push(segment);
       lastBottom = segment.y + segment.height;
     }
@@ -938,9 +1035,10 @@ export interface CliffRenderOptions {
 
 export function drawCavernCliffs(
   ctx: CanvasRenderingContext2D,
-  options: CliffRenderOptions
+  options: CliffRenderOptions,
 ): void {
-  const { canvasWidth, canvasHeight, cameraY, cavernTop, cavernBottom } = options;
+  const { canvasWidth, canvasHeight, cameraY, cavernTop, cavernBottom } =
+    options;
 
   if (!Number.isFinite(canvasWidth) || canvasWidth <= 0) return;
   if (!Number.isFinite(cavernTop) || !Number.isFinite(cavernBottom)) return;
@@ -961,7 +1059,7 @@ export function drawCavernCliffs(
   const viewBottom = cameraY + canvasHeight;
   const depthFromOrigin = Math.max(
     cavernHeight,
-    viewBottom - cliffState.origin + SEGMENT_HEIGHT * BUFFER_SEGMENTS
+    viewBottom - cliffState.origin + SEGMENT_HEIGHT * BUFFER_SEGMENTS,
   );
   ensureSegments(depthFromOrigin);
 

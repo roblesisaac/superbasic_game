@@ -2,32 +2,29 @@ import {
   WELL_OPENING_WIDTH,
   WELL_RIM_THICKNESS,
   ensureWellDepth,
-  getWellGeometry
-} from '../well_layout.js';
-import type { WellGeometry } from '../well_layout.js';
-import {
-  CLIFF_CELL_SIZE,
-  drawCavernCliffs
-} from './drawCliffs.js';
+  getWellGeometry,
+} from "../well_layout.js";
+import type { WellGeometry } from "../well_layout.js";
+import { CLIFF_CELL_SIZE, drawCavernCliffs } from "./drawCliffs.js";
 import {
   flattenPolyominoEdge as flattenEdge,
   generatePolyomino,
   getPolyominoBounds,
   polyominoToOffsets,
-  seededRandom
-} from '../geometry/polyomino.js';
+  seededRandom,
+} from "../geometry/polyomino.js";
 
-const WELL_COLOR_RIM_CAP = '#f6f6fb';
-const WELL_COLOR_RIM_COLLAR = '#d8dae4';
-const WELL_COLOR_RIM_NOISE_TOP = '#e2e4ef';
-const WELL_COLOR_RIM_NOISE_COLLAR = '#c4c6d3';
-const WELL_COLOR_RIM_INNER_GLOW = '#3a3d47';
-const WELL_COLOR_SHAFT = '#000000';
-const WELL_COLOR_SHAFT_EDGE = '#3d4250';
-const WELL_COLOR_SHAFT_ARM = '#2f3340';
-const WELL_COLOR_WATER_SURFACE = '#1f82d0';
-const WELL_COLOR_LIP = '#eceff5';
-const WELL_COLOR_CAVERN = '#000000';
+const WELL_COLOR_RIM_CAP = "#f6f6fb";
+const WELL_COLOR_RIM_COLLAR = "#d8dae4";
+const WELL_COLOR_RIM_NOISE_TOP = "#e2e4ef";
+const WELL_COLOR_RIM_NOISE_COLLAR = "#c4c6d3";
+const WELL_COLOR_RIM_INNER_GLOW = "#3a3d47";
+const WELL_COLOR_SHAFT = "#000000";
+const WELL_COLOR_SHAFT_EDGE = "#3d4250";
+const WELL_COLOR_SHAFT_ARM = "#2f3340";
+const WELL_COLOR_WATER_SURFACE = "#1f82d0";
+const WELL_COLOR_LIP = "#eceff5";
+const WELL_COLOR_CAVERN = "#000000";
 
 interface DrawWellOptions {
   centerX: number;
@@ -80,7 +77,7 @@ interface ShaftEdgeOptions {
 
 function drawWellShaftEdges(
   ctx: CanvasRenderingContext2D,
-  options: ShaftEdgeOptions
+  options: ShaftEdgeOptions,
 ): void {
   const {
     innerLeft,
@@ -89,7 +86,7 @@ function drawWellShaftEdges(
     bottom,
     canvasWidth,
     canvasHeight,
-    seedBase
+    seedBase,
   } = options;
 
   if (!Number.isFinite(innerLeft) || !Number.isFinite(innerWidth)) return;
@@ -116,11 +113,14 @@ function drawWellShaftEdges(
 
     {
       let cells = generatePolyomino(seedBase + i * 211, 3, 6);
-      cells = flattenEdge(cells, 'left');
+      cells = flattenEdge(cells, "left");
       const bounds = getPolyominoBounds(cells);
       const outwardCells = 1 + Math.floor(seededRandom(seedBase + i * 503) * 2);
-      const jitter = Math.round((seededRandom(seedBase + i * 617) - 0.5) * cellSize);
-      const pxBase = leftBoundary - (bounds.maxX + outwardCells) * cellSize + jitter;
+      const jitter = Math.round(
+        (seededRandom(seedBase + i * 617) - 0.5) * cellSize,
+      );
+      const pxBase =
+        leftBoundary - (bounds.maxX + outwardCells) * cellSize + jitter;
       const offsets = polyominoToOffsets(cells);
 
       for (const [cx, cy] of offsets) {
@@ -143,9 +143,11 @@ function drawWellShaftEdges(
 
     {
       let cells = generatePolyomino(seedBase + i * 211 + 97, 3, 6);
-      cells = flattenEdge(cells, 'right');
+      cells = flattenEdge(cells, "right");
       const outwardCells = 1 + Math.floor(seededRandom(seedBase + i * 719) * 2);
-      const jitter = Math.round((seededRandom(seedBase + i * 829) - 0.5) * cellSize);
+      const jitter = Math.round(
+        (seededRandom(seedBase + i * 829) - 0.5) * cellSize,
+      );
       const pxBase = rightBoundary + cellSize * outwardCells + jitter;
       const offsets = polyominoToOffsets(cells);
 
@@ -183,7 +185,7 @@ interface ShaftArmOptions {
 
 function drawWellShaftArms(
   ctx: CanvasRenderingContext2D,
-  options: ShaftArmOptions
+  options: ShaftArmOptions,
 ): void {
   const {
     innerLeft,
@@ -192,7 +194,7 @@ function drawWellShaftArms(
     height,
     canvasWidth,
     canvasHeight,
-    seedBase
+    seedBase,
   } = options;
 
   if (!Number.isFinite(top) || !Number.isFinite(height)) return;
@@ -208,9 +210,9 @@ function drawWellShaftArms(
   ctx.fillStyle = WELL_COLOR_SHAFT_ARM;
 
   const drawCells = (
-    side: 'left' | 'right',
+    side: "left" | "right",
     cells: ReturnType<typeof generatePolyomino>,
-    baseX: number
+    baseX: number,
   ) => {
     const offsets = polyominoToOffsets(cells);
     for (const [cx, cy] of offsets) {
@@ -218,8 +220,8 @@ function drawWellShaftArms(
       const py = clampedTop + cy * cellSize;
       if (px >= canvasWidth || px + cellSize <= 0) continue;
       if (py >= clampedBottom || py + cellSize <= clampedTop) continue;
-      if (side === 'left' && px >= leftBoundary) continue;
-      if (side === 'right' && px + cellSize <= rightBoundary) continue;
+      if (side === "left" && px >= leftBoundary) continue;
+      if (side === "right" && px + cellSize <= rightBoundary) continue;
 
       const drawX = Math.max(px, 0);
       const drawWidth = Math.min(cellSize, canvasWidth - drawX);
@@ -235,29 +237,29 @@ function drawWellShaftArms(
   };
 
   const sides: Array<{
-    side: 'left' | 'right';
+    side: "left" | "right";
     start: number;
     advance: (pxMin: number, pxMax: number) => number;
     limitReached: (pxMin: number, pxMax: number) => boolean;
-    flatten: 'left' | 'right';
+    flatten: "left" | "right";
     seedOffset: number;
   }> = [
     {
-      side: 'left',
+      side: "left",
       start: leftBoundary,
       advance: (pxMin: number, _pxMax: number) => pxMin - cellSize,
       limitReached: (_pxMin: number, pxMax: number) => pxMax <= 0,
-      flatten: 'right',
-      seedOffset: 0
+      flatten: "right",
+      seedOffset: 0,
     },
     {
-      side: 'right',
+      side: "right",
       start: rightBoundary,
       advance: (_pxMin: number, pxMax: number) => pxMax + cellSize,
       limitReached: (pxMin: number, _pxMax: number) => pxMin >= canvasWidth,
-      flatten: 'left',
-      seedOffset: 971
-    }
+      flatten: "left",
+      seedOffset: 971,
+    },
   ];
 
   for (const config of sides) {
@@ -265,8 +267,12 @@ function drawWellShaftArms(
     let iteration = 0;
 
     while (iteration < 80) {
-      let cells = generatePolyomino(seedBase + config.seedOffset + iteration * 53, 5, 11);
-      cells = flattenEdge(cells, 'top');
+      let cells = generatePolyomino(
+        seedBase + config.seedOffset + iteration * 53,
+        5,
+        11,
+      );
+      cells = flattenEdge(cells, "top");
       cells = flattenEdge(cells, config.flatten);
       const bounds = getPolyominoBounds(cells);
       const width = bounds.w * cellSize;
@@ -274,9 +280,7 @@ function drawWellShaftArms(
       const jitterSeed = seedBase + config.seedOffset + iteration * 71;
       const jitter = Math.round((seededRandom(jitterSeed) - 0.5) * cellSize);
       const baseX =
-        config.side === 'left'
-          ? cursor - width + jitter
-          : cursor + jitter;
+        config.side === "left" ? cursor - width + jitter : cursor + jitter;
 
       drawCells(config.side, cells, baseX);
 
@@ -304,9 +308,10 @@ interface RimPolyOptions {
 
 function drawRimPolyDetails(
   ctx: CanvasRenderingContext2D,
-  options: RimPolyOptions
+  options: RimPolyOptions,
 ): void {
-  const { left, width, capTop, capBottom, collarTop, collarBottom, seedBase } = options;
+  const { left, width, capTop, capBottom, collarTop, collarBottom, seedBase } =
+    options;
   const cellSize = CLIFF_CELL_SIZE;
   const rightEdge = left + width;
 
@@ -319,7 +324,7 @@ function drawRimPolyDetails(
     while (x < rightEdge) {
       const seed = seedBase + iteration * 83;
       let cells = generatePolyomino(seed, 4, 9);
-      cells = flattenEdge(cells, 'bottom');
+      cells = flattenEdge(cells, "bottom");
       const bounds = getPolyominoBounds(cells);
       const blockWidth = bounds.w * cellSize;
       const blockHeight = bounds.h * cellSize;
@@ -361,7 +366,7 @@ function drawRimPolyDetails(
     while (x < rightEdge) {
       const seed = seedBase + 1000 + iteration * 97;
       let cells = generatePolyomino(seed, 4, 9);
-      cells = flattenEdge(cells, 'top');
+      cells = flattenEdge(cells, "top");
       const bounds = getPolyominoBounds(cells);
       const blockWidth = bounds.w * cellSize;
       const blockHeight = bounds.h * cellSize;
@@ -397,7 +402,10 @@ function drawRimPolyDetails(
   ctx.restore();
 }
 
-function projectWellGeometry(geometry: WellGeometry, cameraY: number): WellRenderMetrics {
+function projectWellGeometry(
+  geometry: WellGeometry,
+  cameraY: number,
+): WellRenderMetrics {
   const toScreen = (worldY: number) => Math.round(worldY - cameraY);
 
   const rimLeft = Math.round(geometry.bounds.rimLeft);
@@ -424,7 +432,7 @@ function projectWellGeometry(geometry: WellGeometry, cameraY: number): WellRende
       innerLeft,
       innerRight,
       outerWidth,
-      innerWidth
+      innerWidth,
     },
     shaft: {
       interiorLeft,
@@ -433,19 +441,19 @@ function projectWellGeometry(geometry: WellGeometry, cameraY: number): WellRende
       narrowTop: toScreen(geometry.shaft.narrowTop),
       expansionTop: toScreen(geometry.shaft.expansionTop),
       expansionBottom: toScreen(geometry.shaft.expansionBottom),
-      bottom: toScreen(geometry.shaft.bottom)
+      bottom: toScreen(geometry.shaft.bottom),
     },
     cavern: {
-      cliffStart: toScreen(geometry.cavern.cliffStart)
+      cliffStart: toScreen(geometry.cavern.cliffStart),
     },
     waterSurface: toScreen(geometry.waterSurfaceY),
-    ground: toScreen(geometry.rim.collarBottom)
+    ground: toScreen(geometry.rim.collarBottom),
   };
 }
 
 function drawWellRimBase(
   ctx: CanvasRenderingContext2D,
-  rim: WellRenderMetrics['rim']
+  rim: WellRenderMetrics["rim"],
 ): void {
   const rimCapHeight = rim.outerBottom - rim.outerTop;
   const collarHeight = rim.collarBottom - rim.collarTop;
@@ -469,10 +477,24 @@ function drawWellRimBase(
   }
 }
 
-export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions): void {
-  const { centerX, groundY, cameraY, canvasHeight, openingWidth = WELL_OPENING_WIDTH } = options;
+export function drawWell(
+  ctx: CanvasRenderingContext2D,
+  options: DrawWellOptions,
+): void {
+  const {
+    centerX,
+    groundY,
+    cameraY,
+    canvasHeight,
+    openingWidth = WELL_OPENING_WIDTH,
+  } = options;
 
-  if (!Number.isFinite(centerX) || !Number.isFinite(groundY) || !Number.isFinite(cameraY)) return;
+  if (
+    !Number.isFinite(centerX) ||
+    !Number.isFinite(groundY) ||
+    !Number.isFinite(cameraY)
+  )
+    return;
   if (!Number.isFinite(canvasHeight) || canvasHeight <= 0) return;
 
   const canvasWidth = ctx.canvas?.width ?? 0;
@@ -481,7 +503,12 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   ensureWellDepth(groundY, canvasHeight, cameraY + canvasHeight * 1.5);
 
   const normalizedOpeningWidth = Math.max(24, Math.round(openingWidth));
-  const geometry = getWellGeometry(canvasWidth, canvasHeight, groundY, normalizedOpeningWidth);
+  const geometry = getWellGeometry(
+    canvasWidth,
+    canvasHeight,
+    groundY,
+    normalizedOpeningWidth,
+  );
   const metrics = projectWellGeometry(geometry, cameraY);
 
   const rim = metrics.rim;
@@ -491,7 +518,10 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
 
   const rimOuterWidth = rim.outerWidth;
   const rimRight = rim.right;
-  const verticalTop = Math.min(rim.outerTop - WELL_RIM_THICKNESS, rim.collarTop - WELL_RIM_THICKNESS);
+  const verticalTop = Math.min(
+    rim.outerTop - WELL_RIM_THICKNESS,
+    rim.collarTop - WELL_RIM_THICKNESS,
+  );
   const verticalBottom = Math.max(screenGroundY, shaft.bottom);
   const outsideHorizontal = rimRight < 0 || rim.left > canvasWidth;
   const outsideVertical = verticalBottom < 0 || verticalTop > canvasHeight;
@@ -500,18 +530,18 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const innerHeight = Math.max(0, rim.innerBottom - rim.innerTop);
 
   ctx.save();
-  ctx.globalCompositeOperation = 'destination-out';
+  ctx.globalCompositeOperation = "destination-out";
   ctx.fillRect(
     rim.innerLeft - 1,
     rim.innerTop - 1,
     normalizedOpeningWidth + 2,
-    innerHeight + 2
+    innerHeight + 2,
   );
   ctx.restore();
 
   const shaftFillTop = Math.max(
     Math.round(geometry.rim.outerTop - WELL_RIM_THICKNESS - cameraY),
-    0
+    0,
   );
   const shaftFillBottom = Math.min(shaft.bottom, canvasHeight);
 
@@ -519,13 +549,20 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
 
   if (shaftFillBottom > shaftFillTop) {
     ctx.fillStyle = WELL_COLOR_SHAFT;
-    ctx.fillRect(rim.innerLeft, shaftFillTop, normalizedOpeningWidth, shaftFillBottom - shaftFillTop);
+    ctx.fillRect(
+      rim.innerLeft,
+      shaftFillTop,
+      normalizedOpeningWidth,
+      shaftFillBottom - shaftFillTop,
+    );
   }
 
   drawWellRimBase(ctx, rim);
 
   const rimSeedBase =
-    Math.floor(centerX * 389) + Math.floor(groundY * 173) + Math.floor(canvasHeight);
+    Math.floor(centerX * 389) +
+    Math.floor(groundY * 173) +
+    Math.floor(canvasHeight);
   drawRimPolyDetails(ctx, {
     left: rim.left,
     width: rimOuterWidth,
@@ -533,13 +570,18 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     capBottom: rim.outerBottom,
     collarTop: rim.collarTop,
     collarBottom: rim.collarBottom,
-    seedBase: rimSeedBase
+    seedBase: rimSeedBase,
   });
 
   if (innerHeight > 0) {
     ctx.save();
     ctx.fillStyle = WELL_COLOR_RIM_INNER_GLOW;
-    ctx.fillRect(rim.innerLeft, rim.innerTop, rim.innerWidth, Math.ceil(innerHeight * 0.45));
+    ctx.fillRect(
+      rim.innerLeft,
+      rim.innerTop,
+      rim.innerWidth,
+      Math.ceil(innerHeight * 0.45),
+    );
     ctx.restore();
   }
 
@@ -552,7 +594,9 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
   const shaftTextureTop = shaftFillTop + CLIFF_CELL_SIZE;
   const shaftTextureBottom = Math.min(shaftFillBottom, shaft.expansionTop);
   const shaftSeedBase =
-    Math.floor(centerX * 977) + Math.floor(groundY * 613) + Math.floor(canvasHeight);
+    Math.floor(centerX * 977) +
+    Math.floor(groundY * 613) +
+    Math.floor(canvasHeight);
 
   if (shaftTextureBottom > shaftTextureTop) {
     drawWellShaftEdges(ctx, {
@@ -562,7 +606,7 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
       bottom: shaftTextureBottom,
       canvasWidth,
       canvasHeight,
-      seedBase: shaftSeedBase
+      seedBase: shaftSeedBase,
     });
   }
 
@@ -573,7 +617,7 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     height: CLIFF_CELL_SIZE * 2,
     canvasWidth,
     canvasHeight,
-    seedBase: shaftSeedBase + 3571
+    seedBase: shaftSeedBase + 3571,
   });
 
   if (shaft.expansionBottom > 0 && shaft.expansionTop < canvasHeight) {
@@ -581,7 +625,12 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
     const cavernDrawBottom = Math.min(shaft.expansionBottom, canvasHeight);
     if (cavernDrawBottom > cavernDrawTop) {
       ctx.fillStyle = WELL_COLOR_CAVERN;
-      ctx.fillRect(0, cavernDrawTop, canvasWidth, cavernDrawBottom - cavernDrawTop);
+      ctx.fillRect(
+        0,
+        cavernDrawTop,
+        canvasWidth,
+        cavernDrawBottom - cavernDrawTop,
+      );
 
       if (geometry.cavern.cliffStart < geometry.shaft.expansionBottom) {
         drawCavernCliffs(ctx, {
@@ -589,17 +638,19 @@ export function drawWell(ctx: CanvasRenderingContext2D, options: DrawWellOptions
           canvasHeight,
           cameraY,
           cavernTop: geometry.cavern.cliffStart,
-          cavernBottom: geometry.shaft.expansionBottom
+          cavernBottom: geometry.shaft.expansionBottom,
         });
       }
-
     }
   }
 
   const waterSurface = metrics.waterSurface;
   if (waterSurface >= 0 && waterSurface <= canvasHeight) {
     const waterLineThickness = 2;
-    const waterTop = Math.max(0, waterSurface - Math.floor(waterLineThickness / 2));
+    const waterTop = Math.max(
+      0,
+      waterSurface - Math.floor(waterLineThickness / 2),
+    );
     const waterHeight = Math.min(waterLineThickness, canvasHeight - waterTop);
     if (waterHeight > 0) {
       ctx.save();

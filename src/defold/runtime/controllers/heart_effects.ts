@@ -1,14 +1,17 @@
-import { HEART_PATTERN, computeHeartBobOffset } from '../../gui/drawPixelatedHeart.js';
+import {
+  HEART_PATTERN,
+  computeHeartBobOffset,
+} from "../../gui/drawPixelatedHeart.js";
 import {
   onHeartPickupKilled,
   type HeartPickup,
-  type HeartPickupEventPayload
-} from '../../game_objects/heartPickup.js';
+  type HeartPickupEventPayload,
+} from "../../game_objects/heartPickup.js";
 import {
   DisintegrateEffect,
-  buildPixelsFromPattern
-} from './disintegrate_effect.js';
-import { now } from '../../shared/utils.js';
+  buildPixelsFromPattern,
+} from "./disintegrate_effect.js";
+import { now } from "../../shared/utils.js";
 
 export interface HeartEffectSystemOptions {
   color?: string;
@@ -20,7 +23,7 @@ export class HeartEffectSystem {
   private cleanups: Array<() => void> = [];
 
   constructor(options: HeartEffectSystemOptions = {}) {
-    this.color = options.color ?? '#ff5b6e';
+    this.color = options.color ?? "#ff5b6e";
     this._bindEvents();
   }
 
@@ -40,7 +43,11 @@ export class HeartEffectSystem {
   spawnDisintegrateForHeart(heart: HeartPickup): void {
     const info = heart.getRenderInfo();
     const activeTime = now();
-    const bob = computeHeartBobOffset(activeTime, info.pixelSize, heart.x + heart.y);
+    const bob = computeHeartBobOffset(
+      activeTime,
+      info.pixelSize,
+      heart.x + heart.y,
+    );
     const rect = {
       ...info.rect,
       y: info.rect.y + bob,
@@ -50,7 +57,7 @@ export class HeartEffectSystem {
       new DisintegrateEffect({
         pixels,
         color: this.color,
-        mode: 'disintegrate'
+        mode: "disintegrate",
       }),
     );
   }
@@ -65,7 +72,7 @@ export class HeartEffectSystem {
     const removeKilledListener = onHeartPickupKilled(
       (payload: HeartPickupEventPayload) => {
         this.spawnDisintegrateForHeart(payload.heart);
-      }
+      },
     );
     this.cleanups.push(removeKilledListener);
   }

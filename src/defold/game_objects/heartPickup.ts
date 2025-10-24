@@ -1,7 +1,7 @@
 import {
   HEART_PIXEL_COLUMNS,
   HEART_PIXEL_ROWS,
-} from '../gui/drawPixelatedHeart.js';
+} from "../gui/drawPixelatedHeart.js";
 
 export interface HeartPickupOptions {
   x: number;
@@ -56,7 +56,7 @@ export class HeartPickup {
     if (!this.active) return false;
     this.active = false;
     this._timer = this.respawns ? this.respawnDelay : 0;
-    emitHeartPickupEvent('collected', { heart: this, wasActive: true });
+    emitHeartPickupEvent("collected", { heart: this, wasActive: true });
     return true;
   }
 
@@ -66,7 +66,7 @@ export class HeartPickup {
     this.respawns = false;
     this._timer = 0;
     if (wasActive) {
-      emitHeartPickupEvent('killed', { heart: this, wasActive });
+      emitHeartPickupEvent("killed", { heart: this, wasActive });
     }
   }
 
@@ -83,7 +83,10 @@ export class HeartPickup {
     };
   }
 
-  getRenderInfo(): { pixelSize: number; rect: { x: number; y: number; width: number; height: number } } {
+  getRenderInfo(): {
+    pixelSize: number;
+    rect: { x: number; y: number; width: number; height: number };
+  } {
     return {
       pixelSize: this.pixelSize,
       rect: this.getBounds(),
@@ -99,7 +102,7 @@ export class HeartPickup {
   }
 }
 
-export type HeartPickupEventName = 'collected' | 'killed';
+export type HeartPickupEventName = "collected" | "killed";
 
 export interface HeartPickupEventPayload {
   heart: HeartPickup;
@@ -108,12 +111,18 @@ export interface HeartPickupEventPayload {
 
 type HeartPickupEventListener = (payload: HeartPickupEventPayload) => void;
 
-const heartPickupListeners: Record<HeartPickupEventName, Set<HeartPickupEventListener>> = {
+const heartPickupListeners: Record<
+  HeartPickupEventName,
+  Set<HeartPickupEventListener>
+> = {
   collected: new Set(),
   killed: new Set(),
 };
 
-function emitHeartPickupEvent(event: HeartPickupEventName, payload: HeartPickupEventPayload): void {
+function emitHeartPickupEvent(
+  event: HeartPickupEventName,
+  payload: HeartPickupEventPayload,
+): void {
   const listeners = heartPickupListeners[event];
   if (!listeners || listeners.size === 0) return;
   for (const listener of listeners) {
@@ -121,17 +130,24 @@ function emitHeartPickupEvent(event: HeartPickupEventName, payload: HeartPickupE
   }
 }
 
-function addHeartPickupListener(event: HeartPickupEventName, listener: HeartPickupEventListener): () => void {
+function addHeartPickupListener(
+  event: HeartPickupEventName,
+  listener: HeartPickupEventListener,
+): () => void {
   heartPickupListeners[event].add(listener);
   return () => {
     heartPickupListeners[event].delete(listener);
   };
 }
 
-export function onHeartPickupCollected(listener: HeartPickupEventListener): () => void {
-  return addHeartPickupListener('collected', listener);
+export function onHeartPickupCollected(
+  listener: HeartPickupEventListener,
+): () => void {
+  return addHeartPickupListener("collected", listener);
 }
 
-export function onHeartPickupKilled(listener: HeartPickupEventListener): () => void {
-  return addHeartPickupListener('killed', listener);
+export function onHeartPickupKilled(
+  listener: HeartPickupEventListener,
+): () => void {
+  return addHeartPickupListener("killed", listener);
 }

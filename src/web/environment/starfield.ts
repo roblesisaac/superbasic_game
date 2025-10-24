@@ -1,5 +1,5 @@
-import { groundY } from '../../defold/runtime/state/rendering_state.js';
-import { cameraY } from '../../defold/runtime/state/camera_state.js';
+import { groundY } from "../../defold/runtime/state/rendering_state.js";
+import { cameraY } from "../../defold/runtime/state/camera_state.js";
 import {
   createStarfieldState,
   updateStarfield,
@@ -9,9 +9,9 @@ import {
   DEFAULT_STARFIELD_CONFIG,
   DEFAULT_GROUND_OFFSET,
   type StarfieldState,
-} from '../../defold/runtime/environment/starfield_model.js';
+} from "../../defold/runtime/environment/starfield_model.js";
 
-const STARFIELD_CANVAS_ID = 'starfieldCanvas';
+const STARFIELD_CANVAS_ID = "starfieldCanvas";
 
 const STAR_SIZE = 2;
 const NUM_CLOUDS = 5;
@@ -28,17 +28,19 @@ let lastTime = 0;
 function ensureCanvas(): void {
   if (canvas) return;
 
-  const existing = document.getElementById(STARFIELD_CANVAS_ID) as HTMLCanvasElement | null;
+  const existing = document.getElementById(
+    STARFIELD_CANVAS_ID,
+  ) as HTMLCanvasElement | null;
   if (existing) {
     canvas = existing;
   } else {
-    canvas = document.createElement('canvas');
+    canvas = document.createElement("canvas");
     canvas.id = STARFIELD_CANVAS_ID;
-    canvas.setAttribute('aria-hidden', 'true');
+    canvas.setAttribute("aria-hidden", "true");
     document.body.prepend(canvas);
   }
 
-  ctx = canvas.getContext('2d', { alpha: false });
+  ctx = canvas.getContext("2d", { alpha: false });
 
   if (ctx) {
     ctx.imageSmoothingEnabled = false;
@@ -98,12 +100,12 @@ function drawMoon(): void {
   const scene = computeSceneDimensions(getCanvasDimensions());
   const moon = generateMoonRenderData(scene);
 
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = "#fff";
   for (const cell of moon.body) {
     ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
   }
 
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = "#000";
   for (const cell of moon.shadow) {
     ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
   }
@@ -128,10 +130,15 @@ function drawStars(): void {
     const alpha = star.currentAlpha ?? star.baseAlpha;
 
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = "#fff";
 
-    if (star.type === 'small') {
-      ctx.fillRect(Math.floor(star.x), Math.floor(star.y), smallSize, smallSize);
+    if (star.type === "small") {
+      ctx.fillRect(
+        Math.floor(star.x),
+        Math.floor(star.y),
+        smallSize,
+        smallSize,
+      );
     } else {
       const x = Math.floor(star.x);
       const y = Math.floor(star.y);
@@ -171,15 +178,15 @@ function drawClouds(): void {
   if (!ctx || !starfieldState) return;
 
   const { width, height } = getCanvasDimensions();
-  const tempCanvas = document.createElement('canvas');
+  const tempCanvas = document.createElement("canvas");
   tempCanvas.width = width;
   tempCanvas.height = height / 2.3;
-  const tempCtx = tempCanvas.getContext('2d');
+  const tempCtx = tempCanvas.getContext("2d");
 
   if (!tempCtx) return;
 
   tempCtx.clearRect(0, 0, width, height);
-  tempCtx.fillStyle = '#fff';
+  tempCtx.fillStyle = "#fff";
 
   for (const cloud of starfieldState.clouds) {
     const ps = cloud.pixelSize;
@@ -195,7 +202,12 @@ function drawClouds(): void {
         const distFromCenter = Math.sqrt(nx * nx * 4 + ny * ny * 4);
         const edgeFalloff = Math.max(0, 1 - distFromCenter);
 
-        const noiseValue = fbm(px * scale, py * scale, cloud.seed, cloud.octaves);
+        const noiseValue = fbm(
+          px * scale,
+          py * scale,
+          cloud.seed,
+          cloud.octaves,
+        );
         const cloudValue = noiseValue * edgeFalloff;
         const threshold = 0.3 + Math.sin(px * 0.1) * 0.05;
 
@@ -214,14 +226,19 @@ function drawClouds(): void {
 function drawGroundMask(width: number, height: number): void {
   if (!ctx || !starfieldState) return;
 
-  const lineY = computeGroundLineY(height, groundY, cameraY, DEFAULT_GROUND_OFFSET);
+  const lineY = computeGroundLineY(
+    height,
+    groundY,
+    cameraY,
+    DEFAULT_GROUND_OFFSET,
+  );
   if (lineY <= 0) return;
   if (lineY >= height) return;
 
   const maskHeight = height - lineY;
   if (maskHeight <= 0) return;
 
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = "#000";
   ctx.fillRect(0, Math.round(lineY), width, Math.ceil(maskHeight));
 }
 
@@ -231,7 +248,7 @@ function draw(): void {
   const { width, height } = getCanvasDimensions();
   const belowGround = cameraY > 0;
 
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
   if (belowGround || !starfieldState) {
@@ -269,13 +286,15 @@ function setupStarfield(): void {
   initialiseState();
   lastTime = performance.now();
   window.requestAnimationFrame(animate);
-  window.removeEventListener('resize', handleResize);
-  window.addEventListener('resize', handleResize);
+  window.removeEventListener("resize", handleResize);
+  window.addEventListener("resize", handleResize);
 }
 
-if (typeof window !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupStarfield, { once: true });
+if (typeof window !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupStarfield, {
+      once: true,
+    });
   } else {
     setupStarfield();
   }

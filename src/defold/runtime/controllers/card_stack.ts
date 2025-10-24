@@ -1,16 +1,20 @@
-import { GATE_THICKNESS } from '../../config/constants.js';
-import { canvasHeight, canvasWidth, groundY } from '../state/rendering_state.js';
+import { GATE_THICKNESS } from "../../config/constants.js";
+import {
+  canvasHeight,
+  canvasWidth,
+  groundY,
+} from "../state/rendering_state.js";
 import {
   createGateForCardTop,
-  resetCardGateFactory
-} from '../../game_objects/gates.js';
+  resetCardGateFactory,
+} from "../../game_objects/gates.js";
 import {
   spawnEnemiesForGate,
-  enemies as activeEnemies
-} from '../../game_objects/enemies.js';
-import type { EnemyActor } from '../../game_objects/enemies.js';
-import type { ControlledGateDefinition } from '../../game_objects/controlledGate.js';
-import { SAMPLE_CARDS } from '../../data/cards/sample_cards.js';
+  enemies as activeEnemies,
+} from "../../game_objects/enemies.js";
+import type { EnemyActor } from "../../game_objects/enemies.js";
+import type { ControlledGateDefinition } from "../../game_objects/controlledGate.js";
+import { SAMPLE_CARDS } from "../../data/cards/sample_cards.js";
 
 type GateInstance = ReturnType<typeof createGateForCardTop>;
 
@@ -78,32 +82,34 @@ let cardInstances: CardInstance[] = [];
 let currentCard: CardInstance | null = null;
 let visibleCards: CardInstance[] = [];
 
-const FALLBACK_THEMES = ['#12304a', '#1c3d5a', '#243b4a', '#20314f', '#1a2b3f'];
+const FALLBACK_THEMES = ["#12304a", "#1c3d5a", "#243b4a", "#20314f", "#1a2b3f"];
 
 function normalizeCard(input: CardBlueprint, index: number): CardDefinition {
-  const enemies = Array.isArray(input.enemies) && input.enemies.length
-    ? input.enemies.map(enemy => ({
-        difficulty: typeof enemy.difficulty === 'number' ? enemy.difficulty : 50,
-        count: Math.max(1, Math.min(5, Math.floor(enemy.count ?? 1)))
-      }))
-    : [{ difficulty: 50, count: 1 }];
+  const enemies =
+    Array.isArray(input.enemies) && input.enemies.length
+      ? input.enemies.map((enemy) => ({
+          difficulty:
+            typeof enemy.difficulty === "number" ? enemy.difficulty : 50,
+          count: Math.max(1, Math.min(5, Math.floor(enemy.count ?? 1))),
+        }))
+      : [{ difficulty: 50, count: 1 }];
 
   const gates: CardGates = {
     top: input.gates?.top ?? null,
     right: input.gates?.right ?? null,
     bottom: input.gates?.bottom ?? null,
-    left: input.gates?.left ?? null
+    left: input.gates?.left ?? null,
   };
 
   return {
     id: input.id ?? `card-${index}`,
     title: input.title ?? `Card ${index + 1}`,
-    heightPct: typeof input.heightPct === 'number' ? input.heightPct : 100,
-    widthPct: typeof input.widthPct === 'number' ? input.widthPct : 100,
+    heightPct: typeof input.heightPct === "number" ? input.heightPct : 100,
+    widthPct: typeof input.widthPct === "number" ? input.widthPct : 100,
     gates,
     enemies,
     difficulty: input.difficulty,
-    theme: input.theme ?? {}
+    theme: input.theme ?? {},
   };
 }
 
@@ -118,11 +124,11 @@ function getCardDefinition(index: number): CardDefinition {
 }
 
 function getCardByIndex(index: number): CardInstance | undefined {
-  return cardInstances.find(card => card.index === index);
+  return cardInstances.find((card) => card.index === index);
 }
 
 function findCardForY(y: number): CardInstance | undefined {
-  return cardInstances.find(card => y >= card.topY && y <= card.bottomY);
+  return cardInstances.find((card) => y >= card.topY && y <= card.bottomY);
 }
 
 function findNearestCard(y: number): CardInstance | null {
@@ -155,13 +161,13 @@ function ensureCard(index: number): CardInstance {
   const bottom = previous ? previous.topY - CARD_STACK_GAP : groundY;
   const heightPixels = Math.max(
     MIN_CARD_HEIGHT,
-    (definition.heightPct / 100) * canvasHeight
+    (definition.heightPct / 100) * canvasHeight,
   );
   const top = bottom - heightPixels;
   const gate = createGateForCardTop({
     y: top,
     canvasWidth,
-    definition: definition.gates.top ?? null
+    definition: definition.gates.top ?? null,
   });
 
   const card: CardInstance = {
@@ -173,7 +179,7 @@ function ensureCard(index: number): CardInstance {
     gateTop: gate,
     gateBottom: previous?.gateTop ?? null,
     enemiesSpawned: false,
-    enemyActors: []
+    enemyActors: [],
   };
 
   if (previous && !definition.gates.bottom) {
@@ -200,7 +206,10 @@ function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
   for (const spec of card.definition.enemies) {
     const count = Math.max(0, Math.min(5, Math.floor(spec.count)));
     if (count <= 0) continue;
-    const spawns = spawnEnemiesForGate(card.gateTop, { count, register: false });
+    const spawns = spawnEnemiesForGate(card.gateTop, {
+      count,
+      register: false,
+    });
     if (spawns.length) {
       card.enemyActors.push(...spawns);
     }
@@ -212,7 +221,9 @@ function spawnEnemiesForCard(card: CardInstance): EnemyActor[] {
 function cleanupInactiveCardEnemies() {
   for (const card of cardInstances) {
     if (!card.enemiesSpawned || card.enemyActors.length === 0) continue;
-    card.enemyActors = card.enemyActors.filter(enemy => enemy && enemy.active !== false);
+    card.enemyActors = card.enemyActors.filter(
+      (enemy) => enemy && enemy.active !== false,
+    );
   }
 }
 
@@ -267,9 +278,9 @@ function createRandomCard(index: number): CardDefinition {
       gates: {},
       enemies: [{ difficulty, count: enemyCount }],
       difficulty,
-      theme: { bgColor: theme }
+      theme: { bgColor: theme },
     },
-    index
+    index,
   );
 }
 
@@ -302,7 +313,9 @@ function ensureCoverageForY(y: number) {
 }
 
 export function initializeCardStack(startY: number): CardStackFrame {
-  cardDefinitions = SAMPLE_CARDS.map((card, index) => normalizeCard(card, index));
+  cardDefinitions = SAMPLE_CARDS.map((card, index) =>
+    normalizeCard(card, index),
+  );
   cardInstances = [];
   currentCard = null;
   visibleCards = [];
@@ -344,7 +357,7 @@ export function updateCardStack(spriteY: number): CardStackFrame {
   return {
     currentCard,
     visibleCards: [...visibleCards],
-    gates
+    gates,
   };
 }
 

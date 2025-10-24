@@ -1,9 +1,9 @@
-import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from '../config/constants.js';
-import { canvasHeight } from '../runtime/state/rendering_state.js';
-import { cameraY } from '../runtime/state/camera_state.js';
-import type { GameWorldState } from '../runtime/state/game_state.js';
+import { SPRITE_SIZE, RIDE_SPEED_THRESHOLD } from "../config/constants.js";
+import { canvasHeight } from "../runtime/state/rendering_state.js";
+import { cameraY } from "../runtime/state/camera_state.js";
+import type { GameWorldState } from "../runtime/state/game_state.js";
 
-type EnemyOrientation = 'horizontal' | 'vertical';
+type EnemyOrientation = "horizontal" | "vertical";
 
 interface EnemyRect {
   x: number;
@@ -64,7 +64,11 @@ class Enemy {
   x: number;
   y: number;
 
-  constructor({ gate, rect, orientation }: {
+  constructor({
+    gate,
+    rect,
+    orientation,
+  }: {
     gate: GateLike;
     rect: EnemyRect;
     orientation: EnemyOrientation;
@@ -75,7 +79,10 @@ class Enemy {
 
     this.radius = ENEMY_RADIUS;
     this.targetSpeed = randomSpeed();
-    this.initialSpeed = Math.max(20, this.targetSpeed * ENEMY_INITIAL_SPEED_FACTOR);
+    this.initialSpeed = Math.max(
+      20,
+      this.targetSpeed * ENEMY_INITIAL_SPEED_FACTOR,
+    );
     this.speed = this.initialSpeed;
     this.direction = Math.random() > 0.5 ? 1 : -1;
     this.damageCooldown = 0;
@@ -87,7 +94,7 @@ class Enemy {
     this.alerted = false;
     this.alertTimer = 0;
 
-    if (orientation === 'horizontal') {
+    if (orientation === "horizontal") {
       const minX = rect.x + this.radius;
       const maxX = rect.x + rect.w - this.radius;
       this.min = Math.min(minX, maxX);
@@ -105,8 +112,8 @@ class Enemy {
       this.baseY = null;
     }
 
-    this.x = orientation === 'horizontal' ? this.position : this.baseX;
-    this.y = orientation === 'horizontal' ? this.baseY : this.position;
+    this.x = orientation === "horizontal" ? this.position : this.baseX;
+    this.y = orientation === "horizontal" ? this.baseY : this.position;
   }
 
   update(dt: number, game: GameWorldState) {
@@ -120,7 +127,7 @@ class Enemy {
     this._updateAlertState(dt);
 
     if (!this.stunned) {
-      if (this.orientation === 'horizontal') {
+      if (this.orientation === "horizontal") {
         this.position += this.direction * this.speed * dt;
         if (this.position >= this.max) {
           this.position = this.max;
@@ -141,7 +148,7 @@ class Enemy {
       }
     }
 
-    if (this.orientation === 'horizontal') {
+    if (this.orientation === "horizontal") {
       this.x = this.position;
       this.y = this.baseY;
     } else {
@@ -163,7 +170,7 @@ class Enemy {
     const dy = this.y - sprite.y;
     const combined = this.radius + spriteRadius;
 
-    if ((dx * dx + dy * dy) > combined * combined) return;
+    if (dx * dx + dy * dy > combined * combined) return;
 
     const prevVy = sprite.prevVy ?? sprite.vy;
     const prevY = sprite.prevY ?? sprite.y;
@@ -171,7 +178,10 @@ class Enemy {
     const spriteCurrBottom = sprite.y + spriteRadius;
     const enemyTop = this.y - this.radius;
 
-    const isStomp = prevVy > 0 && spritePrevBottom <= enemyTop && spriteCurrBottom >= enemyTop;
+    const isStomp =
+      prevVy > 0 &&
+      spritePrevBottom <= enemyTop &&
+      spriteCurrBottom >= enemyTop;
 
     if (isStomp) {
       this.active = false;
@@ -202,29 +212,57 @@ class Enemy {
     ctx.translate(this.x, screenY);
 
     // While stunned, alternate between yellow and red instead of hiding
-    ctx.fillStyle = this.stunned ? (this.stunVisible ? '#ffa94d' : '#ff4d4d') : '#ff4d4d';
+    ctx.fillStyle = this.stunned
+      ? this.stunVisible
+        ? "#ffa94d"
+        : "#ff4d4d"
+      : "#ff4d4d";
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = "#111";
     ctx.beginPath();
-    ctx.arc(-this.radius * 0.3, -this.radius * 0.2, this.radius * 0.18, 0, Math.PI * 2);
-    ctx.arc(this.radius * 0.3, -this.radius * 0.2, this.radius * 0.18, 0, Math.PI * 2);
+    ctx.arc(
+      -this.radius * 0.3,
+      -this.radius * 0.2,
+      this.radius * 0.18,
+      0,
+      Math.PI * 2,
+    );
+    ctx.arc(
+      this.radius * 0.3,
+      -this.radius * 0.2,
+      this.radius * 0.18,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
 
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = "#fff";
     ctx.beginPath();
-    ctx.arc(-this.radius * 0.3, -this.radius * 0.25, this.radius * 0.08, 0, Math.PI * 2);
-    ctx.arc(this.radius * 0.3, -this.radius * 0.25, this.radius * 0.08, 0, Math.PI * 2);
+    ctx.arc(
+      -this.radius * 0.3,
+      -this.radius * 0.25,
+      this.radius * 0.08,
+      0,
+      Math.PI * 2,
+    );
+    ctx.arc(
+      this.radius * 0.3,
+      -this.radius * 0.25,
+      this.radius * 0.08,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
 
     if (this.alertTimer > 0) {
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('!', 0, -this.radius - 4);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("!", 0, -this.radius - 4);
     }
 
     ctx.restore();
@@ -268,25 +306,32 @@ class Enemy {
   }
 
   _hasGateNonTopContact() {
-    if (!this.gate || typeof this.gate.hasNonTopContact !== 'function') return false;
+    if (!this.gate || typeof this.gate.hasNonTopContact !== "function")
+      return false;
     return Boolean(this.gate.hasNonTopContact());
   }
 
   _getBlinkInterval() {
     if (!this.stunned) return STUN_BLINK_INTERVAL_SLOW;
-    const ratio = Math.max(0, Math.min(1, this.stunTimer / ENEMY_STUN_DURATION));
-    return STUN_BLINK_INTERVAL_FAST + (STUN_BLINK_INTERVAL_SLOW - STUN_BLINK_INTERVAL_FAST) * ratio;
+    const ratio = Math.max(
+      0,
+      Math.min(1, this.stunTimer / ENEMY_STUN_DURATION),
+    );
+    return (
+      STUN_BLINK_INTERVAL_FAST +
+      (STUN_BLINK_INTERVAL_SLOW - STUN_BLINK_INTERVAL_FAST) * ratio
+    );
   }
 
   _checkRideCollisions(rides: any[]) {
     if (!Array.isArray(rides) || rides.length === 0) return;
 
     for (const ride of rides) {
-      if (!ride || typeof ride.getRect !== 'function') continue;
+      if (!ride || typeof ride.getRect !== "function") continue;
       if (ride.active === false || ride.floating) continue;
 
-      const direction = typeof ride.direction === 'number' ? ride.direction : 0;
-      const speed = typeof ride.speed === 'number' ? ride.speed : 0;
+      const direction = typeof ride.direction === "number" ? ride.direction : 0;
+      const speed = typeof ride.speed === "number" ? ride.speed : 0;
       const magnitude = Math.abs(direction * speed);
       if (magnitude < RIDE_SPEED_THRESHOLD) continue;
 
@@ -308,22 +353,22 @@ class Enemy {
 export type EnemyActor = InstanceType<typeof Enemy>;
 
 function segmentOrientation(rect: EnemyRect): EnemyOrientation {
-  return rect.w >= rect.h ? 'horizontal' : 'vertical';
+  return rect.w >= rect.h ? "horizontal" : "vertical";
 }
 
 export function spawnEnemiesForGate(
   gate: GateLike,
-  { count, register = true }: { count: number; register?: boolean }
+  { count, register = true }: { count: number; register?: boolean },
 ): EnemyActor[] {
-  if (!gate || typeof gate.getRects !== 'function') return [];
+  if (!gate || typeof gate.getRects !== "function") return [];
 
   const rects = gate.getRects();
   if (!Array.isArray(rects) || rects.length === 0) return [];
 
   const candidates = rects
-    .map(rect => ({ rect, orientation: segmentOrientation(rect) }))
+    .map((rect) => ({ rect, orientation: segmentOrientation(rect) }))
     .filter(({ rect, orientation }) => {
-      if (orientation === 'horizontal') {
+      if (orientation === "horizontal") {
         return rect.w >= ENEMY_SIZE * 1.2;
       }
       return rect.h >= ENEMY_SIZE * 1.2;
@@ -348,7 +393,7 @@ export function spawnEnemiesForGate(
     const enemy = new Enemy({
       gate,
       rect: chosen.rect,
-      orientation: chosen.orientation
+      orientation: chosen.orientation,
     });
     spawned.push(enemy);
     if (register) enemies.push(enemy);
@@ -361,7 +406,10 @@ export function updateEnemies(game: GameWorldState, dt: number) {
   for (const enemy of enemies) enemy.update(dt, game);
 }
 
-export function drawEnemies(ctx: CanvasRenderingContext2D, cameraYValue: number) {
+export function drawEnemies(
+  ctx: CanvasRenderingContext2D,
+  cameraYValue: number,
+) {
   for (const enemy of enemies) enemy.draw(ctx, cameraYValue);
 }
 

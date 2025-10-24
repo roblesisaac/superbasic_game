@@ -2,13 +2,9 @@ import {
   GATE_THICKNESS,
   PIXELS_PER_FOOT,
   GATE_GAP_WIDTH,
-} from '../config/constants.js';
-import { drawGateVisuals } from './gateRenderer.js';
-import { HeartPickup } from './heartPickup.js';
-import {
-  HEART_PIXEL_COLUMNS,
-  HEART_PIXEL_ROWS,
-} from '../gui/drawPixelatedHeart.js';
+} from "../config/constants.js";
+import { drawGateVisuals } from "./gateRenderer.js";
+import { HeartPickup } from "./heartPickup.js";
 
 const DEFAULT_VERTICAL_HEIGHT = 80; // Default height for auto-generated vertical connectors
 const GAP_REWARD_RESPAWN_DELAY = 5;
@@ -21,11 +17,11 @@ type LegacySegmentTuple = [
   number,
   number | [number, number] | null | undefined,
   GateSpec,
-  boolean?
+  boolean?,
 ];
 
 interface SegmentDefinitionObject {
-  type?: 'horizontal' | 'vertical';
+  type?: "horizontal" | "vertical";
   width?: number;
   height?: number;
   x?: number;
@@ -42,7 +38,7 @@ export type ControlledGateDefinition =
   | { segments: SegmentDefinitionObject[] };
 
 interface BaseSegment {
-  type: 'horizontal' | 'vertical';
+  type: "horizontal" | "vertical";
   widthPercent: number;
   xOffset: number;
   yOffset: number;
@@ -50,18 +46,18 @@ interface BaseSegment {
 }
 
 interface HorizontalSegment extends BaseSegment {
-  type: 'horizontal';
+  type: "horizontal";
 }
 
 interface VerticalSegment extends BaseSegment {
-  type: 'vertical';
+  type: "vertical";
   heightPixels: number;
 }
 
 type Segment = HorizontalSegment | VerticalSegment;
 
 interface GateRect {
-  type: 'H' | 'V';
+  type: "H" | "V";
   index: number | string;
   x: number;
   y: number;
@@ -78,8 +74,8 @@ export interface CollisionRect {
 }
 
 interface GapInfo {
-  type: GateRect['type'];
-  index: GateRect['index'];
+  type: GateRect["type"];
+  index: GateRect["index"];
   rect: GateRect;
 }
 
@@ -128,7 +124,7 @@ export class ControlledGate {
   startFloating(): void {}
 
   handleBottomCollision(): void {
-    this.notifyContact('bottom');
+    this.notifyContact("bottom");
     if (!this.asciiDamaged) {
       this.asciiDamaged = true;
     }
@@ -136,8 +132,8 @@ export class ControlledGate {
     if (this.gapHeart) this.gapHeart.kill();
   }
 
-  notifyContact(contactType: 'top' | 'side' | 'bottom'): void {
-    if (contactType !== 'top') {
+  notifyContact(contactType: "top" | "side" | "bottom"): void {
+    if (contactType !== "top") {
       this.nonTopContactTriggered = true;
     }
   }
@@ -159,9 +155,13 @@ export class ControlledGate {
     return this.gapHeart.collect();
   }
 
-  getHeartPickup():
-    | { x: number; y: number; width: number; height: number; respawns: boolean }
-    | null {
+  getHeartPickup(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    respawns: boolean;
+  } | null {
     if (!this.gapHeart || !this.gapHeart.isActive()) return null;
     const bounds = this.gapHeart.getBounds();
     return {
@@ -193,13 +193,16 @@ export class ControlledGate {
     });
   }
 
-  private _computeGapHeartBounds():
-    | { x: number; y: number; width: number; height: number }
-    | null {
+  private _computeGapHeartBounds(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null {
     if (!this.gapInfo) return null;
     const { width, height } = HeartPickup.getDimensions(this.gapHeartPixelSize);
 
-    if (this.gapInfo.type === 'H') {
+    if (this.gapInfo.type === "H") {
       const centerX = this.gapX + this.gapWidth / 2;
       const centerY = this.gapY + GATE_THICKNESS / 2;
       return {
@@ -223,10 +226,10 @@ export class ControlledGate {
   private _parseDefinition(): void {
     const definition = this.definition;
 
-    if (typeof definition === 'number') {
+    if (typeof definition === "number") {
       this.segments = [
         {
-          type: 'horizontal',
+          type: "horizontal",
           widthPercent: definition,
           yOffset: 0,
           xOffset: 0,
@@ -243,22 +246,26 @@ export class ControlledGate {
 
     if (
       definition &&
-      typeof definition === 'object' &&
-      'segments' in definition &&
+      typeof definition === "object" &&
+      "segments" in definition &&
       Array.isArray(definition.segments)
     ) {
-      this.segments = definition.segments.map((seg) => this._normalizeSegment(seg));
+      this.segments = definition.segments.map((seg) =>
+        this._normalizeSegment(seg),
+      );
       return;
     }
 
-    if (definition && typeof definition === 'object') {
-      this.segments = [this._normalizeSegment(definition as SegmentDefinitionObject)];
+    if (definition && typeof definition === "object") {
+      this.segments = [
+        this._normalizeSegment(definition as SegmentDefinitionObject),
+      ];
       return;
     }
 
     this.segments = [
       {
-        type: 'horizontal',
+        type: "horizontal",
         widthPercent: 100,
         yOffset: 0,
         xOffset: 0,
@@ -272,13 +279,15 @@ export class ControlledGate {
     let autoVerticalOffset = 0;
 
     definition.forEach((segDef, index) => {
-      if (typeof segDef === 'number') {
+      if (typeof segDef === "number") {
         if (index > 0) {
           autoVerticalOffset =
-            autoVerticalOffset === 0 ? DEFAULT_VERTICAL_HEIGHT : -autoVerticalOffset;
+            autoVerticalOffset === 0
+              ? DEFAULT_VERTICAL_HEIGHT
+              : -autoVerticalOffset;
         }
         this.segments.push({
-          type: 'horizontal',
+          type: "horizontal",
           widthPercent: segDef,
           yOffset: autoVerticalOffset,
           xOffset: 0,
@@ -288,12 +297,13 @@ export class ControlledGate {
       }
 
       if (Array.isArray(segDef)) {
-        const [widthPercent, yXPos, gateSpecs, isVertical] = segDef as LegacySegmentTuple;
+        const [widthPercent, yXPos, gateSpecs, isVertical] =
+          segDef as LegacySegmentTuple;
 
         let yOffset = 0;
         let xOffsetPercent = 0;
 
-        if (typeof yXPos === 'number') {
+        if (typeof yXPos === "number") {
           yOffset = yXPos;
           autoVerticalOffset = yOffset;
         } else if (Array.isArray(yXPos) && yXPos.length >= 2) {
@@ -303,24 +313,28 @@ export class ControlledGate {
           autoVerticalOffset = yOffset;
         } else if (yXPos == null && index > 0) {
           autoVerticalOffset =
-            autoVerticalOffset === 0 ? DEFAULT_VERTICAL_HEIGHT : -autoVerticalOffset;
+            autoVerticalOffset === 0
+              ? DEFAULT_VERTICAL_HEIGHT
+              : -autoVerticalOffset;
           yOffset = autoVerticalOffset;
         }
 
         if (isVertical) {
           this.segments.push({
-            type: 'vertical',
+            type: "vertical",
             widthPercent: GATE_THICKNESS,
             heightPixels:
-              typeof widthPercent === 'number' ? widthPercent : DEFAULT_VERTICAL_HEIGHT,
+              typeof widthPercent === "number"
+                ? widthPercent
+                : DEFAULT_VERTICAL_HEIGHT,
             yOffset,
             xOffset: (xOffsetPercent / 100) * this.canvasWidth,
             gateSpec: gateSpecs ?? null,
           });
         } else {
           this.segments.push({
-            type: 'horizontal',
-            widthPercent: typeof widthPercent === 'number' ? widthPercent : 50,
+            type: "horizontal",
+            widthPercent: typeof widthPercent === "number" ? widthPercent : 50,
             yOffset,
             xOffset: (xOffsetPercent / 100) * this.canvasWidth,
             gateSpec: gateSpecs ?? null,
@@ -329,11 +343,19 @@ export class ControlledGate {
         return;
       }
 
-      if (segDef && typeof segDef === 'object') {
-        const normalized = this._normalizeSegment(segDef as SegmentDefinitionObject);
-        if (index > 0 && normalized.type === 'horizontal' && normalized.yOffset === 0) {
+      if (segDef && typeof segDef === "object") {
+        const normalized = this._normalizeSegment(
+          segDef as SegmentDefinitionObject,
+        );
+        if (
+          index > 0 &&
+          normalized.type === "horizontal" &&
+          normalized.yOffset === 0
+        ) {
           autoVerticalOffset =
-            autoVerticalOffset === 0 ? DEFAULT_VERTICAL_HEIGHT : -autoVerticalOffset;
+            autoVerticalOffset === 0
+              ? DEFAULT_VERTICAL_HEIGHT
+              : -autoVerticalOffset;
           normalized.yOffset = autoVerticalOffset;
         } else if (normalized.yOffset !== 0) {
           autoVerticalOffset = normalized.yOffset;
@@ -344,10 +366,10 @@ export class ControlledGate {
   }
 
   private _normalizeSegment(segment: SegmentDefinitionObject): Segment {
-    const type = segment.type === 'vertical' ? 'vertical' : 'horizontal';
+    const type = segment.type === "vertical" ? "vertical" : "horizontal";
     const gateSpec = (segment.gate ?? null) as GateSpec;
 
-    if (type === 'vertical') {
+    if (type === "vertical") {
       const height = segment.height ?? DEFAULT_VERTICAL_HEIGHT;
       return {
         type,
@@ -360,7 +382,7 @@ export class ControlledGate {
     }
 
     return {
-      type: 'horizontal',
+      type: "horizontal",
       widthPercent: segment.width ?? 50,
       yOffset: segment.y ?? 0,
       xOffset: segment.x ? (segment.x / 100) * this.canvasWidth : 0,
@@ -376,10 +398,10 @@ export class ControlledGate {
     for (let i = 0; i < this.segments.length; i++) {
       const segment = this.segments[i];
 
-      if (segment.type === 'vertical') {
+      if (segment.type === "vertical") {
         const height = segment.heightPixels ?? DEFAULT_VERTICAL_HEIGHT;
         const rect: GateRect = {
-          type: 'V',
+          type: "V",
           index: i,
           x: cursorX - GATE_THICKNESS / 2,
           y: currentY - GATE_THICKNESS / 2,
@@ -397,7 +419,7 @@ export class ControlledGate {
 
       if (segment.yOffset !== 0 && i > 0) {
         const connectorRect: GateRect = {
-          type: 'V',
+          type: "V",
           index: `${i - 1}-to-${i}-connector`,
           x: cursorX - GATE_THICKNESS / 2,
           y: Math.min(currentY, targetY) - GATE_THICKNESS / 2,
@@ -410,7 +432,7 @@ export class ControlledGate {
 
       const xPosition = cursorX + segment.xOffset;
       const rect: GateRect = {
-        type: 'H',
+        type: "H",
         index: i,
         x: xPosition,
         y: targetY - GATE_THICKNESS / 2,
@@ -429,7 +451,9 @@ export class ControlledGate {
     const segmentsWithGates = this.segments.filter((seg) => seg.gateSpec);
 
     if (segmentsWithGates.length === 0) {
-      const firstHorizontal = this.segments.find((seg) => seg.type === 'horizontal');
+      const firstHorizontal = this.segments.find(
+        (seg) => seg.type === "horizontal",
+      );
       if (firstHorizontal) firstHorizontal.gateSpec = true;
     }
 
@@ -437,7 +461,9 @@ export class ControlledGate {
       const segment = this.segments[i];
       if (!segment.gateSpec) continue;
 
-      const rect = this.rects.find((r) => r.index === i && r.segment === segment);
+      const rect = this.rects.find(
+        (r) => r.index === i && r.segment === segment,
+      );
       if (!rect) continue;
 
       let hasGate = false;
@@ -450,27 +476,36 @@ export class ControlledGate {
       } else if (spec && Array.isArray(spec)) {
         const [hasGateSpec, posSpec, widthSpec] = spec;
         hasGate = Boolean(hasGateSpec);
-        if (typeof posSpec === 'number') gatePosition = posSpec;
-        if (typeof widthSpec === 'number') gateWidth = widthSpec;
-      } else if (spec && !Array.isArray(spec) && typeof spec === 'object') {
+        if (typeof posSpec === "number") gatePosition = posSpec;
+        if (typeof widthSpec === "number") gateWidth = widthSpec;
+      } else if (spec && !Array.isArray(spec) && typeof spec === "object") {
         const specObject = spec as GateSpecObject;
         hasGate = true;
-        if (typeof specObject.position === 'number') gatePosition = specObject.position;
-        if (typeof specObject.width === 'number') gateWidth = specObject.width;
+        if (typeof specObject.position === "number")
+          gatePosition = specObject.position;
+        if (typeof specObject.width === "number") gateWidth = specObject.width;
       }
 
       if (!hasGate) continue;
 
       this.gapInfo = { type: rect.type, index: rect.index, rect };
 
-      if (rect.type === 'H') {
-        const gapStartX = rect.x + (rect.w * gatePosition) / 100 - gateWidth / 2;
-        this.gapX = Math.max(rect.x + 5, Math.min(rect.x + rect.w - gateWidth - 5, gapStartX));
+      if (rect.type === "H") {
+        const gapStartX =
+          rect.x + (rect.w * gatePosition) / 100 - gateWidth / 2;
+        this.gapX = Math.max(
+          rect.x + 5,
+          Math.min(rect.x + rect.w - gateWidth - 5, gapStartX),
+        );
         this.gapY = rect.y;
         this.gapWidth = gateWidth;
       } else {
-        const gapStartY = rect.y + (rect.h * gatePosition) / 100 - gateWidth / 2;
-        this.gapY = Math.max(rect.y + 5, Math.min(rect.y + rect.h - gateWidth - 5, gapStartY));
+        const gapStartY =
+          rect.y + (rect.h * gatePosition) / 100 - gateWidth / 2;
+        this.gapY = Math.max(
+          rect.y + 5,
+          Math.min(rect.y + rect.h - gateWidth - 5, gapStartY),
+        );
         this.gapX = rect.x;
         this.gapWidth = gateWidth;
       }
@@ -479,15 +514,20 @@ export class ControlledGate {
   }
 
   getRects(): CollisionRect[] {
-    if (!this.gapInfo) return this.rects.map(({ x, y, w, h }) => ({ x, y, w, h }));
+    if (!this.gapInfo)
+      return this.rects.map(({ x, y, w, h }) => ({ x, y, w, h }));
 
     const output: CollisionRect[] = [];
     for (const rect of this.rects) {
       if (rect.index === this.gapInfo.index && rect === this.gapInfo.rect) {
-        if (rect.type === 'H') {
+        if (rect.type === "H") {
           const leftWidth = Math.max(0, this.gapX - rect.x);
-          const rightWidth = Math.max(0, rect.x + rect.w - (this.gapX + this.gapWidth));
-          if (leftWidth > 0) output.push({ x: rect.x, y: rect.y, w: leftWidth, h: rect.h });
+          const rightWidth = Math.max(
+            0,
+            rect.x + rect.w - (this.gapX + this.gapWidth),
+          );
+          if (leftWidth > 0)
+            output.push({ x: rect.x, y: rect.y, w: leftWidth, h: rect.h });
           if (rightWidth > 0) {
             output.push({
               x: this.gapX + this.gapWidth,
@@ -498,8 +538,12 @@ export class ControlledGate {
           }
         } else {
           const topHeight = Math.max(0, this.gapY - rect.y);
-          const bottomHeight = Math.max(0, rect.y + rect.h - (this.gapY + this.gapWidth));
-          if (topHeight > 0) output.push({ x: rect.x, y: rect.y, w: rect.w, h: topHeight });
+          const bottomHeight = Math.max(
+            0,
+            rect.y + rect.h - (this.gapY + this.gapWidth),
+          );
+          if (topHeight > 0)
+            output.push({ x: rect.x, y: rect.y, w: rect.w, h: topHeight });
           if (bottomHeight > 0) {
             output.push({
               x: rect.x,
@@ -545,7 +589,7 @@ export class ControlledGate {
         : undefined,
       gapReward: heartRenderInfo
         ? {
-            type: 'heart',
+            type: "heart",
             pixelSize: heartRenderInfo.pixelSize,
             rect: heartRenderInfo.rect,
           }
@@ -566,22 +610,15 @@ export const CONTROLLED_GATE_PATTERNS: ControlledGateDefinition[] = [
     { width: 50 }, // Auto S-curve behavior
   ],
 
-  [
-    { width: 30 },
-    { width: 40 },
-    { width: 30 },
-  ],
+  [{ width: 30 }, { width: 40 }, { width: 30 }],
 
   // Explicit positioning
-  [
-    { width: 40 },
-    { width: 60, y: 120, gate: true },
-  ],
+  [{ width: 40 }, { width: 60, y: 120, gate: true }],
 
   // Vertical segments
   [
     { width: 40 },
-    { type: 'vertical', height: 300, gate: { position: 100 } },
+    { type: "vertical", height: 300, gate: { position: 100 } },
     { width: 60 },
   ],
 
@@ -603,14 +640,14 @@ export const CONTROLLED_GATE_PATTERNS: ControlledGateDefinition[] = [
   // Even more explicit using segments property
   {
     segments: [
-      { type: 'horizontal', width: 25 },
+      { type: "horizontal", width: 25 },
       {
-        type: 'vertical',
+        type: "vertical",
         height: 150,
         gate: { position: 30, width: 40 },
       },
       {
-        type: 'horizontal',
+        type: "horizontal",
         width: 75,
         x: -2, // TO-DO should not need this
         y: 0, // relative to end of previous segment
@@ -629,10 +666,10 @@ export const CONTROLLED_GATE_PATTERNS: ControlledGateDefinition[] = [
   // Another vertical example
   [
     { width: 20 },
-    { type: 'vertical', height: 200 },
+    { type: "vertical", height: 200 },
     { width: 60, gate: true },
-    { type: 'vertical', height: 150, gate: { position: 25 } },
-    { width: 20, type: 'horizontal' }, // TO-DO
+    { type: "vertical", height: 150, gate: { position: 25 } },
+    { width: 20, type: "horizontal" }, // TO-DO
   ],
 ];
 
@@ -648,7 +685,11 @@ export class ControlledGateGenerator {
   createdFeet: Set<number>;
   patternIndex = 0;
 
-  constructor({ canvasWidth, spacingFeet, createdFeet = new Set() }: ControlledGateGeneratorOptions) {
+  constructor({
+    canvasWidth,
+    spacingFeet,
+    createdFeet = new Set(),
+  }: ControlledGateGeneratorOptions) {
     this.canvasWidth = canvasWidth;
     this.spacingFeet = spacingFeet;
     this.createdFeet = createdFeet;
@@ -662,10 +703,19 @@ export class ControlledGateGenerator {
     this.patternIndex = 0;
   }
 
-  ensureGates({ spriteY, groundY }: { spriteY: number; groundY: number }): ControlledGate[] {
+  ensureGates({
+    spriteY,
+    groundY,
+  }: {
+    spriteY: number;
+    groundY: number;
+  }): ControlledGate[] {
     if (!Number.isFinite(spriteY) || !Number.isFinite(groundY)) return [];
 
-    const currentFeet = Math.max(0, Math.floor((groundY - spriteY) / PIXELS_PER_FOOT));
+    const currentFeet = Math.max(
+      0,
+      Math.floor((groundY - spriteY) / PIXELS_PER_FOOT),
+    );
     const index = Math.floor(currentFeet / this.spacingFeet);
     const baseFeet = Math.max(this.spacingFeet, index * this.spacingFeet);
     const nextFeet = (index + 1) * this.spacingFeet;
@@ -678,12 +728,17 @@ export class ControlledGateGenerator {
     return gates;
   }
 
-  private _createGateAtFeet(feet: number, groundY: number): ControlledGate | null {
+  private _createGateAtFeet(
+    feet: number,
+    groundY: number,
+  ): ControlledGate | null {
     if (this.createdFeet.has(feet) || feet <= 0) return null;
 
     const y = groundY - feet * PIXELS_PER_FOOT;
     const pattern =
-      CONTROLLED_GATE_PATTERNS[this.patternIndex % CONTROLLED_GATE_PATTERNS.length];
+      CONTROLLED_GATE_PATTERNS[
+        this.patternIndex % CONTROLLED_GATE_PATTERNS.length
+      ];
     this.patternIndex++;
 
     const gate = new ControlledGate({

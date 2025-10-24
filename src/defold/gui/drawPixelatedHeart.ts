@@ -16,7 +16,7 @@ export function drawPixelatedHeart(
   x: number,
   y: number,
   pixelSize: number,
-  color = '#ff0000',
+  color = "#ff0000",
 ): void {
   ctx.fillStyle = color;
 
@@ -40,7 +40,10 @@ export function computeHeartBobOffset(
 ): number {
   if (!Number.isFinite(pixelSize) || pixelSize <= 0) return 0;
 
-  const amplitude = Math.max(1, Math.round(pixelSize * HEART_BOB_AMPLITUDE_RATIO));
+  const amplitude = Math.max(
+    1,
+    Math.round(pixelSize * HEART_BOB_AMPLITUDE_RATIO),
+  );
   if (amplitude <= 0) return 0;
 
   const period = HEART_BOB_PERIOD_MS;
@@ -63,4 +66,6 @@ export const HEART_PATTERN: ReadonlyArray<ReadonlyArray<number>> = [
 ];
 
 export const HEART_PIXEL_COLUMNS = HEART_PATTERN[0]?.length ?? 0;
-export const HEART_PIXEL_ROWS = HEART_PATTERN.filter((row) => row.some((cell) => cell === 1)).length;
+export const HEART_PIXEL_ROWS = HEART_PATTERN.filter((row) =>
+  row.some((cell) => cell === 1),
+).length;

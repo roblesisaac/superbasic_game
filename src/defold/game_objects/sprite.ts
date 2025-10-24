@@ -1,38 +1,69 @@
 import {
-  GRAVITY, GLIDE_GRAVITY_FACTOR, GROUND_FRICTION,
-  CHARGE_TIME, JUMP_MIN, JUMP_MAX,
-  STRETCH_SCALE_X, STRETCH_SCALE_Y, STRETCH_TIME,
-  VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH,
-  IMPACT_SQUASH_FACTOR, IMPACT_DECAY_RATE,
-  CHARGE_SQUASH_MAX, CHARGE_WIDEN_MAX,
-  SAFE_FALL_VY, SAFE_FALL_HEIGHT, STUN_TIME,
-  INVULNERABILITY_TIME, INVULNERABILITY_BLINK_INTERVAL_SLOW,
+  GRAVITY,
+  GLIDE_GRAVITY_FACTOR,
+  GROUND_FRICTION,
+  CHARGE_TIME,
+  JUMP_MIN,
+  JUMP_MAX,
+  STRETCH_SCALE_X,
+  STRETCH_SCALE_Y,
+  STRETCH_TIME,
+  VELOCITY_STRETCH_FACTOR,
+  MAX_VELOCITY_STRETCH,
+  IMPACT_SQUASH_FACTOR,
+  IMPACT_DECAY_RATE,
+  CHARGE_SQUASH_MAX,
+  CHARGE_WIDEN_MAX,
+  SAFE_FALL_VY,
+  SAFE_FALL_HEIGHT,
+  STUN_TIME,
+  INVULNERABILITY_TIME,
+  INVULNERABILITY_BLINK_INTERVAL_SLOW,
   INVULNERABILITY_BLINK_INTERVAL_FAST,
   SPRITE_SIZE,
-  MOVEMENT_MIN, MOVEMENT_MAX, MOVEMENT_DRAG_MAX_DISTANCE,
-  MOVEMENT_FORCE_ENERGY_BONUS, MOVEMENT_FORCE_DRAG_BONUS, MOVEMENT_MAX_VELOCITY_BONUS,
+  MOVEMENT_MIN,
+  MOVEMENT_MAX,
+  MOVEMENT_DRAG_MAX_DISTANCE,
+  MOVEMENT_FORCE_ENERGY_BONUS,
+  MOVEMENT_FORCE_DRAG_BONUS,
+  MOVEMENT_MAX_VELOCITY_BONUS,
   RIDE_SPEED_THRESHOLD,
-  RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
-  RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS,
-  WATER_GRAVITY_FACTOR, WATER_BUOYANCY_ACCEL, WATER_LINEAR_DAMPING,
-  WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
-  WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
-  ENERGY_MAX, ENERGY_REGEN_STATIONARY_DELAY,
-  OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE,
+  RIDE_BOUNCE_VX_FACTOR,
+  RIDE_BOUNCE_VY,
+  RIDE_WEIGHT_SHIFT_MAX,
+  GATE_THICKNESS,
+  WATER_GRAVITY_FACTOR,
+  WATER_BUOYANCY_ACCEL,
+  WATER_LINEAR_DAMPING,
+  WATER_MAX_SPEED,
+  WATER_STROKE_FORCE_SCALE,
+  WATER_ENTRY_DAMPING,
+  WATER_MAX_SINK_SPEED,
+  WATER_PIXELS_PER_METER,
+  WATER_SURFACE_TOLERANCE,
+  ENERGY_MAX,
+  ENERGY_REGEN_STATIONARY_DELAY,
+  OXYGEN_MAX,
+  OXYGEN_DEPLETION_RATE,
+  OXYGEN_RECHARGE_RATE,
   OXYGEN_DAMAGE_INTERVAL,
   BUBBLE_SHRINK_RATE_PER_SECOND,
   BUBBLE_SHRINK_OXYGEN_MULTIPLIER,
-  BUBBLE_EXIT_PADDING
-} from '../config/constants.js';
-import { clamp } from '../shared/utils.js';
-import { canvasHeight, canvasWidth, groundY } from '../runtime/state/rendering_state.js';
-import { cameraY } from '../runtime/state/camera_state.js';
-import { showHeartGainNotification } from '../../web/ui/notifications.js';
-import { HeartPickup } from './heartPickup.js';
+  BUBBLE_EXIT_PADDING,
+} from "../config/constants.js";
+import { clamp } from "../shared/utils.js";
+import {
+  canvasHeight,
+  canvasWidth,
+  groundY,
+} from "../runtime/state/rendering_state.js";
+import { cameraY } from "../runtime/state/camera_state.js";
+import { showHeartGainNotification } from "../../web/ui/notifications.js";
+import { HeartPickup } from "./heartPickup.js";
 import {
   handleSpriteBubbleCollisions,
-  drawEncasingBubble
-} from '../runtime/environment/bubble_field.js';
+  drawEncasingBubble,
+} from "../runtime/environment/bubble_field.js";
 import {
   getWellBounds,
   getWellExpansionSpan,
@@ -43,21 +74,23 @@ import {
   getWellShaftSpan,
   getWellWaterSurfaceY,
   ensureWellDepth,
-  getCliffStartY
-} from '../runtime/environment/well_layout.js';
+  getCliffStartY,
+} from "../runtime/environment/well_layout.js";
 import {
   prepareCliffField,
   getCliffInteriorBoundsAtY,
   CLIFF_LEDGE_TOLERANCE,
-  getCliffCollisionRects
-} from '../runtime/environment/drawables/drawCliffs.js';
-import { getWellCollisionRects } from '../runtime/environment/well_collision.js';
+  getCliffCollisionRects,
+} from "../runtime/environment/drawables/drawCliffs.js";
+import { getWellCollisionRects } from "../runtime/environment/well_collision.js";
 
-const SPRITE_SRC = '/icons/sprite.svg';
+const SPRITE_SRC = "/icons/sprite.svg";
 const spriteImg = new window.Image();
 spriteImg.src = SPRITE_SRC;
 let spriteLoaded = false;
-spriteImg.onload = () => { spriteLoaded = true; };
+spriteImg.onload = () => {
+  spriteLoaded = true;
+};
 
 type SpriteHooks = {
   energyBar: any;
@@ -123,13 +156,17 @@ export class Sprite {
   bubbleRadius: number;
 
   constructor(x: number, y: number, hooks: SpriteHooks) {
-    this.x = x; this.y = y;
-    this.vx = 0; this.vy = 0;
-    this.onGround = true; this.onPlatform = false;
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.onGround = true;
+    this.onPlatform = false;
     this.platformSurface = null;
 
     // Jump charging
-    this.charging = false; this.chargeTime = 0;
+    this.charging = false;
+    this.chargeTime = 0;
 
     // Movement charging (joystick)
     this.movementCharging = false;
@@ -139,14 +176,16 @@ export class Sprite {
     this.movementDragStrength = 0;
 
     this.gliding = false;
-    this.stunned = false; this.stunTime = 0;
+    this.stunned = false;
+    this.stunTime = 0;
     this.invulnerableTime = 0;
     this.invulnerableBlinkTimer = 0;
     this.invulnerableVisible = true;
     this.fallStartY = y;
 
     // visuals
-    this.scaleX = 1; this.scaleY = 1;
+    this.scaleX = 1;
+    this.scaleY = 1;
     this.stretchTimer = 0;
     this.impactSquash = 0;
     this.velocityScaleX = 1;
@@ -197,13 +236,13 @@ export class Sprite {
   }
 
   startCharging() {
-    if (this.hooks.energyBar.state === 'cooldown') {
-      this.charging = true; 
-      this.chargeTime = 0; 
+    if (this.hooks.energyBar.state === "cooldown") {
+      this.charging = true;
+      this.chargeTime = 0;
       return;
     }
     if (this.onGround && this.hooks.energyBar.canUse()) {
-      this.charging = true; 
+      this.charging = true;
       this.chargeTime = 0;
     }
   }
@@ -211,8 +250,10 @@ export class Sprite {
   startMovementCharging(direction) {
     this.setSwimmingInputActive(true);
     const energyBar = this.hooks.energyBar;
-    const inCooldown = energyBar?.state === 'cooldown';
-    const canUseEnergy = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
+    const inCooldown = energyBar?.state === "cooldown";
+    const canUseEnergy = energyBar
+      ? Boolean(energyBar.canUse && energyBar.canUse())
+      : true;
 
     if (!inCooldown && !canUseEnergy) return;
 
@@ -220,22 +261,28 @@ export class Sprite {
     this.movementChargeTime = 0;
     this.movementDirection = { x: direction?.x ?? 0, y: direction?.y ?? 0 };
     this.movementEnergyUsed = 0;
-    const strength = this._computeMovementDragStrength(direction?.distance ?? 0);
+    const strength = this._computeMovementDragStrength(
+      direction?.distance ?? 0,
+    );
     this.movementDragStrength = strength;
   }
 
   updateMovementCharging(direction) {
     if (this.movementCharging) {
       this.movementDirection = { x: direction?.x ?? 0, y: direction?.y ?? 0 };
-      const strength = this._computeMovementDragStrength(direction?.distance ?? 0);
+      const strength = this._computeMovementDragStrength(
+        direction?.distance ?? 0,
+      );
       this.movementDragStrength = Math.max(this.movementDragStrength, strength);
     }
   }
 
   releaseJump() {
     const energyBar = this.hooks.energyBar;
-    const canUseEnergy = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
-    const inCooldown = energyBar?.state === 'cooldown';
+    const canUseEnergy = energyBar
+      ? Boolean(energyBar.canUse && energyBar.canUse())
+      : true;
+    const inCooldown = energyBar?.state === "cooldown";
 
     if (this.charging && (!canUseEnergy || inCooldown)) {
       this.charging = false;
@@ -250,14 +297,16 @@ export class Sprite {
       this.fallStartY = this.y;
       this._doFollowThroughStretch({ x: 0, y: -1 });
     }
-    this.charging = false; 
+    this.charging = false;
     this.chargeTime = 0;
   }
 
   releaseMovement() {
     if (this.movementCharging) {
       const energyBar = this.hooks.energyBar;
-      const energyReady = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
+      const energyReady = energyBar
+        ? Boolean(energyBar.canUse && energyBar.canUse())
+        : true;
 
       if (!energyReady) {
         this.cancelMovementCharging();
@@ -268,7 +317,8 @@ export class Sprite {
       const energyRatio = clamp(this.movementEnergyUsed / ENERGY_MAX, 0, 1);
       const dragRatio = clamp(this.movementDragStrength, 0, 1);
 
-      const baseForce = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * timeRatio;
+      const baseForce =
+        MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * timeRatio;
       const forceMultiplier =
         1 +
         energyRatio * MOVEMENT_FORCE_ENERGY_BONUS +
@@ -276,8 +326,10 @@ export class Sprite {
       let force = baseForce * forceMultiplier;
 
       if (this.inWater && !this.onGround) {
-        const waterEnergyBoost = 1 + energyRatio * (MOVEMENT_FORCE_ENERGY_BONUS * 0.5);
-        const waterDragBoost = 1 + dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
+        const waterEnergyBoost =
+          1 + energyRatio * (MOVEMENT_FORCE_ENERGY_BONUS * 0.5);
+        const waterDragBoost =
+          1 + dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
         force *= WATER_STROKE_FORCE_SCALE * waterEnergyBoost * waterDragBoost;
       }
 
@@ -301,7 +353,7 @@ export class Sprite {
       // Store direction for stretch effects
       const releaseDirection = {
         x: -this.movementDirection.x,
-        y: -this.movementDirection.y
+        y: -this.movementDirection.y,
       };
       this.lastMovementDirection = releaseDirection;
       this._doFollowThroughStretch(releaseDirection);
@@ -314,9 +366,9 @@ export class Sprite {
       this.gliding = true;
     }
   }
-  
-  stopGliding() { 
-    this.gliding = false; 
+
+  stopGliding() {
+    this.gliding = false;
   }
 
   takeDamage() {
@@ -343,15 +395,23 @@ export class Sprite {
 
   _computeMovementDragStrength(distance: number) {
     if (!Number.isFinite(distance) || distance <= 0) return 0;
-    if (!Number.isFinite(MOVEMENT_DRAG_MAX_DISTANCE) || MOVEMENT_DRAG_MAX_DISTANCE <= 0) return 0;
+    if (
+      !Number.isFinite(MOVEMENT_DRAG_MAX_DISTANCE) ||
+      MOVEMENT_DRAG_MAX_DISTANCE <= 0
+    )
+      return 0;
     return clamp(distance / MOVEMENT_DRAG_MAX_DISTANCE, 0, 1);
   }
 
   _getInvulnerabilityBlinkInterval() {
     if (this.invulnerableTime <= 0) return INVULNERABILITY_BLINK_INTERVAL_FAST;
     const ratio = clamp(this.invulnerableTime / INVULNERABILITY_TIME, 0, 1);
-    return INVULNERABILITY_BLINK_INTERVAL_FAST +
-      (INVULNERABILITY_BLINK_INTERVAL_SLOW - INVULNERABILITY_BLINK_INTERVAL_FAST) * ratio;
+    return (
+      INVULNERABILITY_BLINK_INTERVAL_FAST +
+      (INVULNERABILITY_BLINK_INTERVAL_SLOW -
+        INVULNERABILITY_BLINK_INTERVAL_FAST) *
+        ratio
+    );
   }
 
   _updateInvulnerability(dt: number) {
@@ -372,7 +432,12 @@ export class Sprite {
   }
 
   _isGateSurface(surface) {
-    return surface && typeof surface === 'object' && typeof surface.getRects === 'function' && surface.gapInfo;
+    return (
+      surface &&
+      typeof surface === "object" &&
+      typeof surface.getRects === "function" &&
+      surface.gapInfo
+    );
   }
 
   _getGateState(gate) {
@@ -381,15 +446,15 @@ export class Sprite {
         started: false,
         entrySide: null,
         touched: false,
-        pendingCollision: false
+        pendingCollision: false,
       });
     }
     return this.gateStates.get(gate);
   }
 
-  _markGateCollision(surface, contactType: 'top' | 'side' | 'bottom' = 'side') {
+  _markGateCollision(surface, contactType: "top" | "side" | "bottom" = "side") {
     if (!this._isGateSurface(surface)) return;
-    if (typeof surface.notifyContact === 'function') {
+    if (typeof surface.notifyContact === "function") {
       surface.notifyContact(contactType);
     }
     const state = this._getGateState(surface);
@@ -398,55 +463,65 @@ export class Sprite {
 
   _markGateBottomCollision(surface) {
     if (!this._isGateSurface(surface)) return;
-    if (typeof surface.handleBottomCollision === 'function') {
+    if (typeof surface.handleBottomCollision === "function") {
       surface.handleBottomCollision();
     }
-    this._markGateCollision(surface, 'bottom');
+    this._markGateCollision(surface, "bottom");
   }
 
   _getGateGapRect(gate) {
     if (!this._isGateSurface(gate) || !gate.gapInfo) return null;
     const type = gate.gapInfo.type;
-    if (type === 'H') {
-      return { x: gate.gapX, y: gate.gapY, w: gate.gapWidth, h: GATE_THICKNESS };
+    if (type === "H") {
+      return {
+        x: gate.gapX,
+        y: gate.gapY,
+        w: gate.gapWidth,
+        h: GATE_THICKNESS,
+      };
     }
-    if (type === 'V') {
-      return { x: gate.gapX, y: gate.gapY, w: GATE_THICKNESS, h: gate.gapWidth };
+    if (type === "V") {
+      return {
+        x: gate.gapX,
+        y: gate.gapY,
+        w: GATE_THICKNESS,
+        h: gate.gapWidth,
+      };
     }
     return null;
   }
 
   _determineGateSide(rect, gapRect, orientation) {
-    if (!rect || !gapRect) return 'outside';
-    if (orientation === 'H') {
-      if (rect.bottom <= gapRect.y) return 'below';
-      if (rect.top >= gapRect.y + gapRect.h) return 'above';
-      if (rect.right <= gapRect.x) return 'left';
-      if (rect.left >= gapRect.x + gapRect.w) return 'right';
+    if (!rect || !gapRect) return "outside";
+    if (orientation === "H") {
+      if (rect.bottom <= gapRect.y) return "below";
+      if (rect.top >= gapRect.y + gapRect.h) return "above";
+      if (rect.right <= gapRect.x) return "left";
+      if (rect.left >= gapRect.x + gapRect.w) return "right";
     } else {
-      if (rect.right <= gapRect.x) return 'left';
-      if (rect.left >= gapRect.x + gapRect.w) return 'right';
-      if (rect.bottom <= gapRect.y) return 'above';
-      if (rect.top >= gapRect.y + gapRect.h) return 'below';
+      if (rect.right <= gapRect.x) return "left";
+      if (rect.left >= gapRect.x + gapRect.w) return "right";
+      if (rect.bottom <= gapRect.y) return "above";
+      if (rect.top >= gapRect.y + gapRect.h) return "below";
     }
-    return 'inside';
+    return "inside";
   }
 
   _isValidEntrySide(side, orientation) {
-    if (orientation === 'H') return side === 'below' || side === 'above';
-    return side === 'left' || side === 'right';
+    if (orientation === "H") return side === "below" || side === "above";
+    return side === "left" || side === "right";
   }
 
   _isOppositeSide(entrySide, exitSide, orientation) {
-    if (orientation === 'H') {
+    if (orientation === "H") {
       return (
-        (entrySide === 'below' && exitSide === 'above') ||
-        (entrySide === 'above' && exitSide === 'below')
+        (entrySide === "below" && exitSide === "above") ||
+        (entrySide === "above" && exitSide === "below")
       );
     }
     return (
-      (entrySide === 'left' && exitSide === 'right') ||
-      (entrySide === 'right' && exitSide === 'left')
+      (entrySide === "left" && exitSide === "right") ||
+      (entrySide === "right" && exitSide === "left")
     );
   }
 
@@ -456,7 +531,7 @@ export class Sprite {
       left: gapRect.x - margin,
       right: gapRect.x + gapRect.w + margin,
       top: gapRect.y - margin,
-      bottom: gapRect.y + gapRect.h + margin
+      bottom: gapRect.y + gapRect.h + margin,
     };
     return !(
       rect.right < expanded.left ||
@@ -467,11 +542,11 @@ export class Sprite {
   }
 
   _isCliffSurface(surface: any): boolean {
-    return Boolean(surface && surface.collisionType === 'cliff');
+    return Boolean(surface && surface.collisionType === "cliff");
   }
 
   _updateGatePassage(prevRect, currRect) {
-    if (!this.hooks || typeof this.hooks.getGates !== 'function') return;
+    if (!this.hooks || typeof this.hooks.getGates !== "function") return;
     const gates = this.hooks.getGates();
     if (!Array.isArray(gates) || gates.length === 0) return;
 
@@ -481,10 +556,10 @@ export class Sprite {
       if (!gapRect) continue;
 
       const state = this._getGateState(gate);
-      const orientation = gate.gapInfo?.type === 'V' ? 'V' : 'H';
+      const orientation = gate.gapInfo?.type === "V" ? "V" : "H";
       const prevSide = this._determineGateSide(prevRect, gapRect, orientation);
       const currSide = this._determineGateSide(currRect, gapRect, orientation);
-      const currInside = currSide === 'inside';
+      const currInside = currSide === "inside";
 
       if (state.started) {
         if (state.pendingCollision) {
@@ -492,7 +567,11 @@ export class Sprite {
           state.pendingCollision = false;
         }
         if (!currInside) {
-          const passed = this._isOppositeSide(state.entrySide, currSide, orientation);
+          const passed = this._isOppositeSide(
+            state.entrySide,
+            currSide,
+            orientation,
+          );
           if (passed && !state.touched) this._handleGateClear(gate);
 
           state.started = false;
@@ -501,14 +580,18 @@ export class Sprite {
           state.pendingCollision = false;
         }
       } else {
-        if (currInside && prevSide !== 'inside') {
+        if (currInside && prevSide !== "inside") {
           const entrySide = prevSide;
           const validEntry = this._isValidEntrySide(entrySide, orientation);
           state.started = true;
           state.entrySide = entrySide;
           state.touched = state.pendingCollision || !validEntry;
           state.pendingCollision = false;
-        } else if (!currInside && state.pendingCollision && !this._isRectNearGap(currRect, gapRect)) {
+        } else if (
+          !currInside &&
+          state.pendingCollision &&
+          !this._isRectNearGap(currRect, gapRect)
+        ) {
           state.pendingCollision = false;
         }
       }
@@ -516,39 +599,53 @@ export class Sprite {
   }
 
   _handleGateClear(gate) {
-    if (gate && typeof gate.onCleanPass === 'function') {
+    if (gate && typeof gate.onCleanPass === "function") {
       gate.onCleanPass();
     }
   }
 
-  _checkHeartPickups(currRect: { left: number; right: number; top: number; bottom: number }) {
+  _checkHeartPickups(currRect: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  }) {
     if (!this.hooks) return;
 
-    const overlapsBounds = (bounds: { x: number; y: number; width: number; height: number }) =>
+    const overlapsBounds = (bounds: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) =>
       currRect.right >= bounds.x &&
       currRect.left <= bounds.x + bounds.width &&
       currRect.bottom >= bounds.y &&
       currRect.top <= bounds.y + bounds.height;
 
-    const tryCollect = (bounds: { x: number; y: number; width: number; height: number }, collect: () => boolean) => {
+    const tryCollect = (
+      bounds: { x: number; y: number; width: number; height: number },
+      collect: () => boolean,
+    ) => {
       if (!overlapsBounds(bounds)) return;
       if (collect()) {
         this._awardHeart();
       }
     };
 
-    const gates = typeof this.hooks.getGates === 'function' ? this.hooks.getGates() : [];
+    const gates =
+      typeof this.hooks.getGates === "function" ? this.hooks.getGates() : [];
     if (Array.isArray(gates)) {
       for (const gate of gates) {
-        if (!gate || typeof gate.getHeartPickup !== 'function') continue;
+        if (!gate || typeof gate.getHeartPickup !== "function") continue;
         const pickup = gate.getHeartPickup();
         if (!pickup) continue;
 
         tryCollect(pickup, () => {
-          if (typeof gate.collectHeart === 'function') {
+          if (typeof gate.collectHeart === "function") {
             return gate.collectHeart();
           }
-          if (typeof gate.onHeartCollected === 'function') {
+          if (typeof gate.onHeartCollected === "function") {
             return Boolean(gate.onHeartCollected());
           }
           return false;
@@ -557,11 +654,14 @@ export class Sprite {
     }
 
     const extraHearts =
-      typeof this.hooks.getHeartPickups === 'function' ? this.hooks.getHeartPickups() : [];
+      typeof this.hooks.getHeartPickups === "function"
+        ? this.hooks.getHeartPickups()
+        : [];
 
     if (Array.isArray(extraHearts)) {
       for (const heart of extraHearts) {
-        if (!heart || typeof heart.isActive !== 'function' || !heart.isActive()) continue;
+        if (!heart || typeof heart.isActive !== "function" || !heart.isActive())
+          continue;
         const bounds = heart.getBounds();
         tryCollect(bounds, () => heart.collect());
       }
@@ -569,10 +669,19 @@ export class Sprite {
   }
 
   _awardHeart() {
-    if (!this.hooks || !this.hooks.hearts || typeof this.hooks.hearts.gain !== 'function') return;
-    const prevHearts = typeof this.hooks.hearts.value === 'number' ? this.hooks.hearts.value : 0;
+    if (
+      !this.hooks ||
+      !this.hooks.hearts ||
+      typeof this.hooks.hearts.gain !== "function"
+    )
+      return;
+    const prevHearts =
+      typeof this.hooks.hearts.value === "number" ? this.hooks.hearts.value : 0;
     this.hooks.hearts.gain(1);
-    if (typeof this.hooks.hearts.value === 'number' && this.hooks.hearts.value > prevHearts) {
+    if (
+      typeof this.hooks.hearts.value === "number" &&
+      this.hooks.hearts.value > prevHearts
+    ) {
       showHeartGainNotification();
     }
   }
@@ -580,25 +689,26 @@ export class Sprite {
   _updateVelocityStretch() {
     const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
     const amt = Math.min(speed * VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH);
-    
+
     if (speed > 50) {
       // Stretch based on movement direction
       const normalizedVx = this.vx / speed;
       const normalizedVy = this.vy / speed;
-      
+
       // Horizontal stretch
       if (Math.abs(normalizedVx) > 0.3) {
         this.velocityScaleX = 1 + amt * Math.abs(normalizedVx);
         this.velocityScaleY = 1 - amt * Math.abs(normalizedVx) * 0.5;
       }
-      
+
       // Vertical stretch
       if (Math.abs(normalizedVy) > 0.3) {
         this.velocityScaleY = 1 + amt * Math.abs(normalizedVy);
         this.velocityScaleX = 1 - amt * Math.abs(normalizedVy) * 0.3;
       }
     } else {
-      const ease = 12, dt = 0.016;
+      const ease = 12,
+        dt = 0.016;
       this.velocityScaleY += (1 - this.velocityScaleY) * ease * dt;
       this.velocityScaleX += (1 - this.velocityScaleX) * ease * dt;
     }
@@ -619,52 +729,53 @@ export class Sprite {
   }
 
   _applyFinalScale() {
-    let sx = 1, sy = 1;
-    sx *= this.velocityScaleX; 
+    let sx = 1,
+      sy = 1;
+    sx *= this.velocityScaleX;
     sy *= this.velocityScaleY;
 
     // Charging effects
-    if (this.charging && this.hooks.energyBar.state === 'active') {
+    if (this.charging && this.hooks.energyBar.state === "active") {
       const chargeRatio = Math.min(1, this.chargeTime / CHARGE_TIME);
-      sx *= (1 + CHARGE_WIDEN_MAX * chargeRatio);
-      sy *= (1 - CHARGE_SQUASH_MAX * chargeRatio);
+      sx *= 1 + CHARGE_WIDEN_MAX * chargeRatio;
+      sy *= 1 - CHARGE_SQUASH_MAX * chargeRatio;
     }
 
     // Movement charging effects
-    if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+    if (this.movementCharging && this.hooks.energyBar.state === "active") {
       const chargeRatio = Math.min(1, this.movementChargeTime / CHARGE_TIME);
       const intensity = chargeRatio * 0.3; // Less intense than jump charging
-      
+
       // Squash in direction of intended movement
       if (Math.abs(this.movementDirection.x) > 0.1) {
-        sx *= (1 + intensity * Math.abs(this.movementDirection.x));
+        sx *= 1 + intensity * Math.abs(this.movementDirection.x);
       }
       if (Math.abs(this.movementDirection.y) > 0.1) {
-        sy *= (1 + intensity * Math.abs(this.movementDirection.y));
+        sy *= 1 + intensity * Math.abs(this.movementDirection.y);
       }
     }
-    
+
     // Follow-through stretch
     if (this.stretchTimer > 0) {
       const r = this.stretchTimer / STRETCH_TIME;
       const dir = this.lastMovementDirection;
-      
+
       if (Math.abs(dir.x) > Math.abs(dir.y)) {
         // Horizontal stretch
-        sx *= (STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r));
-        sy *= (STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r));
+        sx *= STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r);
+        sy *= STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r);
       } else {
-        // Vertical stretch  
-        sy *= (STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r));
-        sx *= (STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r));
+        // Vertical stretch
+        sy *= STRETCH_SCALE_Y + (1 - STRETCH_SCALE_Y) * (1 - r);
+        sx *= STRETCH_SCALE_X + (1 - STRETCH_SCALE_X) * (1 - r);
       }
     }
-    
+
     if (this.impactSquash > 0) {
-      sx *= (1 + this.impactSquash * 0.4);
-      sy *= (1 - this.impactSquash * 0.6);
+      sx *= 1 + this.impactSquash * 0.4;
+      sy *= 1 - this.impactSquash * 0.6;
     }
-    
+
     this.scaleX = clamp(sx, 0.3, 2.0);
     this.scaleY = clamp(sy, 0.3, 2.0);
   }
@@ -714,7 +825,9 @@ export class Sprite {
     // Handle charging
     if (this.charging) {
       const energyBar = this.hooks.energyBar;
-      const canUseForJump = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
+      const canUseForJump = energyBar
+        ? Boolean(energyBar.canUse && energyBar.canUse())
+        : true;
 
       if (this.onGround && canUseForJump) {
         this.chargeTime = Math.min(this.chargeTime + dt, CHARGE_TIME);
@@ -728,12 +841,19 @@ export class Sprite {
     if (this.movementCharging) {
       const energyBar = this.hooks.energyBar;
       if (!energyBar) {
-        this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
+        this.movementChargeTime = Math.min(
+          this.movementChargeTime + dt,
+          CHARGE_TIME,
+        );
       } else if (energyBar.canUse && energyBar.canUse()) {
-        this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
-        const beforeEnergy = typeof energyBar.energy === 'number' ? energyBar.energy : 0;
+        this.movementChargeTime = Math.min(
+          this.movementChargeTime + dt,
+          CHARGE_TIME,
+        );
+        const beforeEnergy =
+          typeof energyBar.energy === "number" ? energyBar.energy : 0;
         energyBar.drain(35 * dt); // Slightly less drain than jump
-        if (typeof energyBar.energy === 'number') {
+        if (typeof energyBar.energy === "number") {
           const afterEnergy = energyBar.energy;
           const delta = Math.max(0, beforeEnergy - afterEnergy);
           if (delta > 0) this.movementEnergyUsed += delta;
@@ -750,15 +870,16 @@ export class Sprite {
     }
 
     const prevHorizInCavern =
-      (prevX + hs) > cavernSpan.interiorLeft &&
-      (prevX - hs) < cavernSpan.interiorRight;
+      prevX + hs > cavernSpan.interiorLeft &&
+      prevX - hs < cavernSpan.interiorRight;
     const preUpdateInWater =
       prevBottom >= waterSurfaceY &&
       prevBottom >= expansionTopY &&
       prevHorizInCavern;
 
     let g = GRAVITY;
-    if (this.gliding && this.vy > 0 && !this.onGround) g *= GLIDE_GRAVITY_FACTOR;
+    if (this.gliding && this.vy > 0 && !this.onGround)
+      g *= GLIDE_GRAVITY_FACTOR;
     if (preUpdateInWater) {
       g *= WATER_GRAVITY_FACTOR;
       this.vy -= WATER_BUOYANCY_ACCEL * dt;
@@ -803,8 +924,10 @@ export class Sprite {
 
     // ride and gate collisions
     const surfaceCollections = [];
-    if (typeof this.hooks.getRides === 'function') surfaceCollections.push(this.hooks.getRides());
-    if (typeof this.hooks.getGates === 'function') surfaceCollections.push(this.hooks.getGates());
+    if (typeof this.hooks.getRides === "function")
+      surfaceCollections.push(this.hooks.getRides());
+    if (typeof this.hooks.getGates === "function")
+      surfaceCollections.push(this.hooks.getGates());
 
     const currLeft = this.x - hs;
     const currRight = this.x + hs;
@@ -812,18 +935,23 @@ export class Sprite {
     const currBottom = this.y + hs;
     const epsilon = 0.1;
 
-    const collisionRangeTop = Math.min(prevTop, currTop) - CLIFF_LEDGE_TOLERANCE;
-    const collisionRangeBottom = Math.max(prevBottom, currBottom) + CLIFF_LEDGE_TOLERANCE;
-    const cliffRects = getCliffCollisionRects(collisionRangeTop, collisionRangeBottom).map((rect) => ({
+    const collisionRangeTop =
+      Math.min(prevTop, currTop) - CLIFF_LEDGE_TOLERANCE;
+    const collisionRangeBottom =
+      Math.max(prevBottom, currBottom) + CLIFF_LEDGE_TOLERANCE;
+    const cliffRects = getCliffCollisionRects(
+      collisionRangeTop,
+      collisionRangeBottom,
+    ).map((rect) => ({
       active: true,
-      collisionType: 'cliff',
+      collisionType: "cliff",
       floating: false,
       speed: 0,
       direction: 0,
       rect,
       getRects() {
         return [this.rect];
-      }
+      },
     }));
     if (cliffRects.length > 0) {
       surfaceCollections.push(cliffRects);
@@ -834,17 +962,17 @@ export class Sprite {
       rangeBottom: collisionRangeBottom,
       canvasWidth,
       canvasHeight,
-      groundY
+      groundY,
     }).map((rect) => ({
       active: true,
-      collisionType: 'cliff',
+      collisionType: "cliff",
       floating: false,
       speed: 0,
       direction: 0,
       rect,
       getRects() {
         return [this.rect];
-      }
+      },
     }));
     if (wellRects.length > 0) {
       surfaceCollections.push(wellRects);
@@ -860,7 +988,10 @@ export class Sprite {
       if (!collection) continue;
       for (const surface of collection) {
         if (!surface || surface.active === false) continue;
-        const rects = (typeof surface.getRects === 'function') ? surface.getRects() : [surface.getRect()];
+        const rects =
+          typeof surface.getRects === "function"
+            ? surface.getRects()
+            : [surface.getRect()];
         for (const rect of rects) {
           if (!rect || rect.w <= 0 || rect.h <= 0) continue;
 
@@ -870,30 +1001,46 @@ export class Sprite {
           const surfaceBottom = rect.y + rect.h;
 
           const isCliffSurface = this._isCliffSurface(surface);
-          const rectWithSide = rect as typeof rect & { side?: 'left' | 'right' };
+          const rectWithSide = rect as typeof rect & {
+            side?: "left" | "right";
+          };
           const cliffSide = isCliffSurface ? rectWithSide.side : undefined;
 
-          const leftEntryEdge = cliffSide === 'left' ? surfaceRight : surfaceLeft;
-          const rightEntryEdge = cliffSide === 'right' ? surfaceLeft : surfaceRight;
+          const leftEntryEdge =
+            cliffSide === "left" ? surfaceRight : surfaceLeft;
+          const rightEntryEdge =
+            cliffSide === "right" ? surfaceLeft : surfaceRight;
 
-          const leftPushX = cliffSide === 'left' ? leftEntryEdge - hs : surfaceLeft - hs;
-          const rightPushX = cliffSide === 'right' ? rightEntryEdge + hs : surfaceRight + hs;
+          const leftPushX =
+            cliffSide === "left" ? leftEntryEdge - hs : surfaceLeft - hs;
+          const rightPushX =
+            cliffSide === "right" ? rightEntryEdge + hs : surfaceRight + hs;
 
-          const hOverlap = (currRight >= surfaceLeft) && (currLeft <= surfaceRight);
-          const vOverlap = (currBottom >= surfaceTop) && (currTop <= surfaceBottom);
+          const hOverlap = currRight >= surfaceLeft && currLeft <= surfaceRight;
+          const vOverlap = currBottom >= surfaceTop && currTop <= surfaceBottom;
 
           const sameSurfaceAsBefore = surface === previousPlatform;
           const landingTolerance = sameSurfaceAsBefore
             ? Math.max(epsilon, RIDE_WEIGHT_SHIFT_MAX)
             : epsilon;
 
-          if (hOverlap && this.vy >= 0 && prevBottom <= surfaceTop + landingTolerance && currBottom >= surfaceTop) {
+          if (
+            hOverlap &&
+            this.vy >= 0 &&
+            prevBottom <= surfaceTop + landingTolerance &&
+            currBottom >= surfaceTop
+          ) {
             if (!landingCandidate || surfaceTop < landingCandidate.top) {
               landingCandidate = { surface, top: surfaceTop };
             }
           }
 
-          if (hOverlap && this.vy < 0 && prevTop >= surfaceBottom - epsilon && currTop <= surfaceBottom) {
+          if (
+            hOverlap &&
+            this.vy < 0 &&
+            prevTop >= surfaceBottom - epsilon &&
+            currTop <= surfaceBottom
+          ) {
             if (!ceilingCandidate || surfaceBottom > ceilingCandidate.bottom) {
               ceilingCandidate = { surface, bottom: surfaceBottom };
             }
@@ -901,24 +1048,30 @@ export class Sprite {
 
           if (!vOverlap) continue;
 
-          if (prevRight <= leftEntryEdge + epsilon && currRight >= leftEntryEdge) {
+          if (
+            prevRight <= leftEntryEdge + epsilon &&
+            currRight >= leftEntryEdge
+          ) {
             const overlap = currRight - leftEntryEdge;
             if (!leftSideCandidate || overlap < leftSideCandidate.overlap) {
               leftSideCandidate = {
                 surface,
                 overlap,
-                pushX: leftPushX
+                pushX: leftPushX,
               };
             }
           }
 
-          if (prevLeft >= rightEntryEdge - epsilon && currLeft <= rightEntryEdge) {
+          if (
+            prevLeft >= rightEntryEdge - epsilon &&
+            currLeft <= rightEntryEdge
+          ) {
             const overlap = rightEntryEdge - currLeft;
             if (!rightSideCandidate || overlap < rightSideCandidate.overlap) {
               rightSideCandidate = {
                 surface,
                 overlap,
-                pushX: rightPushX
+                pushX: rightPushX,
               };
             }
           }
@@ -928,9 +1081,10 @@ export class Sprite {
 
     let activeSideCollision = null;
     if (leftSideCandidate && rightSideCandidate) {
-      activeSideCollision = leftSideCandidate.overlap <= rightSideCandidate.overlap
-        ? { ...leftSideCandidate, direction: -1 }
-        : { ...rightSideCandidate, direction: 1 };
+      activeSideCollision =
+        leftSideCandidate.overlap <= rightSideCandidate.overlap
+          ? { ...leftSideCandidate, direction: -1 }
+          : { ...rightSideCandidate, direction: 1 };
     } else if (leftSideCandidate) {
       activeSideCollision = { ...leftSideCandidate, direction: -1 };
     } else if (rightSideCandidate) {
@@ -943,7 +1097,7 @@ export class Sprite {
       this.impactSquash = Math.max(this.impactSquash, 0.6);
       blockedHorizontally = true;
       if (!this._isCliffSurface(activeSideCollision.surface)) {
-        this._markGateCollision(activeSideCollision.surface, 'side');
+        this._markGateCollision(activeSideCollision.surface, "side");
       }
     }
 
@@ -960,17 +1114,22 @@ export class Sprite {
     if (landingCandidate) {
       const surface = landingCandidate.surface;
       if (!this._isCliffSurface(surface)) {
-        this._markGateCollision(surface, 'top');
+        this._markGateCollision(surface, "top");
       }
-      if (!('getRects' in surface) && !surface.floating && (surface.speed >= RIDE_SPEED_THRESHOLD)) {
-        this.vx = RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
+      if (
+        !("getRects" in surface) &&
+        !surface.floating &&
+        surface.speed >= RIDE_SPEED_THRESHOLD
+      ) {
+        this.vx =
+          RIDE_BOUNCE_VX_FACTOR * surface.speed * (surface.direction || 1);
         this.vy = RIDE_BOUNCE_VY;
         this.impactSquash = 1.8 * 1.2;
         newPlatformSurface = null;
       } else {
         let landingTop = landingCandidate.top;
         const shouldShiftRide =
-          typeof surface.applyWeightShift === 'function' &&
+          typeof surface.applyWeightShift === "function" &&
           (surface !== previousPlatform || !wasOnGround);
 
         if (shouldShiftRide) {
@@ -994,10 +1153,12 @@ export class Sprite {
     }
 
     // Detect launch from ride platform
-    if (previousPlatform && 
-        previousPlatform !== newPlatformSurface && 
-        typeof previousPlatform.applyLaunchEffect === 'function' &&
-        (this.vy < 0 || !this.onGround)) {
+    if (
+      previousPlatform &&
+      previousPlatform !== newPlatformSurface &&
+      typeof previousPlatform.applyLaunchEffect === "function" &&
+      (this.vy < 0 || !this.onGround)
+    ) {
       // Sprite is launching off the ride - trigger launch effect
       const launchVelocity = Math.abs(this.vy);
       previousPlatform.applyLaunchEffect(launchVelocity);
@@ -1009,7 +1170,8 @@ export class Sprite {
       this.y = surfaceY - hs;
       if (!wasOnGround && this.vy > 0) {
         const fallHeight = this.y - this.fallStartY;
-        const safe = Math.abs(this.vy) <= SAFE_FALL_VY || fallHeight <= SAFE_FALL_HEIGHT;
+        const safe =
+          Math.abs(this.vy) <= SAFE_FALL_VY || fallHeight <= SAFE_FALL_HEIGHT;
         if (!safe) this.takeDamage();
         const impactStrength = Math.min(2.0, Math.abs(this.vy) / 400);
         this.impactSquash = 1.8 * impactStrength;
@@ -1025,7 +1187,8 @@ export class Sprite {
     let spriteBottom = this.y + hs;
     const centerOverOpening = this.x > well.left && this.x < well.right;
     const rimTopY = getWellRimTopY(groundY);
-    const overlapsRimSpan = spriteRight > well.rimLeft && spriteLeft < well.rimRight;
+    const overlapsRimSpan =
+      spriteRight > well.rimLeft && spriteLeft < well.rimRight;
     const cameFromAboveRim = prevBottom <= rimTopY;
     const eligibleForRimLanding =
       overlapsRimSpan &&
@@ -1051,7 +1214,11 @@ export class Sprite {
     spriteRight = this.x + hs;
     spriteBottom = this.y + hs;
 
-    if (spriteBottom > rimTopY && spriteRight > well.left && spriteLeft < well.right) {
+    if (
+      spriteBottom > rimTopY &&
+      spriteRight > well.left &&
+      spriteLeft < well.right
+    ) {
       const inExpansionZone = spriteBottom >= expansionTopY;
       const spanSource = inExpansionZone ? cavernSpan : getWellShaftSpan(well);
       let interiorLeft = spanSource.interiorLeft;
@@ -1083,7 +1250,6 @@ export class Sprite {
         }
       }
     }
-
 
     let submergedInWater = false;
     if (
@@ -1120,7 +1286,10 @@ export class Sprite {
     }
 
     if (!submergedInWater && spriteBottom >= shaftBottomY && this.vy >= 0) {
-      if (spriteRight > cavernSpan.interiorLeft && spriteLeft < cavernSpan.interiorRight) {
+      if (
+        spriteRight > cavernSpan.interiorLeft &&
+        spriteLeft < cavernSpan.interiorRight
+      ) {
         applyStaticLanding(shaftBottomY);
       }
     }
@@ -1140,7 +1309,7 @@ export class Sprite {
         isInBubble: this.inBubble,
         bubbleRadius: Math.max(this.bubbleRadius, restingBubbleRadius),
         inWater: this.inWater,
-        waterSurfaceY
+        waterSurfaceY,
       });
 
       bubbleOxygenDelta += collisionResult.oxygenDelta;
@@ -1154,7 +1323,7 @@ export class Sprite {
       const previousRadius = this.bubbleRadius;
       this.bubbleRadius = Math.max(
         restingBubbleRadius,
-        this.bubbleRadius - BUBBLE_SHRINK_RATE_PER_SECOND * dt
+        this.bubbleRadius - BUBBLE_SHRINK_RATE_PER_SECOND * dt,
       );
       const shrinkAmount = previousRadius - this.bubbleRadius;
       if (shrinkAmount > 0) {
@@ -1176,14 +1345,14 @@ export class Sprite {
         this.oxygen = clamp(
           this.oxygen - OXYGEN_DEPLETION_RATE * dt,
           0,
-          this.maxOxygen
+          this.maxOxygen,
         );
       }
     } else if (canReplenishOxygen) {
       this.oxygen = clamp(
         this.oxygen + OXYGEN_RECHARGE_RATE * dt,
         0,
-        this.maxOxygen
+        this.maxOxygen,
       );
     }
 
@@ -1192,8 +1361,9 @@ export class Sprite {
     }
 
     const hearts = this.hooks?.hearts;
-    const hasHearts = hearts && typeof hearts.takeDamage === 'function';
-    const hasLifeRemaining = hasHearts && typeof hearts.value === 'number' && hearts.value > 0;
+    const hasHearts = hearts && typeof hearts.takeDamage === "function";
+    const hasLifeRemaining =
+      hasHearts && typeof hearts.value === "number" && hearts.value > 0;
     const oxygenDepleted = this.oxygen <= 0;
     if (oxygenDepleted && hasLifeRemaining) {
       this.oxygenDamageTimer += dt;
@@ -1212,12 +1382,17 @@ export class Sprite {
     }
     this.isStationary = this.stationaryTimer >= ENERGY_REGEN_STATIONARY_DELAY;
 
-    const prevRect = { left: prevLeft, right: prevRight, top: prevTop, bottom: prevBottom };
+    const prevRect = {
+      left: prevLeft,
+      right: prevRight,
+      top: prevTop,
+      bottom: prevBottom,
+    };
     const currRect = {
       left: this.x - hs,
       right: this.x + hs,
       top: this.y - hs,
-      bottom: this.y + hs
+      bottom: this.y + hs,
     };
     this._checkHeartPickups(currRect);
     this._updateGatePassage(prevRect, currRect);
@@ -1231,9 +1406,12 @@ export class Sprite {
     let platformVisualYOffset = 0;
     if (this.onPlatform && this.platformSurface) {
       const surface = this.platformSurface;
-      if (typeof surface.getVisualYOffset === 'function') {
+      if (typeof surface.getVisualYOffset === "function") {
         platformVisualYOffset = surface.getVisualYOffset();
-      } else if (typeof surface.y === 'number' && typeof surface.baseY === 'number') {
+      } else if (
+        typeof surface.y === "number" &&
+        typeof surface.baseY === "number"
+      ) {
         platformVisualYOffset = surface.y - surface.baseY;
       }
     }
@@ -1245,7 +1423,9 @@ export class Sprite {
     }
 
     // --- Draw sprite (with mirroring and scaling) ---
-    const shouldRenderSprite = !(this.invulnerableTime > 0 && !this.invulnerableVisible);
+    const shouldRenderSprite = !(
+      this.invulnerableTime > 0 && !this.invulnerableVisible
+    );
     if (shouldRenderSprite) {
       ctx.save();
       ctx.translate(px, py);
@@ -1259,14 +1439,14 @@ export class Sprite {
       if (spriteLoaded) {
         ctx.drawImage(spriteImg, -size / 2, -size / 2, size, size);
       } else {
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = "#fff";
         ctx.fillRect(-size / 2, -size / 2, size, size);
       }
       ctx.restore();
     }
 
     // --- Draw movement charging arrows (never mirrored, but still stretched) ---
-    if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+    if (this.movementCharging && this.hooks.energyBar.state === "active") {
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(this.scaleX, this.scaleY); // Only stretch, no mirroring
@@ -1274,36 +1454,46 @@ export class Sprite {
       const intensity = r * 255;
       ctx.fillStyle = `rgba(100, 200, 255, ${r * 0.8})`;
       // Draw directional indicator
-      if (Math.abs(this.movementDirection.x) > 0.1 || Math.abs(this.movementDirection.y) > 0.1) {
+      if (
+        Math.abs(this.movementDirection.x) > 0.1 ||
+        Math.abs(this.movementDirection.y) > 0.1
+      ) {
         const arrowLength = 15 + r * 10;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(
           this.movementDirection.x * arrowLength,
-          this.movementDirection.y * arrowLength
+          this.movementDirection.y * arrowLength,
         );
         ctx.lineWidth = 2 + r * 2;
         ctx.strokeStyle = `rgba(100, 200, 255, ${r})`;
         ctx.stroke();
         // Arrow head
-        const angle = Math.atan2(this.movementDirection.y, this.movementDirection.x);
+        const angle = Math.atan2(
+          this.movementDirection.y,
+          this.movementDirection.x,
+        );
         const headLength = 5 + r * 3;
         ctx.beginPath();
         ctx.moveTo(
           this.movementDirection.x * arrowLength,
-          this.movementDirection.y * arrowLength
+          this.movementDirection.y * arrowLength,
         );
         ctx.lineTo(
-          this.movementDirection.x * arrowLength - headLength * Math.cos(angle - Math.PI / 6),
-          this.movementDirection.y * arrowLength - headLength * Math.sin(angle - Math.PI / 6)
+          this.movementDirection.x * arrowLength -
+            headLength * Math.cos(angle - Math.PI / 6),
+          this.movementDirection.y * arrowLength -
+            headLength * Math.sin(angle - Math.PI / 6),
         );
         ctx.moveTo(
           this.movementDirection.x * arrowLength,
-          this.movementDirection.y * arrowLength
+          this.movementDirection.y * arrowLength,
         );
         ctx.lineTo(
-          this.movementDirection.x * arrowLength - headLength * Math.cos(angle + Math.PI / 6),
-          this.movementDirection.y * arrowLength - headLength * Math.sin(angle + Math.PI / 6)
+          this.movementDirection.x * arrowLength -
+            headLength * Math.cos(angle + Math.PI / 6),
+          this.movementDirection.y * arrowLength -
+            headLength * Math.sin(angle + Math.PI / 6),
         );
         ctx.stroke();
       }
@@ -1315,7 +1505,7 @@ export class Sprite {
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(this.scaleX, this.scaleY);
-      ctx.fillStyle = '#f66';
+      ctx.fillStyle = "#f66";
       ctx.beginPath();
       ctx.moveTo(SPRITE_SIZE / 2, -4);
       ctx.lineTo(SPRITE_SIZE / 2 + 14, 0);

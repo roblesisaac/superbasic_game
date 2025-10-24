@@ -19,11 +19,11 @@ import {
   RIDE_LAUNCH_SETTLE_DURATION,
   RIDE_LAUNCH_LIFT_INTENSITY,
   RIDE_LAUNCH_VELOCITY_FACTOR,
-} from '../config/constants.js';
-import { clamp, rectsIntersect } from '../shared/utils.js';
+} from "../config/constants.js";
+import { clamp, rectsIntersect } from "../shared/utils.js";
 
-type LandingPhase = 'idle' | 'impact' | 'absorption' | 'recovery' | 'settle';
-type LaunchPhase = 'idle' | 'lift' | 'release' | 'settle';
+type LandingPhase = "idle" | "impact" | "absorption" | "recovery" | "settle";
+type LaunchPhase = "idle" | "lift" | "release" | "settle";
 
 export class Ride {
   x: number;
@@ -49,7 +49,14 @@ export class Ride {
   targetLift: number;
   launchVelocity: number;
 
-  constructor({ x, y, width, speed, direction, canvasWidth }: {
+  constructor({
+    x,
+    y,
+    width,
+    speed,
+    direction,
+    canvasWidth,
+  }: {
     x: number;
     y: number;
     width: number;
@@ -72,19 +79,19 @@ export class Ride {
 
     // Hoverboard landing physics state
     this.weightOffset = 0;
-    this.landingPhase = 'idle'; // 'impact', 'absorption', 'recovery', 'settle'
+    this.landingPhase = "idle"; // 'impact', 'absorption', 'recovery', 'settle'
     this.phaseTime = 0;
     this.impactIntensity = 0;
     this.targetDip = 0;
     this.landingVelocity = 0; // Store sprite's landing velocity for impact calculation
-    
+
     // Launch effect state
-    this.launchPhase = 'idle'; // 'lift', 'release', 'settle'
+    this.launchPhase = "idle"; // 'lift', 'release', 'settle'
     this.launchPhaseTime = 0;
     this.launchIntensity = 0;
     this.targetLift = 0;
     this.launchVelocity = 0; // Store sprite's launch velocity for effect calculation
-    
+
     this._applyWeightOffset();
   }
 
@@ -102,7 +109,8 @@ export class Ride {
 
     this.x += this.speed * this.direction * dt;
 
-    if (this.direction > 0 && this.x > this.canvasWidth + this.width) this.active = false;
+    if (this.direction > 0 && this.x > this.canvasWidth + this.width)
+      this.active = false;
     if (this.direction < 0 && this.x + this.width < 0) this.active = false;
   }
 
@@ -116,12 +124,14 @@ export class Ride {
   draw(ctx, cameraY) {
     if (!this.active) return;
 
-    let color = this.originalSpeed >= RIDE_SPEED_THRESHOLD ? '#ff6b35' : '#4ecdc4';
-    if (this.floating) color = '#9b59b6';
+    let color =
+      this.originalSpeed >= RIDE_SPEED_THRESHOLD ? "#ff6b35" : "#4ecdc4";
+    if (this.floating) color = "#9b59b6";
 
     const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
     const offsetY = this.y - cameraY - visualThickness / 2;
-    const drawRide = () => ctx.fillRect(this.x, offsetY, this.width, visualThickness);
+    const drawRide = () =>
+      ctx.fillRect(this.x, offsetY, this.width, visualThickness);
 
     const glowBlur = Math.max(visualThickness * 3, 12);
 
@@ -145,7 +155,7 @@ export class Ride {
       x: this.x,
       y: this.baseY - RIDE_THICKNESS / 2,
       w: this.width,
-      h: RIDE_THICKNESS
+      h: RIDE_THICKNESS,
     };
   }
 
@@ -156,30 +166,40 @@ export class Ride {
 
   applyWeightShift(spriteVelocity = 0) {
     // Calculate impact intensity based on sprite's landing velocity
-    const velocityImpact = Math.abs(spriteVelocity) * RIDE_VELOCITY_IMPACT_FACTOR;
-    const baseIntensity = RIDE_WEIGHT_SHIFT_MIN + Math.random() * (RIDE_WEIGHT_SHIFT_MAX - RIDE_WEIGHT_SHIFT_MIN);
-    
-    this.impactIntensity = Math.min(RIDE_WEIGHT_SHIFT_MAX, baseIntensity + velocityImpact);
+    const velocityImpact =
+      Math.abs(spriteVelocity) * RIDE_VELOCITY_IMPACT_FACTOR;
+    const baseIntensity =
+      RIDE_WEIGHT_SHIFT_MIN +
+      Math.random() * (RIDE_WEIGHT_SHIFT_MAX - RIDE_WEIGHT_SHIFT_MIN);
+
+    this.impactIntensity = Math.min(
+      RIDE_WEIGHT_SHIFT_MAX,
+      baseIntensity + velocityImpact,
+    );
     this.targetDip = this.impactIntensity;
     this.landingVelocity = spriteVelocity;
-    
+
     // Start the impact phase
-    this.landingPhase = 'impact';
+    this.landingPhase = "impact";
     this.phaseTime = 0;
     this._applyWeightOffset();
   }
 
   applyLaunchEffect(spriteVelocity = 0) {
     // Calculate launch intensity based on sprite's launch velocity
-    const velocityImpact = Math.abs(spriteVelocity) * RIDE_LAUNCH_VELOCITY_FACTOR;
+    const velocityImpact =
+      Math.abs(spriteVelocity) * RIDE_LAUNCH_VELOCITY_FACTOR;
     const baseIntensity = RIDE_WEIGHT_SHIFT_MAX * RIDE_LAUNCH_LIFT_INTENSITY;
-    
-    this.launchIntensity = Math.min(RIDE_WEIGHT_SHIFT_MAX, baseIntensity + velocityImpact);
+
+    this.launchIntensity = Math.min(
+      RIDE_WEIGHT_SHIFT_MAX,
+      baseIntensity + velocityImpact,
+    );
     this.targetLift = this.launchIntensity;
     this.launchVelocity = spriteVelocity;
-    
+
     // Start the lift phase
-    this.launchPhase = 'lift';
+    this.launchPhase = "lift";
     this.launchPhaseTime = 0;
     this._applyWeightOffset();
   }
@@ -190,7 +210,7 @@ export class Ride {
       return;
     }
 
-    if (this.landingPhase === 'idle') {
+    if (this.landingPhase === "idle") {
       this._applyWeightOffset();
       return;
     }
@@ -198,16 +218,16 @@ export class Ride {
     this.phaseTime += dt;
 
     switch (this.landingPhase) {
-      case 'impact':
+      case "impact":
         this._updateImpactPhase();
         break;
-      case 'absorption':
+      case "absorption":
         this._updateAbsorptionPhase();
         break;
-      case 'recovery':
+      case "recovery":
         this._updateRecoveryPhase();
         break;
-      case 'settle':
+      case "settle":
         this._updateSettlePhase();
         break;
     }
@@ -218,13 +238,13 @@ export class Ride {
   _updateImpactPhase() {
     const duration = RIDE_IMPACT_PHASE_DURATION;
     const t = clamp(this.phaseTime / duration, 0, 1);
-    
+
     // Quick, sharp dip with ease-out
     const eased = 1 - Math.pow(1 - t, 2);
     this.weightOffset = this.targetDip * eased;
 
     if (t >= 1) {
-      this.landingPhase = 'absorption';
+      this.landingPhase = "absorption";
       this.phaseTime = 0;
     }
   }
@@ -232,13 +252,13 @@ export class Ride {
   _updateAbsorptionPhase() {
     const duration = RIDE_ABSORPTION_PHASE_DURATION;
     const t = clamp(this.phaseTime / duration, 0, 1);
-    
+
     // Gradual weight absorption with slight settling
-    const settling = 1 + (0.08 * (1 - Math.cos(t * Math.PI * 2)) * (1 - t)); // Gentle settling oscillation
+    const settling = 1 + 0.08 * (1 - Math.cos(t * Math.PI * 2)) * (1 - t); // Gentle settling oscillation
     this.weightOffset = this.targetDip * settling;
 
     if (t >= 1) {
-      this.landingPhase = 'recovery';
+      this.landingPhase = "recovery";
       this.phaseTime = 0;
     }
   }
@@ -246,16 +266,16 @@ export class Ride {
   _updateRecoveryPhase() {
     const duration = RIDE_RECOVERY_PHASE_DURATION;
     const t = clamp(this.phaseTime / duration, 0, 1);
-    
+
     // Natural bounce-back with overshoot - hoverboard compensates for the weight
     const eased = 1 - Math.pow(1 - t, 1.8); // Smooth ease out
     const overshootAmount = this.targetDip * RIDE_RECOVERY_OVERSHOOT;
-    
+
     // Transition from full dip to slight overshoot above original position
     this.weightOffset = this.targetDip * (1 - eased) - overshootAmount * eased;
 
     if (t >= 1) {
-      this.landingPhase = 'settle';
+      this.landingPhase = "settle";
       this.phaseTime = 0;
     }
   }
@@ -263,19 +283,19 @@ export class Ride {
   _updateSettlePhase() {
     const duration = RIDE_SETTLE_PHASE_DURATION;
     const t = clamp(this.phaseTime / duration, 0, 1);
-    
+
     // Gentle damped oscillation settling to natural hover position
     const damping = Math.exp(-4 * t); // Exponential decay
     const frequency = 3; // Number of oscillations
     const oscillation = Math.cos(t * Math.PI * frequency) * damping;
     const startingOffset = -this.targetDip * RIDE_RECOVERY_OVERSHOOT;
-    
+
     // Gradually settle from the overshoot position to neutral
     this.weightOffset = startingOffset * oscillation * (1 - t * t); // Quadratic fade
 
     if (t >= 1) {
       this.weightOffset = 0;
-      this.landingPhase = 'idle';
+      this.landingPhase = "idle";
       this.phaseTime = 0;
       this.impactIntensity = 0;
       this.targetDip = 0;
@@ -285,23 +305,23 @@ export class Ride {
   _applyWeightOffset() {
     // Combine both landing weight shift and launch effect
     let totalOffset = this.weightOffset;
-    
+
     // Launch effect creates an upward lift (negative offset)
-    if (this.launchPhase !== 'idle') {
+    if (this.launchPhase !== "idle") {
       totalOffset -= this.getLaunchOffset();
     }
-    
+
     this.y = this.baseY + totalOffset;
   }
 
   getLaunchOffset() {
     // Returns the current launch effect offset (positive = upward lift)
     switch (this.launchPhase) {
-      case 'lift':
+      case "lift":
         return this.getLiftOffset();
-      case 'release':
+      case "release":
         return this.getReleaseOffset();
-      case 'settle':
+      case "settle":
         return this.getSettleOffset();
       default:
         return 0;
@@ -313,20 +333,20 @@ export class Ride {
       return;
     }
 
-    if (this.launchPhase === 'idle') {
+    if (this.launchPhase === "idle") {
       return;
     }
 
     this.launchPhaseTime += dt;
 
     switch (this.launchPhase) {
-      case 'lift':
+      case "lift":
         this._updateLiftPhase();
         break;
-      case 'release':
+      case "release":
         this._updateReleasePhase();
         break;
-      case 'settle':
+      case "settle":
         this._updateLaunchSettlePhase();
         break;
     }
@@ -335,9 +355,9 @@ export class Ride {
   _updateLiftPhase() {
     const duration = RIDE_LAUNCH_LIFT_DURATION;
     const t = clamp(this.launchPhaseTime / duration, 0, 1);
-    
+
     if (t >= 1) {
-      this.launchPhase = 'release';
+      this.launchPhase = "release";
       this.launchPhaseTime = 0;
     }
   }
@@ -345,9 +365,9 @@ export class Ride {
   _updateReleasePhase() {
     const duration = RIDE_LAUNCH_RELEASE_DURATION;
     const t = clamp(this.launchPhaseTime / duration, 0, 1);
-    
+
     if (t >= 1) {
-      this.launchPhase = 'settle';
+      this.launchPhase = "settle";
       this.launchPhaseTime = 0;
     }
   }
@@ -355,9 +375,9 @@ export class Ride {
   _updateLaunchSettlePhase() {
     const duration = RIDE_LAUNCH_SETTLE_DURATION;
     const t = clamp(this.launchPhaseTime / duration, 0, 1);
-    
+
     if (t >= 1) {
-      this.launchPhase = 'idle';
+      this.launchPhase = "idle";
       this.launchPhaseTime = 0;
       this.launchIntensity = 0;
       this.targetLift = 0;
@@ -367,7 +387,7 @@ export class Ride {
   getLiftOffset() {
     const duration = RIDE_LAUNCH_LIFT_DURATION;
     const t = clamp(this.launchPhaseTime / duration, 0, 1);
-    
+
     // Quick upward lift with ease-out
     const eased = 1 - Math.pow(1 - t, 2);
     return this.targetLift * eased;
@@ -376,7 +396,7 @@ export class Ride {
   getReleaseOffset() {
     const duration = RIDE_LAUNCH_RELEASE_DURATION;
     const t = clamp(this.launchPhaseTime / duration, 0, 1);
-    
+
     // Smooth release back down
     const eased = 1 - Math.pow(1 - t, 1.5);
     return this.targetLift * (1 - eased);
@@ -385,17 +405,23 @@ export class Ride {
   getSettleOffset() {
     const duration = RIDE_LAUNCH_SETTLE_DURATION;
     const t = clamp(this.launchPhaseTime / duration, 0, 1);
-    
+
     // Gentle damped oscillation settling to neutral
     const damping = Math.exp(-3 * t);
     const oscillation = Math.cos(t * Math.PI * 2) * damping;
-    
+
     // Small residual effect that fades out
     return this.targetLift * 0.1 * oscillation * (1 - t);
   }
 }
 
-export function createRideFromInput({ distance, durationMs, screenY, cameraY, canvasWidth }) {
+export function createRideFromInput({
+  distance,
+  durationMs,
+  screenY,
+  cameraY,
+  canvasWidth,
+}) {
   const normalizedDuration = Math.max(1, durationMs);
   const direction = distance >= 0 ? 1 : -1;
   const distanceMagnitude = Math.abs(distance);
@@ -404,9 +430,10 @@ export function createRideFromInput({ distance, durationMs, screenY, cameraY, ca
   const speed = clamp(speedRaw, MIN_RIDE_SPEED, MAX_RIDE_SPEED);
 
   const width = clamp(
-    RIDE_MIN_WIDTH + (RIDE_MAX_WIDTH - RIDE_MIN_WIDTH) * (normalizedDuration / 700),
+    RIDE_MIN_WIDTH +
+      (RIDE_MAX_WIDTH - RIDE_MIN_WIDTH) * (normalizedDuration / 700),
     RIDE_MIN_WIDTH,
-    RIDE_MAX_WIDTH
+    RIDE_MAX_WIDTH,
   );
 
   const worldY = screenY + cameraY;
@@ -418,12 +445,13 @@ export function createRideFromInput({ distance, durationMs, screenY, cameraY, ca
     width,
     speed,
     direction,
-    canvasWidth
+    canvasWidth,
   });
 }
 
 export function countActiveMovingRides(rides) {
-  return rides.filter(ride => ride?.direction !== 0 && ride.active !== false).length;
+  return rides.filter((ride) => ride?.direction !== 0 && ride.active !== false)
+    .length;
 }
 
 export function updateRides(rides, dt) {
@@ -474,7 +502,7 @@ export function mergeCollidingRides(rides, canvasWidth) {
         width: newWidth,
         speed: 0,
         direction: 0,
-        canvasWidth
+        canvasWidth,
       });
       mergedRide.startFloating();
 

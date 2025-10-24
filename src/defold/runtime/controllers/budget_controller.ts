@@ -3,15 +3,15 @@ import {
   MAX_ITEMS_PER_SECTION,
   GROUP_SPACING,
   ITEM_SPACING,
-  PIXELS_PER_FOOT
-} from '../../config/constants.js';
-import { DEFAULT_BUDGET_DATA } from '../../data/budget/presets.js';
+  PIXELS_PER_FOOT,
+} from "../../config/constants.js";
+import { DEFAULT_BUDGET_DATA } from "../../data/budget/presets.js";
 import {
   Collectible,
   type CollectibleType,
-  type GameStats
-} from '../../game_objects/collectibles.js';
-import { groundY, canvasWidth } from '../state/rendering_state.js';
+  type GameStats,
+} from "../../game_objects/collectibles.js";
+import { groundY, canvasWidth } from "../state/rendering_state.js";
 
 export type BudgetEntry = [string, number];
 
@@ -26,7 +26,7 @@ export interface BudgetSection {
 }
 
 export let budgetData: BudgetEntry[] = DEFAULT_BUDGET_DATA.map(
-  ([title, amount]) => [title, amount] as BudgetEntry
+  ([title, amount]) => [title, amount] as BudgetEntry,
 );
 export let budgetSections: BudgetSection[] = [];
 export let collectibles: Collectible[] = [];
@@ -55,7 +55,7 @@ const FORMATIONS: Record<string, FormationFn> = {
         { x: 0, y: 0 },
         { x: spacing, y: 0 },
         { x: 0, y: spacing },
-        { x: spacing, y: spacing }
+        { x: spacing, y: spacing },
       ];
     }
     return FORMATIONS.line(count, spacing);
@@ -65,7 +65,7 @@ const FORMATIONS: Record<string, FormationFn> = {
       return [
         { x: spacing / 2, y: 0 },
         { x: 0, y: spacing },
-        { x: spacing, y: spacing }
+        { x: spacing, y: spacing },
       ];
     }
     return FORMATIONS.line(count, spacing);
@@ -78,15 +78,18 @@ const FORMATIONS: Record<string, FormationFn> = {
         { x: spacing * 2, y: spacing },
         { x: spacing / 2, y: 0 },
         { x: spacing * 1.5, y: 0 },
-        { x: spacing, y: -spacing }
+        { x: spacing, y: -spacing },
       ];
     }
     return FORMATIONS.line(count, spacing);
-  }
+  },
 };
 
 export function calculateBudgetSections() {
-  const totalAmount = budgetData.reduce((sum, [, amount]) => sum + Math.abs(amount), 0);
+  const totalAmount = budgetData.reduce(
+    (sum, [, amount]) => sum + Math.abs(amount),
+    0,
+  );
   budgetSections = [];
   gameStats = {} as GameStats;
   let currentFeet = 0;
@@ -94,12 +97,18 @@ export function calculateBudgetSections() {
   for (const [title, amount] of budgetData) {
     const percentage = totalAmount === 0 ? 0 : Math.abs(amount) / totalAmount;
     const itemCount = Math.round(TOTAL_ITEMS * percentage);
-    const sectionsNeeded = Math.max(1, Math.ceil(itemCount / MAX_ITEMS_PER_SECTION));
+    const sectionsNeeded = Math.max(
+      1,
+      Math.ceil(itemCount / MAX_ITEMS_PER_SECTION),
+    );
 
     gameStats[title] = { target: amount, collected: 0, total: itemCount };
 
     for (let i = 0; i < sectionsNeeded; i++) {
-      const itemsInThis = Math.min(MAX_ITEMS_PER_SECTION, itemCount - i * MAX_ITEMS_PER_SECTION);
+      const itemsInThis = Math.min(
+        MAX_ITEMS_PER_SECTION,
+        itemCount - i * MAX_ITEMS_PER_SECTION,
+      );
       budgetSections.push({
         title,
         amount,
@@ -107,7 +116,7 @@ export function calculateBudgetSections() {
         startFeet: currentFeet,
         endFeet: currentFeet + 100,
         spawned: 0,
-        pendingEnemies: 0
+        pendingEnemies: 0,
       });
       currentFeet += 100;
     }
@@ -120,14 +129,14 @@ function createFormationGroup(
   groupSize: number,
   title: string,
   value: number,
-  type: CollectibleType
+  type: CollectibleType,
 ): Collectible[] {
   const keys = Object.keys(FORMATIONS);
   const formationType = keys[Math.floor(Math.random() * keys.length)];
   const formation = FORMATIONS[formationType] ?? FORMATIONS.line;
   const positions = formation(groupSize, ITEM_SPACING);
   return positions.map(
-    (pos) => new Collectible(baseX + pos.x, baseY + pos.y, value, title, type)
+    (pos) => new Collectible(baseX + pos.x, baseY + pos.y, value, title, type),
   );
 }
 
@@ -138,21 +147,35 @@ export function preloadSectionCollectibles(sectionIndex: number) {
 
   const sectionBaseY = groundY - section.startFeet * PIXELS_PER_FOOT;
   const sectionHeight = 100 * PIXELS_PER_FOOT;
-  const type: CollectibleType = section.amount > 0 ? 'income' : 'expense';
+  const type: CollectibleType = section.amount > 0 ? "income" : "expense";
 
-  if (type === 'income') {
-    let itemsToPlace = Math.max(0, Math.min(section.itemCount - section.spawned, section.itemCount));
+  if (type === "income") {
+    let itemsToPlace = Math.max(
+      0,
+      Math.min(section.itemCount - section.spawned, section.itemCount),
+    );
     let currentY = sectionBaseY - 50;
 
     while (itemsToPlace > 0) {
-      const groupSize = Math.min(itemsToPlace, Math.floor(Math.random() * 4) + 3);
+      const groupSize = Math.min(
+        itemsToPlace,
+        Math.floor(Math.random() * 4) + 3,
+      );
       const groupBaseX = Math.random() * Math.max(1, canvasWidth - 100) + 50;
-      const group = createFormationGroup(groupBaseX, currentY, groupSize, section.title, section.amount, type);
+      const group = createFormationGroup(
+        groupBaseX,
+        currentY,
+        groupSize,
+        section.title,
+        section.amount,
+        type,
+      );
       collectibles.push(...group);
       section.spawned += group.length;
       itemsToPlace -= groupSize;
       currentY -= GROUP_SPACING;
-      if (currentY < sectionBaseY - sectionHeight + 100) currentY = sectionBaseY - 50;
+      if (currentY < sectionBaseY - sectionHeight + 100)
+        currentY = sectionBaseY - 50;
     }
   } else {
     section.pendingEnemies = Math.max(0, section.itemCount - section.spawned);
@@ -169,5 +192,3 @@ export function getSectionIndexForY(y: number): number {
   }
   return -1;
 }
-
-  

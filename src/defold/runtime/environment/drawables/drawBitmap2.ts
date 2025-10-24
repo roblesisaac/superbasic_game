@@ -1,12 +1,7 @@
-import { CABIN_BITMAP } from "../../../assets/bitmaps/cabin.js";
-
-const BUILTIN_BITMAPS: Record<string, string[]> = {
-  cabin: CABIN_BITMAP,
-};
-
-// ---- Caching + prerender helpers -------------------------------------------
+// ---- Caching + prerender helpers (sync) ------------------------------------
 type BitmapCacheKey = string;
-const _bitmapCache = new Map<BitmapCacheKey, ImageBitmap>();
+type SpriteSource = HTMLCanvasElement | OffscreenCanvas;
+const _bitmapCache = new Map<BitmapCacheKey, SpriteSource>();
 
 function cacheKey(
   pattern: string[],
@@ -34,37 +29,40 @@ function adjustHex(hex: string, net: number): string {
   r = Math.round(clamp01(adj(r) / 255) * 255);
   g = Math.round(clamp01(adj(g) / 255) * 255);
   b = Math.round(clamp01(adj(b) / 255) * 255);
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b
+    .toString(16)
+    .padStart(2, "0")}`;
 }
 
-async function prerenderBitmapToImageBitmap(
+// Synchronous prerender: returns a canvas you can drawImage() with
+function prerenderBitmapToCanvas(
   pattern: string[],
   colorMap: Record<string, string>,
   defaultColor: string,
   transparentChars: string,
   net: number,
-): Promise<ImageBitmap> {
+): SpriteSource {
   const rows = pattern.length;
   const cols = Math.max(...pattern.map((r) => r.length));
 
-  // OffscreenCanvas if available; fallback to regular canvas
-  const off =
+  const off: SpriteSource =
     typeof OffscreenCanvas !== "undefined"
       ? new OffscreenCanvas(cols, rows)
       : (() => {
           const c = document.createElement("canvas");
           c.width = cols;
           c.height = rows;
-          return c as unknown as OffscreenCanvas;
+          return c;
         })();
 
-  const ctx = (off as any).getContext("2d", { willReadFrequently: true }) as
-    | OffscreenCanvasRenderingContext2D
-    | CanvasRenderingContext2D;
+  const ctx = (off as any).getContext("2d", {
+    willReadFrequently: true,
+  }) as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+
   const img = ctx.createImageData(cols, rows);
   const data = img.data;
 
-  // Pre-adjust all mapped colors (fewer ops in the inner loop)
+  // Pre-adjust all mapped colors (fewer ops per pixel)
   const adjustedMap: Record<string, [number, number, number, number]> = {};
   for (const [k, v] of Object.entries(colorMap)) {
     adjustedMap[k] = hexToRGBA(net === 0 ? v : adjustHex(v, net));
@@ -74,7 +72,7 @@ async function prerenderBitmapToImageBitmap(
   );
 
   for (let y = 0; y < rows; y++) {
-    const line = pattern[y];
+    const line = pattern[y] ?? "";
     for (let x = 0; x < cols; x++) {
       const rawCh = line[x];
       const ch = rawCh ?? " ";
@@ -93,7 +91,7 @@ async function prerenderBitmapToImageBitmap(
           : transparentChars.includes(ch));
 
       if (shouldSkip) {
-        data[idx + 3] = 0; // fully transparent
+        data[idx + 3] = 0; // transparent
         continue;
       }
 
@@ -106,33 +104,57 @@ async function prerenderBitmapToImageBitmap(
   }
 
   ctx.putImageData(img, 0, 0);
-  // Convert to ImageBitmap for fast blits (on Safari this is a no-op but harmless)
-  return await createImageBitmap(off as any);
+  return off;
 }
 
-// ---- Optimized drawBitmap (blitting) ----------------------------------------
-export async function drawBitmap(
+// ---- Utilities --------------------------------------------------------------
+function normalizeToLines(value?: string | string[]): string[] | undefined {
+  if (value == null) return undefined;
+  if (Array.isArray(value)) return value;
+  return value.split(/\r?\n/);
+}
+
+// ---- Built-in grayscale map (0..9) -----------------------------------------
+const DIGIT_COLOR_MAP: Record<string, string> = {
+    "0": "#CCCCCC",
+    "1": "#AAAAAA",
+    "2": "#888888",
+    "3": "#666666",
+    "4": "#222222",
+    "5": "#333333",
+    "6": "#111111",
+    "7": "#222222",
+    "8": "#111111",
+    "9": "#0A0A0A",
+};  
+
+// ---- Synchronous drawBitmap2 (no await anywhere) ----------------------------
+export function drawBitmap2(
   ctx: CanvasRenderingContext2D,
   config: {
-    bitmap?: string;
-    pattern?: string[];
+    // You will import raw txt on top and pass it in here:
+    pattern?: string[] | string; // preferred: pass raw string from `?raw` and let us split
+    txt?: string;                // alias of pattern as raw string (optional)
+
     x: number;
     y: number;
-    pixelSize?: number;
-    alpha?: number;
     align?: "top-left" | "center" | "bottom";
+
+    pixelSize?: number;
     widthScale?: number;
     heightScale?: number;
+    alpha?: number;
+
     colorMap?: Record<string, string>;
     defaultColor?: string;
     brighten?: number;
     darken?: number;
     transparentChars?: string;
   },
-): Promise<void> {
+): void {
   const {
-    bitmap,
     pattern: patternIn,
+    txt,
     x,
     y,
     pixelSize = 4,
@@ -140,31 +162,40 @@ export async function drawBitmap(
     align = "bottom",
     widthScale = 1,
     heightScale = 1.5,
-    // Provide a "null" key to color otherwise empty / undefined / whitespace pixels.
-    colorMap = { "1": "#2f2f2f", "3": "#4c4c4c" },
-    defaultColor = "#2f2f2f",
+
+    // Merge with digit map; your overrides win
+    colorMap = {},
+    defaultColor = DIGIT_COLOR_MAP["1"],
     brighten = 0,
     darken = 0,
     transparentChars = " ",
   } = config;
 
-  const pattern = patternIn ?? (bitmap ? BUILTIN_BITMAPS[bitmap] : undefined);
+  // Resolve pattern synchronously (no fetch)
+  const pattern =
+    normalizeToLines(patternIn) ??
+    normalizeToLines(txt);
+
   if (!pattern || pattern.length === 0) return;
 
   const rows = pattern.length;
   const cols = Math.max(...pattern.map((r) => r.length));
-
   const cellW = pixelSize * widthScale;
   const cellH = pixelSize * heightScale;
 
+  const effectiveMap: Record<string, string> = {
+    ...DIGIT_COLOR_MAP,
+    ...colorMap,
+  };
+
   const net = Math.max(-1, Math.min(1, brighten - darken));
-  const key = cacheKey(pattern, colorMap, defaultColor, transparentChars, net);
+  const key = cacheKey(pattern, effectiveMap, defaultColor, transparentChars, net);
 
   let sprite = _bitmapCache.get(key);
   if (!sprite) {
-    sprite = await prerenderBitmapToImageBitmap(
+    sprite = prerenderBitmapToCanvas(
       pattern,
-      colorMap,
+      effectiveMap,
       defaultColor,
       transparentChars,
       net,
@@ -172,11 +203,12 @@ export async function drawBitmap(
     _bitmapCache.set(key, sprite);
   }
 
-  // alignment
-  let originX = x;
-  let originY = y;
+  // Alignment
   const drawW = cols * cellW;
   const drawH = rows * cellH;
+
+  let originX = x;
+  let originY = y;
 
   if (align === "center") {
     originX = Math.round(x - drawW / 2);
@@ -188,9 +220,10 @@ export async function drawBitmap(
 
   const prevAlpha = ctx.globalAlpha;
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-  ctx.imageSmoothingEnabled = false; // preserve crisp pixels
+  ctx.imageSmoothingEnabled = false; // keep pixels crisp
 
-  ctx.drawImage(sprite, originX, originY, drawW, drawH);
+  // Draw in strict call order (sync)
+  ctx.drawImage(sprite as CanvasImageSource, originX, originY, drawW, drawH);
 
   ctx.globalAlpha = prevAlpha;
 }

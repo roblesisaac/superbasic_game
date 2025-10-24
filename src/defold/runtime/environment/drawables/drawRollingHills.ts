@@ -13,7 +13,7 @@ const DEFAULTS = {
   baseOffset: 20,
   hillHeight: 88,
   baseThickness: 20,
-  baseColor: '#050505',
+  baseColor: "#050505",
   pixelSize: 4,
 } as const;
 
@@ -23,16 +23,16 @@ type Canvas2DContext =
 
 function createPixelCanvas(
   width: number,
-  height: number
+  height: number,
 ): OffscreenCanvas | HTMLCanvasElement | null {
   if (width <= 0 || height <= 0) return null;
 
-  if (typeof OffscreenCanvas !== 'undefined') {
+  if (typeof OffscreenCanvas !== "undefined") {
     return new OffscreenCanvas(width, height);
   }
 
-  if (typeof document !== 'undefined') {
-    const canvas = document.createElement('canvas');
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     return canvas;
@@ -45,7 +45,7 @@ function isInView(
   baseY: number,
   hillHeight: number,
   baseThickness: number,
-  canvasHeight: number
+  canvasHeight: number,
 ): boolean {
   const topY = baseY - hillHeight;
   const bottomY = baseY + baseThickness;
@@ -54,7 +54,7 @@ function isInView(
 
 export function drawRollingHills(
   ctx: CanvasRenderingContext2D,
-  options: RollingHillsOptions
+  options: RollingHillsOptions,
 ): void {
   const {
     width,
@@ -90,7 +90,7 @@ export function drawRollingHills(
   const drawPath = (
     target: Canvas2DContext,
     mapX: (value: number) => number,
-    mapY: (value: number) => number
+    mapY: (value: number) => number,
   ) => {
     target.beginPath();
     target.moveTo(mapX(startX), mapY(baseY + baseThickness));
@@ -99,19 +99,19 @@ export function drawRollingHills(
       mapX(width * 0.18),
       mapY(baseY - hillHeight * 1),
       mapX(width * 0.36),
-      mapY(baseY - hillHeight * 0.1)
+      mapY(baseY - hillHeight * 0.1),
     );
     target.quadraticCurveTo(
       mapX(width * 0.55),
       mapY(baseY - hillHeight * 1),
-      mapX(width * .82),
-      mapY(baseY - hillHeight * 0.2)
+      mapX(width * 0.82),
+      mapY(baseY - hillHeight * 0.2),
     );
     target.quadraticCurveTo(
       mapX(width * 1),
       mapY(baseY - hillHeight * 1),
       mapX(endX),
-      mapY(baseY)
+      mapY(baseY),
     );
     target.lineTo(mapX(endX), mapY(baseY + baseThickness));
     target.closePath();
@@ -133,16 +133,16 @@ export function drawRollingHills(
     if (widthSpan > 0 && heightSpan > 0) {
       const offscreenWidth = Math.max(
         1,
-        Math.ceil(widthSpan / normalizedPixelSize)
+        Math.ceil(widthSpan / normalizedPixelSize),
       );
       const offscreenHeight = Math.max(
         1,
-        Math.ceil(heightSpan / normalizedPixelSize)
+        Math.ceil(heightSpan / normalizedPixelSize),
       );
       const canvas = createPixelCanvas(offscreenWidth, offscreenHeight);
       const offscreenCtx =
-        canvas && 'getContext' in canvas
-          ? (canvas.getContext('2d') as Canvas2DContext | null)
+        canvas && "getContext" in canvas
+          ? (canvas.getContext("2d") as Canvas2DContext | null)
           : null;
 
       if (offscreenCtx) {
@@ -152,7 +152,7 @@ export function drawRollingHills(
         drawPath(
           offscreenCtx,
           (value) => (value - alignedStartX) / normalizedPixelSize,
-          (value) => (value - alignedTopY) / normalizedPixelSize
+          (value) => (value - alignedTopY) / normalizedPixelSize,
         );
         offscreenCtx.fill();
 
@@ -162,18 +162,30 @@ export function drawRollingHills(
           alignedStartX,
           alignedTopY,
           offscreenWidth * normalizedPixelSize,
-          offscreenHeight * normalizedPixelSize
+          offscreenHeight * normalizedPixelSize,
         );
       } else {
-        drawPath(ctx, (value) => value, (value) => value);
+        drawPath(
+          ctx,
+          (value) => value,
+          (value) => value,
+        );
         ctx.fill();
       }
     } else {
-      drawPath(ctx, (value) => value, (value) => value);
+      drawPath(
+        ctx,
+        (value) => value,
+        (value) => value,
+      );
       ctx.fill();
     }
   } else {
-    drawPath(ctx, (value) => value, (value) => value);
+    drawPath(
+      ctx,
+      (value) => value,
+      (value) => value,
+    );
     ctx.fill();
   }
 

@@ -1,16 +1,16 @@
-import { FIRE_BITMAP } from '../../../assets/bitmaps/fire-bitmap.js';
+import { FIRE_BITMAP } from "../../../assets/bitmaps/fire-bitmap.js";
 
 const COLOR_MAP: Record<string, string> = {
-  '0': '#ffffff',
-  '1': '#ffffff',
-  '2': '#e6e6e6',
-  '3': '#bfbfbf',
-  '4': '#8c8c8c',
-  '5': '#5a5a5a',
-  '6': '#3b3b3b',
-  '7': '#777777',
-  '8': '#d9d9d9',
-  '9': '#f3f3f3'
+  "0": "#ffffff",
+  "1": "#ffffff",
+  "2": "#e6e6e6",
+  "3": "#bfbfbf",
+  "4": "#8c8c8c",
+  "5": "#5a5a5a",
+  "6": "#3b3b3b",
+  "7": "#777777",
+  "8": "#d9d9d9",
+  "9": "#f3f3f3",
 };
 
 const TRANSPARENT_INDEX = 10;
@@ -20,7 +20,7 @@ const isLittleEndian =
 
 function hexToPaletteValue(hex: string | undefined): number {
   if (!hex) return 0x00000000;
-  const normalized = hex.replace('#', '');
+  const normalized = hex.replace("#", "");
   const r = parseInt(normalized.slice(0, 2), 16);
   const g = parseInt(normalized.slice(2, 4), 16);
   const b = parseInt(normalized.slice(4, 6), 16);
@@ -93,10 +93,10 @@ function ensureBase(): void {
   for (let y = 0; y < SPRITE_HEIGHT; y += 1) {
     const row = SPRITE[y];
     for (let x = 0; x < SPRITE_WIDTH; x += 1) {
-      const char = row?.[x] ?? ' ';
+      const char = row?.[x] ?? " ";
       const dst = (y + Y_OFFSET) * SOURCE_WIDTH + x;
       base[dst] =
-        char === ' ' || char === '.'
+        char === " " || char === "."
           ? TRANSPARENT_INDEX
           : Math.max(0, char.charCodeAt(0) - 48);
     }
@@ -115,25 +115,25 @@ function ensureCanvas(): void {
   }
 
   const canvas =
-    typeof OffscreenCanvas !== 'undefined'
+    typeof OffscreenCanvas !== "undefined"
       ? new OffscreenCanvas(LOGICAL_WIDTH, LOGICAL_HEIGHT)
       : (() => {
-          if (typeof document === 'undefined') {
+          if (typeof document === "undefined") {
             return null;
           }
-          const node = document.createElement('canvas');
+          const node = document.createElement("canvas");
           node.width = LOGICAL_WIDTH;
           node.height = LOGICAL_HEIGHT;
           return node;
         })();
 
   if (!canvas) {
-    throw new Error('Unable to create canvas for campfire rendering.');
+    throw new Error("Unable to create canvas for campfire rendering.");
   }
 
-  const context = canvas.getContext('2d', { alpha: false });
+  const context = canvas.getContext("2d", { alpha: false });
   if (!context) {
-    throw new Error('Unable to get 2d context for campfire rendering.');
+    throw new Error("Unable to get 2d context for campfire rendering.");
   }
 
   const imageData = context.createImageData(LOGICAL_WIDTH, LOGICAL_HEIGHT);
@@ -152,7 +152,7 @@ function computeTopContour(): Array<{ x: number; y: number }> {
     let y = 0;
     while (
       y < SPRITE_HEIGHT &&
-      (SPRITE[y]?.[x] === ' ' || SPRITE[y]?.[x] === '.')
+      (SPRITE[y]?.[x] === " " || SPRITE[y]?.[x] === ".")
     ) {
       y += 1;
     }
@@ -175,7 +175,7 @@ function recomputeTopCenter(windowHalfWidth = 5): {
     Math.max(1, topSamples.length);
   const roundedCx = Math.round(cx);
   const band = topSamples.filter(
-    (point) => Math.abs(point.x - roundedCx) <= windowHalfWidth
+    (point) => Math.abs(point.x - roundedCx) <= windowHalfWidth,
   );
   return { cx: roundedCx, band: band.length > 0 ? band : topSamples };
 }
@@ -187,19 +187,15 @@ function spawnSpark(): void {
   topCenter = recomputeTopCenter(5);
   const band = topCenter.band.length > 0 ? topCenter.band : topSamples;
   const pick = band[(Math.random() * band.length) | 0];
-  const jitterX =
-    (Math.random() - 0.5 + (Math.random() - 0.5)) * 1.0;
+  const jitterX = (Math.random() - 0.5 + (Math.random() - 0.5)) * 1.0;
 
   s_x[idx] = pick.x + jitterX;
   s_y[idx] = Math.max(0, pick.y + Y_OFFSET - 2);
-  s_vx[idx] =
-    (Math.random() - 0.5 + (Math.random() - 0.5)) * SPARK_SPEED_X;
+  s_vx[idx] = (Math.random() - 0.5 + (Math.random() - 0.5)) * SPARK_SPEED_X;
   s_vy[idx] = SPARK_SPEED_Y * (0.85 + Math.random() * 0.3);
   s_age[idx] = 0;
   s_life[idx] =
-    (SPARK_LIFE_MIN +
-      Math.random() * (SPARK_LIFE_MAX - SPARK_LIFE_MIN)) |
-    0;
+    (SPARK_LIFE_MIN + Math.random() * (SPARK_LIFE_MAX - SPARK_LIFE_MIN)) | 0;
   s_on[idx] = 1;
 }
 
@@ -263,9 +259,9 @@ function renderDownscaled(): void {
       const spark = sparkField[srcIndex];
 
       if (spark) {
-        const d3 = COLOR_MAP['9'] ? 9 : 1;
-        const d2 = COLOR_MAP['8'] ? 8 : d3;
-        const d1 = COLOR_MAP['7'] ? 7 : d2;
+        const d3 = COLOR_MAP["9"] ? 9 : 1;
+        const d2 = COLOR_MAP["8"] ? 8 : d3;
+        const d1 = COLOR_MAP["7"] ? 7 : d2;
         campfirePixels[y * LOGICAL_WIDTH + x] =
           PALETTE[spark === 3 ? d3 : spark === 2 ? d2 : d1];
       } else {
@@ -291,7 +287,7 @@ interface DrawCampfireOptions {
 
 export function drawCampfire(
   ctx: CanvasRenderingContext2D,
-  options: DrawCampfireOptions
+  options: DrawCampfireOptions,
 ): void {
   ensureBase();
   if (!campfireCanvas) return;
@@ -337,7 +333,7 @@ export function drawCampfire(
     destX,
     destY,
     drawWidth,
-    drawHeight
+    drawHeight,
   );
   ctx.imageSmoothingEnabled = previousSmoothing;
 }

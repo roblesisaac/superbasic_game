@@ -5,16 +5,16 @@ import {
   getWellShaftSpan,
   getWellShaftBottomY,
   WELL_COLLAR_HEIGHT,
-  WELL_RIM_THICKNESS
-} from './well_layout.js';
-import { CLIFF_CELL_SIZE } from './drawables/drawCliffs.js';
+  WELL_RIM_THICKNESS,
+} from "./well_layout.js";
+import { CLIFF_CELL_SIZE } from "./drawables/drawCliffs.js";
 
 export interface WellCollisionRect {
   x: number;
   y: number;
   w: number;
   h: number;
-  side?: 'left' | 'right';
+  side?: "left" | "right";
 }
 
 interface WellCollisionParams {
@@ -32,7 +32,7 @@ function clipRect(
   rects: WellCollisionRect[],
   rect: WellCollisionRect,
   rangeTop: number,
-  rangeBottom: number
+  rangeBottom: number,
 ): void {
   if (!Number.isFinite(rect.x) || !Number.isFinite(rect.y)) return;
   if (!Number.isFinite(rect.w) || !Number.isFinite(rect.h)) return;
@@ -52,16 +52,19 @@ function clipRect(
     y: clippedTop,
     w: rect.w,
     h: clippedHeight,
-    side: rect.side
+    side: rect.side,
   });
 }
 
-export function getWellCollisionRects(params: WellCollisionParams): WellCollisionRect[] {
+export function getWellCollisionRects(
+  params: WellCollisionParams,
+): WellCollisionRect[] {
   const { rangeTop, rangeBottom, canvasWidth, canvasHeight, groundY } = params;
   const rects: WellCollisionRect[] = [];
 
   if (!Number.isFinite(rangeTop) || !Number.isFinite(rangeBottom)) return rects;
-  if (!Number.isFinite(canvasWidth) || !Number.isFinite(canvasHeight)) return rects;
+  if (!Number.isFinite(canvasWidth) || !Number.isFinite(canvasHeight))
+    return rects;
 
   const bounds = getWellBounds(canvasWidth);
   const shaftSpan = getWellShaftSpan(bounds);
@@ -70,7 +73,10 @@ export function getWellCollisionRects(params: WellCollisionParams): WellCollisio
 
   // Narrow shaft walls run from just below the rim to the cavern expansion.
   const rimTop = getWellRimTopY(groundY);
-  const shaftTop = Math.min(groundY - WELL_COLLAR_HEIGHT, rimTop + WELL_RIM_THICKNESS + CLIFF_CELL_SIZE);
+  const shaftTop = Math.min(
+    groundY - WELL_COLLAR_HEIGHT,
+    rimTop + WELL_RIM_THICKNESS + CLIFF_CELL_SIZE,
+  );
   const shaftWallBottom = Math.min(expansionTop, shaftBottom);
 
   if (shaftWallBottom > shaftTop) {
@@ -84,10 +90,10 @@ export function getWellCollisionRects(params: WellCollisionParams): WellCollisio
         y: shaftTop,
         w: WALL_THICKNESS,
         h: shaftWallBottom - shaftTop,
-        side: 'left'
+        side: "left",
       },
       rangeTop,
-      rangeBottom
+      rangeBottom,
     );
 
     clipRect(
@@ -97,10 +103,10 @@ export function getWellCollisionRects(params: WellCollisionParams): WellCollisio
         y: shaftTop,
         w: WALL_THICKNESS,
         h: shaftWallBottom - shaftTop,
-        side: 'right'
+        side: "right",
       },
       rangeTop,
-      rangeBottom
+      rangeBottom,
     );
   }
 
@@ -118,10 +124,10 @@ export function getWellCollisionRects(params: WellCollisionParams): WellCollisio
           x: 0,
           y: armBottom - armHeight,
           w: leftArmWidth,
-          h: armHeight
+          h: armHeight,
         },
         rangeTop,
-        rangeBottom
+        rangeBottom,
       );
     }
 
@@ -133,10 +139,10 @@ export function getWellCollisionRects(params: WellCollisionParams): WellCollisio
           x: rightArmStart,
           y: armBottom - armHeight,
           w: canvasWidth - rightArmStart,
-          h: armHeight
+          h: armHeight,
         },
         rangeTop,
-        rangeBottom
+        rangeBottom,
       );
     }
   }

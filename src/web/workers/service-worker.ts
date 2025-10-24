@@ -2,49 +2,51 @@
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'game-cache-v15';
+const CACHE_NAME = "game-cache-v15";
 
 const CORE_ASSETS: string[] = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
 ];
 
-sw.addEventListener('install', (event: ExtendableEvent) => {
+sw.addEventListener("install", (event: ExtendableEvent) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)),
   );
   void sw.skipWaiting();
 });
 
 async function notifyClientsAboutUpdate() {
-  const clients = await sw.clients.matchAll({ type: 'window' });
+  const clients = await sw.clients.matchAll({ type: "window" });
   for (const client of clients) {
-    client.postMessage({ type: 'SW_UPDATE_AVAILABLE' });
+    client.postMessage({ type: "SW_UPDATE_AVAILABLE" });
   }
 }
 
-sw.addEventListener('activate', (event: ExtendableEvent) => {
+sw.addEventListener("activate", (event: ExtendableEvent) => {
   event.waitUntil(
     caches
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve(false)))
-        )
+          keys.map((key) =>
+            key !== CACHE_NAME ? caches.delete(key) : Promise.resolve(false),
+          ),
+        ),
       )
-      .then(() => notifyClientsAboutUpdate())
+      .then(() => notifyClientsAboutUpdate()),
   );
   void sw.clients.claim();
 });
 
-sw.addEventListener('fetch', (event: FetchEvent) => {
+sw.addEventListener("fetch", (event: FetchEvent) => {
   const req = event.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== "GET") return;
 
-  const isHTML = req.headers.get('accept')?.includes('text/html');
+  const isHTML = req.headers.get("accept")?.includes("text/html");
 
   if (isHTML) {
     event.respondWith(
@@ -54,7 +56,9 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
           void caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           return res;
         })
-        .catch(() => caches.match(req).then((cached) => cached || caches.match('./')))
+        .catch(() =>
+          caches.match(req).then((cached) => cached || caches.match("./")),
+        ),
     );
     return;
   }
@@ -72,6 +76,6 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
           return res;
         })
         .catch(() => caches.match(req));
-    })
+    }),
   );
 });

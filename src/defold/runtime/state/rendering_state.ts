@@ -1,17 +1,17 @@
-import { CANVAS_MAX_WIDTH } from '../../config/constants.js';
-import { resetBubbleField } from '../environment/bubble_field.js';
-import { resetWellDepth } from '../environment/well_layout.js';
-import { resetCliffs } from '../environment/drawables/drawCliffs.js';
+import { CANVAS_MAX_WIDTH } from "../../config/constants.js";
+import { resetBubbleField } from "../environment/bubble_field.js";
+import { resetWellDepth } from "../environment/well_layout.js";
+import { resetCliffs } from "../environment/drawables/drawCliffs.js";
 
-const canvasElement = document.getElementById('gameCanvas');
+const canvasElement = document.getElementById("gameCanvas");
 if (!(canvasElement instanceof HTMLCanvasElement)) {
-  throw new Error('Unable to locate #gameCanvas canvas element.');
+  throw new Error("Unable to locate #gameCanvas canvas element.");
 }
 
 export const canvas: HTMLCanvasElement = canvasElement;
-const context = canvas.getContext('2d', { alpha: true });
+const context = canvas.getContext("2d", { alpha: true });
 if (!(context instanceof CanvasRenderingContext2D)) {
-  throw new Error('Unable to acquire 2D canvas context.');
+  throw new Error("Unable to acquire 2D canvas context.");
 }
 
 export const ctx: CanvasRenderingContext2D = context;
@@ -33,5 +33,5 @@ export function updateCanvasSize(): void {
   resetCliffs();
 }
 
-window.addEventListener('resize', updateCanvasSize);
+window.addEventListener("resize", updateCanvasSize);
 updateCanvasSize();

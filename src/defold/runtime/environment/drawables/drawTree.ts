@@ -1,6 +1,6 @@
-export type TreeKey = 'tree1' | 'tree2' | (string & {});
-import { TREE1 } from '../../../assets/trees/tree1.js';
-import { TREE2 } from '../../../assets/trees/tree2.js';
+export type TreeKey = "tree1" | "tree2" | (string & {});
+import { TREE1 } from "../../../assets/trees/tree1.js";
+import { TREE2 } from "../../../assets/trees/tree2.js";
 
 const TREES: Record<string, string[]> = {
   tree1: TREE1,
@@ -28,7 +28,7 @@ export interface DrawTreeConfig {
    * - 'bottom':   (x,y) is the bottom-center (useful to place at ground)
    * Default: 'bottom'
    */
-  align?: 'top-left' | 'center' | 'bottom';
+  align?: "top-left" | "center" | "bottom";
 
   /**
    * Non-uniform stretch scales for width/height. Default: 1 and 1.5
@@ -56,16 +56,13 @@ function adjustHex(hex: string, net: number): string {
   let g = (c >> 8) & 255;
   let b = c & 255;
 
-  const adj = (ch: number) =>
-    n >= 0
-      ? ch + (255 - ch) * n
-      : ch * (1 + n); // n negative → darken
+  const adj = (ch: number) => (n >= 0 ? ch + (255 - ch) * n : ch * (1 + n)); // n negative → darken
 
   r = Math.round(clamp01(adj(r) / 255) * 255);
   g = Math.round(clamp01(adj(g) / 255) * 255);
   b = Math.round(clamp01(adj(b) / 255) * 255);
 
-  const toHex = (v: number) => v.toString(16).padStart(2, '0');
+  const toHex = (v: number) => v.toString(16).padStart(2, "0");
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
@@ -76,28 +73,28 @@ function adjustHex(hex: string, net: number): string {
  */
 export function drawTree(
   ctx: CanvasRenderingContext2D,
-  config: DrawTreeConfig
+  config: DrawTreeConfig,
 ): void {
   const {
-    tree = 'tree1',
+    tree = "tree1",
     x,
     y,
     pixelSize = 4,
     alpha = 1,
-    align = 'bottom',
+    align = "bottom",
     widthScale = 1,
     heightScale = 1.5,
     brighten = 0,
     darken = 0,
   } = config;
 
-  const BASE_1 = '#2f2f2f';
-  const BASE_3 = '#4c4c4c';
+  const BASE_1 = "#2f2f2f";
+  const BASE_3 = "#4c4c4c";
   const net = Math.max(-1, Math.min(1, brighten - darken));
   const color1 = adjustHex(BASE_1, net);
   const color3 = adjustHex(BASE_3, net);
 
-  const pattern = TREES[tree] ?? TREES['tree1'];
+  const pattern = TREES[tree] ?? TREES["tree1"];
   if (!pattern || pattern.length === 0) return;
 
   const rows = pattern.length;
@@ -110,10 +107,10 @@ export function drawTree(
   let originX = x;
   let originY = y;
 
-  if (align === 'center') {
+  if (align === "center") {
     originX = Math.round(x - (cols * cellW) / 2);
     originY = Math.round(y - (rows * cellH) / 2);
-  } else if (align === 'bottom') {
+  } else if (align === "bottom") {
     originX = Math.round(x - (cols * cellW) / 2);
     originY = Math.round(y - rows * cellH);
   } // 'top-left' uses (x, y) as-is
@@ -125,8 +122,8 @@ export function drawTree(
     const line = pattern[r];
     for (let c = 0; c < line.length; c++) {
       const ch = line[c];
-      if (ch === '1' || ch === '3') {
-        ctx.fillStyle = ch === '1' ? color1 : color3;
+      if (ch === "1" || ch === "3") {
+        ctx.fillStyle = ch === "1" ? color1 : color3;
         const px = originX + c * cellW;
         const py = originY + r * cellH;
         ctx.fillRect(px, py, cellW, cellH);
@@ -157,9 +154,11 @@ type NormalizedTreeVisualStyle = {
   darken: number;
 };
 
-function normalizeTreeStyle(style: TreeVisualStyle = {}): NormalizedTreeVisualStyle {
+function normalizeTreeStyle(
+  style: TreeVisualStyle = {},
+): NormalizedTreeVisualStyle {
   const {
-    tree = 'tree1',
+    tree = "tree1",
     pixelSize = 4,
     alpha = 1,
     widthScale = 1,
@@ -184,10 +183,13 @@ function normalizeTreeStyle(style: TreeVisualStyle = {}): NormalizedTreeVisualSt
 }
 
 export function getTreePattern(tree: TreeKey): string[] {
-  return TREES[tree] ?? TREES['tree1'] ?? [];
+  return TREES[tree] ?? TREES["tree1"] ?? [];
 }
 
-function computeTreeDimensions(style: NormalizedTreeVisualStyle): { width: number; height: number } {
+function computeTreeDimensions(style: NormalizedTreeVisualStyle): {
+  width: number;
+  height: number;
+} {
   const pattern = getTreePattern(style.tree);
   if (!pattern.length) return { width: 0, height: 0 };
 
@@ -198,7 +200,10 @@ function computeTreeDimensions(style: NormalizedTreeVisualStyle): { width: numbe
   return { width, height };
 }
 
-export function measureTree(style: TreeVisualStyle = {}): { width: number; height: number } {
+export function measureTree(style: TreeVisualStyle = {}): {
+  width: number;
+  height: number;
+} {
   const normalized = normalizeTreeStyle(style);
   return computeTreeDimensions(normalized);
 }
@@ -208,13 +213,13 @@ export function createTreeBitmap(style: TreeVisualStyle = {}): {
   width: number;
   height: number;
 } {
-  if (typeof document === 'undefined') {
-    throw new Error('Tree bitmaps require a DOM document to create canvases.');
+  if (typeof document === "undefined") {
+    throw new Error("Tree bitmaps require a DOM document to create canvases.");
   }
 
   const normalized = normalizeTreeStyle(style);
   const { width, height } = computeTreeDimensions(normalized);
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
 
@@ -222,9 +227,9 @@ export function createTreeBitmap(style: TreeVisualStyle = {}): {
     return { canvas, width, height };
   }
 
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error('Unable to acquire 2D context for tree bitmap.');
+    throw new Error("Unable to acquire 2D context for tree bitmap.");
   }
 
   drawTree(context, {
@@ -237,7 +242,7 @@ export function createTreeBitmap(style: TreeVisualStyle = {}): {
     darken: normalized.darken,
     x: 0,
     y: 0,
-    align: 'top-left',
+    align: "top-left",
   });
 
   return { canvas, width, height };
