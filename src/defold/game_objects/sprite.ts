@@ -1,6 +1,6 @@
 import {
   GRAVITY, GLIDE_GRAVITY_FACTOR, GROUND_FRICTION,
-  CHARGE_TIME, JUMP_MIN, JUMP_MAX, JUMP_SMALL_COOLDOWN,
+  CHARGE_TIME, JUMP_MIN, JUMP_MAX,
   STRETCH_SCALE_X, STRETCH_SCALE_Y, STRETCH_TIME,
   VELOCITY_STRETCH_FACTOR, MAX_VELOCITY_STRETCH,
   IMPACT_SQUASH_FACTOR, IMPACT_DECAY_RATE,
@@ -233,13 +233,12 @@ export class Sprite {
   }
 
   releaseJump() {
-    if (this.charging && this.hooks.energyBar.state === 'cooldown') {
-      this.vy = -JUMP_SMALL_COOLDOWN;
-      this.onGround = false;
-      this.fallStartY = this.y;
-      this.hooks.energyBar.extendCooldown(0.22);
-      this._doFollowThroughStretch({ x: 0, y: -1 });
-      this.charging = false; 
+    const energyBar = this.hooks.energyBar;
+    const canUseEnergy = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
+    const inCooldown = energyBar?.state === 'cooldown';
+
+    if (this.charging && (!canUseEnergy || inCooldown)) {
+      this.charging = false;
       this.chargeTime = 0;
       return;
     }
@@ -258,61 +257,54 @@ export class Sprite {
   releaseMovement() {
     if (this.movementCharging) {
       const energyBar = this.hooks.energyBar;
-      const inCooldown = energyBar?.state === 'cooldown';
-      const hasChargeEnergy = this.movementEnergyUsed > 0.01 || !inCooldown;
+      const energyReady = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
 
-      if (!hasChargeEnergy && inCooldown) {
-        // Small movement during cooldown
-        let force = MOVEMENT_MIN * 0.5;
-        if (this.inWater && !this.onGround) {
-          force *= WATER_STROKE_FORCE_SCALE;
-        }
-        this.vx += -this.movementDirection.x * force;
-        this.vy += -this.movementDirection.y * force;
-        energyBar?.extendCooldown(0.15);
-      } else {
-        // Normal movement
-        const timeRatio = clamp(this.movementChargeTime / CHARGE_TIME, 0, 1);
-        const energyRatio = clamp(this.movementEnergyUsed / ENERGY_MAX, 0, 1);
-        const dragRatio = clamp(this.movementDragStrength, 0, 1);
+      if (!energyReady) {
+        this.cancelMovementCharging();
+        return;
+      }
 
-        const baseForce = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * timeRatio;
-        const forceMultiplier =
-          1 +
-          energyRatio * MOVEMENT_FORCE_ENERGY_BONUS +
-          dragRatio * MOVEMENT_FORCE_DRAG_BONUS;
-        let force = baseForce * forceMultiplier;
+      const timeRatio = clamp(this.movementChargeTime / CHARGE_TIME, 0, 1);
+      const energyRatio = clamp(this.movementEnergyUsed / ENERGY_MAX, 0, 1);
+      const dragRatio = clamp(this.movementDragStrength, 0, 1);
 
-        if (this.inWater && !this.onGround) {
-          const waterEnergyBoost = 1 + energyRatio * (MOVEMENT_FORCE_ENERGY_BONUS * 0.5);
-          const waterDragBoost = 1 + dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
-          force *= WATER_STROKE_FORCE_SCALE * waterEnergyBoost * waterDragBoost;
-        }
+      const baseForce = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * timeRatio;
+      const forceMultiplier =
+        1 +
+        energyRatio * MOVEMENT_FORCE_ENERGY_BONUS +
+        dragRatio * MOVEMENT_FORCE_DRAG_BONUS;
+      let force = baseForce * forceMultiplier;
 
-        // Apply movement in opposite direction of drag
-        this.vx += -this.movementDirection.x * force;
-        this.vy += -this.movementDirection.y * force;
+      if (this.inWater && !this.onGround) {
+        const waterEnergyBoost = 1 + energyRatio * (MOVEMENT_FORCE_ENERGY_BONUS * 0.5);
+        const waterDragBoost = 1 + dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
+        force *= WATER_STROKE_FORCE_SCALE * waterEnergyBoost * waterDragBoost;
+      }
 
-        // Clamp velocity to prevent extreme speeds
-        const maxVelMultiplier =
-          1 +
-          energyRatio * MOVEMENT_MAX_VELOCITY_BONUS +
-          dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
-        const maxVel = MOVEMENT_MAX * Math.max(1, maxVelMultiplier);
-        this.vx = clamp(this.vx, -maxVel, maxVel);
-        this.vy = clamp(this.vy, -maxVel, maxVel);
+      // Apply movement in opposite direction of drag
+      this.vx += -this.movementDirection.x * force;
+      this.vy += -this.movementDirection.y * force;
 
-        if (!this.onGround) {
-          this.fallStartY = this.y;
-        }
+      // Clamp velocity to prevent extreme speeds
+      const maxVelMultiplier =
+        1 +
+        energyRatio * MOVEMENT_MAX_VELOCITY_BONUS +
+        dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
+      const maxVel = MOVEMENT_MAX * Math.max(1, maxVelMultiplier);
+      this.vx = clamp(this.vx, -maxVel, maxVel);
+      this.vy = clamp(this.vy, -maxVel, maxVel);
+
+      if (!this.onGround) {
+        this.fallStartY = this.y;
       }
 
       // Store direction for stretch effects
-      this.lastMovementDirection = { 
-        x: -this.movementDirection.x, 
-        y: -this.movementDirection.y 
+      const releaseDirection = {
+        x: -this.movementDirection.x,
+        y: -this.movementDirection.y
       };
-      this._doFollowThroughStretch(this.lastMovementDirection);
+      this.lastMovementDirection = releaseDirection;
+      this._doFollowThroughStretch(releaseDirection);
     }
     this.cancelMovementCharging();
   }
@@ -720,24 +712,35 @@ export class Sprite {
     prepareCliffField(canvasWidth, cliffStartWorld, expansionBottomY);
 
     // Handle charging
-    if (this.charging && this.onGround && this.hooks.energyBar.state === 'active') {
-      this.chargeTime = Math.min(this.chargeTime + dt, CHARGE_TIME);
-      this.hooks.energyBar.drain(45 * dt);
+    if (this.charging) {
+      const energyBar = this.hooks.energyBar;
+      const canUseForJump = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
+
+      if (this.onGround && canUseForJump) {
+        this.chargeTime = Math.min(this.chargeTime + dt, CHARGE_TIME);
+        if (energyBar) energyBar.drain(45 * dt);
+      } else if (energyBar) {
+        this.chargeTime = 0;
+      }
     }
 
     // Handle movement charging
-    if (this.movementCharging && this.hooks.energyBar?.state === 'active') {
-      this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
+    if (this.movementCharging) {
       const energyBar = this.hooks.energyBar;
-      const beforeEnergy = (energyBar && typeof energyBar.energy === 'number')
-        ? energyBar.energy
-        : 0;
-      energyBar?.drain(35 * dt); // Slightly less drain than jump
-      if (energyBar && typeof energyBar.energy === 'number') {
-        const afterEnergy = energyBar.energy;
-        if (afterEnergy <= beforeEnergy) {
-          this.movementEnergyUsed += beforeEnergy - afterEnergy;
+      if (!energyBar) {
+        this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
+      } else if (energyBar.canUse && energyBar.canUse()) {
+        this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
+        const beforeEnergy = typeof energyBar.energy === 'number' ? energyBar.energy : 0;
+        energyBar.drain(35 * dt); // Slightly less drain than jump
+        if (typeof energyBar.energy === 'number') {
+          const afterEnergy = energyBar.energy;
+          const delta = Math.max(0, beforeEnergy - afterEnergy);
+          if (delta > 0) this.movementEnergyUsed += delta;
         }
+      } else {
+        this.movementChargeTime = 0;
+        this.movementEnergyUsed = 0;
       }
     }
 
