@@ -121,7 +121,17 @@ export class Ride {
 
     const visualThickness = Math.max(1, Math.round(RIDE_THICKNESS / 5));
     const offsetY = this.y - cameraY - visualThickness / 2;
-    const drawRide = () => ctx.fillRect(this.x, offsetY, this.width, visualThickness);
+    const pixelSize = Math.max(1, Math.min(visualThickness, 3));
+    const pixelSpacing = pixelSize + 1;
+    const drawRide = () => {
+      const endX = this.x + this.width;
+      const rowY = Math.round(offsetY + visualThickness / 2 - pixelSize / 2);
+      for (let px = this.x; px < endX; px += pixelSpacing) {
+        const remaining = endX - px;
+        const drawWidth = Math.min(pixelSize, remaining);
+        ctx.fillRect(px, rowY, drawWidth, pixelSize);
+      }
+    };
 
     const glowBlur = Math.max(visualThickness * 3, 12);
 
