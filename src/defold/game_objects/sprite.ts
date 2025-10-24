@@ -9,13 +9,15 @@ import {
   INVULNERABILITY_TIME, INVULNERABILITY_BLINK_INTERVAL_SLOW,
   INVULNERABILITY_BLINK_INTERVAL_FAST,
   SPRITE_SIZE,
-  MOVEMENT_MIN, MOVEMENT_MAX, RIDE_SPEED_THRESHOLD,
+  MOVEMENT_MIN, MOVEMENT_MAX, MOVEMENT_DRAG_MAX_DISTANCE,
+  MOVEMENT_FORCE_ENERGY_BONUS, MOVEMENT_FORCE_DRAG_BONUS, MOVEMENT_MAX_VELOCITY_BONUS,
+  RIDE_SPEED_THRESHOLD,
   RIDE_BOUNCE_VX_FACTOR, RIDE_BOUNCE_VY,
   RIDE_WEIGHT_SHIFT_MAX, GATE_THICKNESS,
   WATER_GRAVITY_FACTOR, WATER_BUOYANCY_ACCEL, WATER_LINEAR_DAMPING,
   WATER_MAX_SPEED, WATER_STROKE_FORCE_SCALE, WATER_ENTRY_DAMPING,
   WATER_MAX_SINK_SPEED, WATER_PIXELS_PER_METER, WATER_SURFACE_TOLERANCE,
-  ENERGY_REGEN_STATIONARY_DELAY,
+  ENERGY_MAX, ENERGY_REGEN_STATIONARY_DELAY,
   OXYGEN_MAX, OXYGEN_DEPLETION_RATE, OXYGEN_RECHARGE_RATE,
   OXYGEN_DAMAGE_INTERVAL,
   BUBBLE_SHRINK_RATE_PER_SECOND,
@@ -86,6 +88,8 @@ export class Sprite {
   movementCharging: boolean;
   movementChargeTime: number;
   movementDirection: { x: number; y: number };
+  movementEnergyUsed: number;
+  movementDragStrength: number;
   gliding: boolean;
   stunned: boolean;
   stunTime: number;
@@ -131,6 +135,8 @@ export class Sprite {
     this.movementCharging = false;
     this.movementChargeTime = 0;
     this.movementDirection = { x: 0, y: 0 }; // normalized direction vector
+    this.movementEnergyUsed = 0;
+    this.movementDragStrength = 0;
 
     this.gliding = false;
     this.stunned = false; this.stunTime = 0;
@@ -184,6 +190,8 @@ export class Sprite {
       this.movementCharging = false;
       this.movementChargeTime = 0;
       this.movementDirection = { x: 0, y: 0 };
+      this.movementEnergyUsed = 0;
+      this.movementDragStrength = 0;
     }
     this.setSwimmingInputActive(false);
   }
@@ -202,22 +210,25 @@ export class Sprite {
 
   startMovementCharging(direction) {
     this.setSwimmingInputActive(true);
-    if (this.hooks.energyBar.state === 'cooldown') {
-      this.movementCharging = true;
-      this.movementChargeTime = 0;
-      this.movementDirection = { ...direction };
-      return;
-    }
-    if (this.hooks.energyBar.canUse()) {
-      this.movementCharging = true;
-      this.movementChargeTime = 0;
-      this.movementDirection = { ...direction };
-    }
+    const energyBar = this.hooks.energyBar;
+    const inCooldown = energyBar?.state === 'cooldown';
+    const canUseEnergy = energyBar ? Boolean(energyBar.canUse && energyBar.canUse()) : true;
+
+    if (!inCooldown && !canUseEnergy) return;
+
+    this.movementCharging = true;
+    this.movementChargeTime = 0;
+    this.movementDirection = { x: direction?.x ?? 0, y: direction?.y ?? 0 };
+    this.movementEnergyUsed = 0;
+    const strength = this._computeMovementDragStrength(direction?.distance ?? 0);
+    this.movementDragStrength = strength;
   }
 
   updateMovementCharging(direction) {
     if (this.movementCharging) {
-      this.movementDirection = { ...direction };
+      this.movementDirection = { x: direction?.x ?? 0, y: direction?.y ?? 0 };
+      const strength = this._computeMovementDragStrength(direction?.distance ?? 0);
+      this.movementDragStrength = Math.max(this.movementDragStrength, strength);
     }
   }
 
@@ -246,7 +257,11 @@ export class Sprite {
 
   releaseMovement() {
     if (this.movementCharging) {
-      if (this.hooks.energyBar.state === 'cooldown') {
+      const energyBar = this.hooks.energyBar;
+      const inCooldown = energyBar?.state === 'cooldown';
+      const hasChargeEnergy = this.movementEnergyUsed > 0.01 || !inCooldown;
+
+      if (!hasChargeEnergy && inCooldown) {
         // Small movement during cooldown
         let force = MOVEMENT_MIN * 0.5;
         if (this.inWater && !this.onGround) {
@@ -254,13 +269,24 @@ export class Sprite {
         }
         this.vx += -this.movementDirection.x * force;
         this.vy += -this.movementDirection.y * force;
-        this.hooks.energyBar.extendCooldown(0.15);
+        energyBar?.extendCooldown(0.15);
       } else {
         // Normal movement
-        const r = Math.min(1, this.movementChargeTime / CHARGE_TIME);
-        let force = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * r;
+        const timeRatio = clamp(this.movementChargeTime / CHARGE_TIME, 0, 1);
+        const energyRatio = clamp(this.movementEnergyUsed / ENERGY_MAX, 0, 1);
+        const dragRatio = clamp(this.movementDragStrength, 0, 1);
+
+        const baseForce = MOVEMENT_MIN + (MOVEMENT_MAX - MOVEMENT_MIN) * timeRatio;
+        const forceMultiplier =
+          1 +
+          energyRatio * MOVEMENT_FORCE_ENERGY_BONUS +
+          dragRatio * MOVEMENT_FORCE_DRAG_BONUS;
+        let force = baseForce * forceMultiplier;
+
         if (this.inWater && !this.onGround) {
-          force *= WATER_STROKE_FORCE_SCALE;
+          const waterEnergyBoost = 1 + energyRatio * (MOVEMENT_FORCE_ENERGY_BONUS * 0.5);
+          const waterDragBoost = 1 + dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
+          force *= WATER_STROKE_FORCE_SCALE * waterEnergyBoost * waterDragBoost;
         }
 
         // Apply movement in opposite direction of drag
@@ -268,7 +294,11 @@ export class Sprite {
         this.vy += -this.movementDirection.y * force;
 
         // Clamp velocity to prevent extreme speeds
-        const maxVel = MOVEMENT_MAX * 1.2;
+        const maxVelMultiplier =
+          1 +
+          energyRatio * MOVEMENT_MAX_VELOCITY_BONUS +
+          dragRatio * (MOVEMENT_FORCE_DRAG_BONUS * 0.5);
+        const maxVel = MOVEMENT_MAX * Math.max(1, maxVelMultiplier);
         this.vx = clamp(this.vx, -maxVel, maxVel);
         this.vy = clamp(this.vy, -maxVel, maxVel);
 
@@ -317,6 +347,12 @@ export class Sprite {
     if (direction) {
       this.lastMovementDirection = { ...direction };
     }
+  }
+
+  _computeMovementDragStrength(distance: number) {
+    if (!Number.isFinite(distance) || distance <= 0) return 0;
+    if (!Number.isFinite(MOVEMENT_DRAG_MAX_DISTANCE) || MOVEMENT_DRAG_MAX_DISTANCE <= 0) return 0;
+    return clamp(distance / MOVEMENT_DRAG_MAX_DISTANCE, 0, 1);
   }
 
   _getInvulnerabilityBlinkInterval() {
@@ -690,9 +726,19 @@ export class Sprite {
     }
 
     // Handle movement charging
-    if (this.movementCharging && this.hooks.energyBar.state === 'active') {
+    if (this.movementCharging && this.hooks.energyBar?.state === 'active') {
       this.movementChargeTime = Math.min(this.movementChargeTime + dt, CHARGE_TIME);
-      this.hooks.energyBar.drain(35 * dt); // Slightly less drain than jump
+      const energyBar = this.hooks.energyBar;
+      const beforeEnergy = (energyBar && typeof energyBar.energy === 'number')
+        ? energyBar.energy
+        : 0;
+      energyBar?.drain(35 * dt); // Slightly less drain than jump
+      if (energyBar && typeof energyBar.energy === 'number') {
+        const afterEnergy = energyBar.energy;
+        if (afterEnergy <= beforeEnergy) {
+          this.movementEnergyUsed += beforeEnergy - afterEnergy;
+        }
+      }
     }
 
     if (this.gliding && this.vy > 0 && !this.onGround) {
