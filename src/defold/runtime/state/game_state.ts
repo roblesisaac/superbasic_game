@@ -7,6 +7,19 @@ import type { EnergyBar, Hearts } from "../../gui/hud.js";
 import type { HeartPickup } from "../../game_objects/heartPickup.js";
 import type { HeartEffectSystem } from "../controllers/heart_effects.js";
 
+export interface LumenLoopState {
+  isUnlocked: boolean;
+  isActive: boolean;
+  angularVelocity: number;
+  rotationAccum: number;
+  haloScale: number;
+  pinchIntent: number;
+  heliumAmount: number;
+  heliumFloatTimer: number;
+  energy: number;
+  cooldownTime: number;
+}
+
 export interface GameWorldState {
   sprite: Sprite | null;
   rides: Ride[];
@@ -16,6 +29,7 @@ export interface GameWorldState {
   energyBar: EnergyBar | null;
   hearts: Hearts | null;
   heartEffects: HeartEffectSystem | null;
+  lumenLoop: LumenLoopState;
   lastTime: number;
   running: boolean;
 }
@@ -29,6 +43,18 @@ export const gameWorld: GameWorldState = {
   energyBar: null,
   hearts: null,
   heartEffects: null,
+  lumenLoop: {
+    isUnlocked: true,
+    isActive: false,
+    angularVelocity: 0,
+    rotationAccum: 0,
+    haloScale: 1.0,
+    pinchIntent: 0,
+    heliumAmount: 0,
+    heliumFloatTimer: 0,
+    energy: 100,
+    cooldownTime: 0,
+  },
   lastTime: 0,
   running: true,
 };
@@ -43,6 +69,18 @@ export function resetGameWorld(): void {
   gameWorld.energyBar = null;
   gameWorld.hearts = null;
   gameWorld.heartEffects = null;
+  gameWorld.lumenLoop = {
+    isUnlocked: true,
+    isActive: false,
+    angularVelocity: 0,
+    rotationAccum: 0,
+    haloScale: 1.0,
+    pinchIntent: 0,
+    heliumAmount: 0,
+    heliumFloatTimer: 0,
+    energy: 100,
+    cooldownTime: 0,
+  };
   gameWorld.lastTime = 0;
   gameWorld.running = true;
 }

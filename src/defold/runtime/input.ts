@@ -16,6 +16,13 @@ import {
   toggleSettings,
   hideSettings,
 } from "../../web/ui/settings_overlay.js";
+import {
+  createLumenLoopGestureState,
+  startLumenLoopGesture,
+  updateLumenLoopRotation,
+  activateLumenLoop,
+  type LumenLoopGestureState,
+} from "../game_objects/rides/lumen_loop.js";
 
 type PointSample = { x: number; y: number; time: number };
 
@@ -171,6 +178,7 @@ export class InputHandler {
   lastArrowTime: number;
   arrowCooldownMs: number;
   joystick: JoystickState;
+  lumenLoopGesture: LumenLoopGestureState;
 
   constructor(game: GameWorldState, ensureReset: () => void) {
     this.game = game;
@@ -212,6 +220,8 @@ export class InputHandler {
       maxDistance: 9,
     };
 
+    this.lumenLoopGesture = createLumenLoopGestureState();
+
     this.bind();
   }
 
@@ -232,6 +242,19 @@ export class InputHandler {
       y: dy / distance,
       distance,
     };
+  }
+
+  shouldStartLumenLoopGesture(x: number, y: number): boolean {
+    const sprite = this.game.sprite;
+    if (!sprite || !this.game.lumenLoop.isUnlocked) return false;
+
+    const spriteScreenY = sprite.y - cameraY;
+    const dx = x - sprite.x;
+    const dy = y - spriteScreenY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if tap is within sprite bounds (roughly 40px radius)
+    return distance < 40;
   }
 
   startJoystick(x: number, y: number) {
@@ -297,6 +320,17 @@ export class InputHandler {
           return;
         }
 
+        // Check if we should start lumen loop gesture
+        if (this.shouldStartLumenLoopGesture(x, y) && this.game.sprite) {
+          startLumenLoopGesture(
+            this.lumenLoopGesture,
+            this.game.sprite,
+            x,
+            y,
+            cameraY,
+          );
+        }
+
         this.touchStart = { x, y, time: Date.now() };
         this.touchSamples = [{ ...this.touchStart }];
         this.touchSwipe = false;
@@ -334,6 +368,25 @@ export class InputHandler {
         const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
         this.touchSamples = this.touchSamples.filter((q) => q.time >= cutoff);
         this.updateJoystick(sample.x, sample.y);
+
+        // Update lumen loop rotation if gesture is active
+        if (this.lumenLoopGesture.pendingActivation && this.game.sprite) {
+          updateLumenLoopRotation(
+            this.lumenLoopGesture,
+            this.game.sprite,
+            sample.x,
+            sample.y,
+            cameraY,
+          );
+
+          // Check if activation is complete
+          activateLumenLoop(this.game.lumenLoop, this.lumenLoopGesture);
+
+          // If gesture is claimed, don't process other gestures
+          if (this.lumenLoopGesture.claimedInput) {
+            return;
+          }
+        }
 
         const direction = this.calculateDirection(
           this.touchStart.x,
@@ -397,7 +450,23 @@ export class InputHandler {
         const last =
           this.touchSamples[this.touchSamples.length - 1] || this.touchStart;
         const dx = last.x - this.touchStart.x;
+        const dy = last.y - this.touchStart.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
         const total = Math.max(1, endTime - this.touchStart.time);
+
+        // Check for tap-to-jump when Lumen-Loop is active
+        const isTap = distance < 10 && total < 200;
+        if (isTap && this.game.lumenLoop.isActive && sprite) {
+          // Trigger standard jump without affecting Lumen-Loop state
+          sprite.releaseJump();
+          this.game.sprite?.stopGliding();
+          this.endJoystick();
+          this.touchStart = null;
+          this.touchSamples = [];
+          this.touchSwipe = false;
+          this.isJoystickMode = false;
+          return;
+        }
 
         if (this.touchSwipe && sprite && spriteAirborne && !spriteSwimming) {
           this.spawnRideFromGesture(dx, total, last.y);
@@ -433,6 +502,17 @@ export class InputHandler {
         return;
       }
 
+      // Check if we should start lumen loop gesture
+      if (this.shouldStartLumenLoopGesture(x, y) && this.game.sprite) {
+        startLumenLoopGesture(
+          this.lumenLoopGesture,
+          this.game.sprite,
+          x,
+          y,
+          cameraY,
+        );
+      }
+
       this.mouseStart = { x, y, time: Date.now() };
       this.mouseSamples = [{ ...this.mouseStart }];
       this.isMouseDragging = true;
@@ -465,6 +545,25 @@ export class InputHandler {
       const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
       this.mouseSamples = this.mouseSamples.filter((q) => q.time >= cutoff);
       this.updateJoystick(sample.x, sample.y);
+
+      // Update lumen loop rotation if gesture is active
+      if (this.lumenLoopGesture.pendingActivation && this.game.sprite) {
+        updateLumenLoopRotation(
+          this.lumenLoopGesture,
+          this.game.sprite,
+          sample.x,
+          sample.y,
+          cameraY,
+        );
+
+        // Check if activation is complete
+        activateLumenLoop(this.game.lumenLoop, this.lumenLoopGesture);
+
+        // If gesture is claimed, don't process other gestures
+        if (this.lumenLoopGesture.claimedInput) {
+          return;
+        }
+      }
 
       const direction = this.calculateDirection(
         this.mouseStart.x,
@@ -519,11 +618,28 @@ export class InputHandler {
       const last =
         this.mouseSamples[this.mouseSamples.length - 1] || this.mouseStart;
       const dx = last.x - this.mouseStart.x;
+      const dy = last.y - this.mouseStart.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
       const total = Math.max(1, endTime - this.mouseStart.time);
 
       const sprite = this.game.sprite;
       const spriteAirborne = !!(sprite && !sprite.onGround);
       const spriteSwimming = !!(sprite && sprite.inWater);
+
+      // Check for tap-to-jump when Lumen-Loop is active
+      const isTap = distance < 10 && total < 200;
+      if (isTap && this.game.lumenLoop.isActive && sprite) {
+        // Trigger standard jump without affecting Lumen-Loop state
+        sprite.releaseJump();
+        this.game.sprite?.stopGliding();
+        this.endJoystick();
+        this.isMouseDragging = false;
+        this.mouseStart = null;
+        this.mouseSamples = [];
+        this.mouseSwipe = false;
+        this.isMouseJoystickMode = false;
+        return;
+      }
 
       if (this.mouseSwipe && sprite && spriteAirborne && !spriteSwimming) {
         this.spawnRideFromGesture(dx, total, last.y);

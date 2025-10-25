@@ -57,6 +57,7 @@ import {
 } from "./state/rendering_state.js";
 import { cameraY } from "./state/camera_state.js";
 import { gameWorld } from "./state/game_state.js";
+import { drawLumenLoop } from "../game_objects/rides/lumen_loop.js";
 
 const MAX_DELTA_SECONDS = 0.04;
 let animationHandle: number | null = null;
@@ -230,6 +231,17 @@ function drawWorld(): void {
 
   if (!showSettings) {
     gameWorld.sprite?.draw(ctx, cameraY);
+
+    // Draw lumen loop halo
+    if (gameWorld.sprite && gameWorld.input) {
+      drawLumenLoop(
+        ctx,
+        gameWorld.sprite,
+        gameWorld.lumenLoop,
+        gameWorld.input.lumenLoopGesture,
+        cameraY,
+      );
+    }
   }
 
   gameWorld.input?.drawJoystick(ctx);
