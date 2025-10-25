@@ -35,6 +35,7 @@ import {
 } from "../game_objects/rides.js";
 import {
   updateLumenLoopState,
+  drawLumenLoop,
   type LumenLoopUpdateResult,
 } from "../game_objects/rides/lumen_loop.js";
 import {
@@ -279,6 +280,11 @@ function drawWorld(): void {
   }
 
   if (!showSettings) {
+    drawLumenLoop(gameWorld.lumenLoop, {
+      ctx,
+      sprite: gameWorld.sprite,
+      cameraY,
+    });
     gameWorld.sprite?.draw(ctx, cameraY);
   }
 

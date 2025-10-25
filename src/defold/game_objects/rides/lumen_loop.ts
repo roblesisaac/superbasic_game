@@ -165,7 +165,26 @@ export function drawLumenLoop(
   if (!state.isActive) return;
   const { ctx, sprite, cameraY, segments = HALO_SEGMENTS } = params;
   if (!sprite) return;
-  const radius = LUMEN_LOOP_BASE_RADIUS * clampScale(state.haloScale);
+  const haloScale = clampScale(state.haloScale);
+  const scaleT = scaleLerp(haloScale, 0, 1);
+  const angularIntensity = clamp(
+    Math.abs(state.angularVelocity) / (TWO_PI * 3.5),
+    0,
+    1,
+  );
+  const heliumFraction =
+    state.heliumAmount > 0 ? clamp(state.heliumAmount / HELIUM_CAP, 0, 1) : 0;
+  const heliumBleedProgress = heliumFraction > 0 ? 1 - heliumFraction : 0;
+  const bleedPulse =
+    heliumBleedProgress > 0
+      ? Math.sin(state.heliumFloatTimer * 5.5) *
+        0.05 *
+        heliumBleedProgress
+      : 0;
+  const radius =
+    LUMEN_LOOP_BASE_RADIUS *
+    haloScale *
+    Math.max(0.75, 1 - heliumBleedProgress * 0.2 - bleedPulse);
   const haloColor = lerpColor(
     BASE_HALO_COLOR,
     HELIUM_HALO_COLOR,
@@ -173,13 +192,29 @@ export function drawLumenLoop(
   );
   const centerX = sprite.x;
   const centerY = sprite.y - cameraY;
+  const thicknessBase =
+    LUMEN_LOOP_GLOW_THICKNESS * (0.85 + scaleT * 0.6 + angularIntensity * 0.4);
+  const thickness = Math.max(2, Math.round(thicknessBase));
+  const glowBlur = computePixelStripGlow(thickness, {
+    glow: {
+      multiplier: 2.5 + angularIntensity * 2,
+      min: 10,
+    },
+  });
+  const segmentLength = Math.max(
+    4,
+    (TWO_PI * radius) / Math.max(segments, 12) / 2,
+  );
+  const dotStyle = {
+    dotSize: Math.max(2, thickness * 0.5),
+    spacing: Math.max(1, 2 - angularIntensity),
+  };
+  ctx.globalAlpha = clamp(0.55 + angularIntensity * 0.45, 0.55, 1);
   ctx.save();
   ctx.translate(centerX, centerY);
   ctx.fillStyle = haloColor;
   ctx.shadowColor = haloColor;
-  ctx.shadowBlur = computePixelStripGlow(LUMEN_LOOP_GLOW_THICKNESS);
-  const segmentLength = Math.max(4, (TWO_PI * radius) / segments / 2);
-  const thickness = Math.max(2, Math.round(LUMEN_LOOP_GLOW_THICKNESS));
+  ctx.shadowBlur = glowBlur;
   for (let i = 0; i < segments; i++) {
     const angle = (i / segments) * TWO_PI;
     ctx.save();
@@ -191,10 +226,12 @@ export function drawLumenLoop(
       length: segmentLength,
       thickness,
       orientation: "horizontal",
+      style: dotStyle,
     });
     ctx.restore();
   }
   ctx.restore();
+  ctx.globalAlpha = 1;
 }
 function clampScale(scale: number): number {
   return clamp(scale, LUMEN_LOOP_MIN_SCALE, LUMEN_LOOP_MAX_SCALE);
