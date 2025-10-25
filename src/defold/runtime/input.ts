@@ -4,6 +4,7 @@ import {
   VELOCITY_SAMPLE_TIME,
   MAX_RIDES,
   SPRITE_SIZE,
+  LUMEN_LOOP_PINCH_HELIUM_RATE,
 } from "../config/constants.js";
 import { canvas, canvasWidth } from "./state/rendering_state.js";
 import { cameraY } from "./state/camera_state.js";
@@ -15,6 +16,7 @@ import {
 import {
   activateLumenLoop,
   applyPinch as applyLumenLoopPinch,
+  applyHelium as applyLumenLoopHelium,
   deactivateLumenLoop,
   triggerLumenLoopJump,
   type LumenLoopJumpResult,
@@ -1092,11 +1094,22 @@ export class InputHandler {
 
   private applyLumenPinchDelta(deltaScale: number): void {
     if (!this.game.lumenLoop.isActive) return;
+    this.injectHeliumFromPinch(deltaScale);
     const result = applyLumenLoopPinch(this.game.lumenLoop, deltaScale);
     if (result.shouldDismiss) {
       deactivateLumenLoop(this.game.lumenLoop);
       this.resetLumenLoopGesture();
     }
+  }
+
+  private injectHeliumFromPinch(deltaScale: number): void {
+    if (deltaScale <= 0) return;
+    if (!this.game.lumenLoop.isActive) return;
+    const sprite = this.game.sprite;
+    if (!sprite || sprite.onGround || sprite.inWater) return;
+    const heliumGain = deltaScale * LUMEN_LOOP_PINCH_HELIUM_RATE;
+    if (heliumGain <= 0) return;
+    applyLumenLoopHelium(this.game.lumenLoop, heliumGain);
   }
 
   private getTouchPoint(touch: Touch, rect: DOMRect) {

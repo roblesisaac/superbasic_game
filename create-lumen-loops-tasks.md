@@ -39,12 +39,12 @@
    - [x] Recognize drag-down + release gestures while rotating to route into the existing jump system with the correct direction/impulse.
    - [x] Once active, treat all drags as rotation inputs rather than spawning standard rides until the Lumen-Loop deactivates.
      - Sanity check: Tap the sprite, rotate a full loop, pinch in/out, and confirm normal ride gestures remain blocked while the loop is active.
-6. [ ] **Integrate helium behavior**
-   - [ ] Seed the player with the demo helium amount in `game_state` initialization.
+6. [x] **Integrate helium behavior**
+   - [x] Seed the player with the demo helium amount in `game_state` initialization.
      - Sanity check: Start the build with seeded helium, pinch while airborne, and ensure lift/bleed feedback matches the constants.
 
-- [ ] Detect airborne pinch/zoom gestures to inject helium into the active loop; while helium is present, apply an upward force/offset and slowly reduce halo scale toward the base radius as helium drains over time.
-  - [ ] Expose hooks so pickups (e.g., `src/defold/game_objects/heartPickup.ts` or a future helium collectible) can call `applyHelium`.
+- [x] Detect airborne pinch/zoom gestures to inject helium into the active loop; while helium is present, apply an upward force/offset and slowly reduce halo scale toward the base radius as helium drains over time.
+  - [x] Expose hooks so pickups (e.g., `src/defold/game_objects/heartPickup.ts` or a future helium collectible) can call `applyHelium`.
 
 7. [ ] **Movement + physics coupling**
    - [ ] In `src/defold/runtime/game_app.ts` (or the movement controller), convert angular velocity × circumference into horizontal sprite velocity, clamped by `MIN_RIDE_SPEED`/`MAX_RIDE_SPEED`, and scale energy drain with angular speed.

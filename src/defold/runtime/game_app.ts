@@ -33,6 +33,7 @@ import {
   drawRides,
   mergeCollidingRides,
 } from "../game_objects/rides.js";
+import { updateLumenLoopState } from "../game_objects/rides/lumen_loop.js";
 import {
   updateGates,
   pruneInactiveGates,
@@ -170,6 +171,34 @@ function drawHeartPickups(): void {
   }
 }
 
+function applyHeliumLift(sprite: Sprite, liftForce: number, dt: number): void {
+  if (!Number.isFinite(liftForce) || liftForce <= 0) return;
+  const accel = liftForce;
+  const deltaVy = accel * dt;
+  sprite.y -= 0.5 * accel * dt * dt;
+  sprite.vy -= deltaVy;
+}
+
+function stepLumenLoop(dt: number, sprite: Sprite | null): void {
+  const rotationDelta =
+    gameWorld.input?.consumeLumenLoopRotationDelta() ?? 0;
+  const result = updateLumenLoopState(gameWorld.lumenLoop, {
+    dt,
+    rotationDelta,
+  });
+  if (
+    !sprite ||
+    !gameWorld.lumenLoop.isActive ||
+    !Number.isFinite(result.heliumLift) ||
+    result.heliumLift <= 0 ||
+    sprite.onGround ||
+    sprite.inWater
+  ) {
+    return;
+  }
+  applyHeliumLift(sprite, result.heliumLift, dt);
+}
+
 function updateWorld(dt: number): void {
   const sprite = gameWorld.sprite;
   if (!sprite) return;
@@ -180,6 +209,7 @@ function updateWorld(dt: number): void {
   }
 
   sprite.update(dt);
+  stepLumenLoop(dt, sprite);
 
   const cardFrame = syncCards(sprite.y);
   gameWorld.gates = [...cardFrame.gates];

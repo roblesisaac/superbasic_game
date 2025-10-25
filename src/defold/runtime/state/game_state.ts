@@ -6,7 +6,10 @@ import type { InputHandler } from "../input.js";
 import type { EnergyBar, Hearts } from "../../gui/hud.js";
 import type { HeartPickup } from "../../game_objects/heartPickup.js";
 import type { HeartEffectSystem } from "../controllers/heart_effects.js";
-import { ENERGY_MAX } from "../../config/constants.js";
+import {
+  ENERGY_MAX,
+  LUMEN_LOOP_DEMO_HELIUM,
+} from "../../config/constants.js";
 
 export interface LumenLoopState {
   isUnlocked: boolean;
@@ -35,8 +38,6 @@ export interface GameWorldState {
   lumenLoop: LumenLoopState;
 }
 
-const DEMO_LUMEN_LOOP_HELIUM = 1; // Seed helium so the demo starts with float potential
-
 function createDefaultLumenLoopState(): LumenLoopState {
   return {
     isUnlocked: true,
@@ -45,7 +46,7 @@ function createDefaultLumenLoopState(): LumenLoopState {
     rotationAccum: 0,
     haloScale: 1,
     pinchIntent: 0,
-    heliumAmount: DEMO_LUMEN_LOOP_HELIUM,
+    heliumAmount: LUMEN_LOOP_DEMO_HELIUM,
     heliumFloatTimer: 0,
     energy: ENERGY_MAX,
     cooldownTime: 0,

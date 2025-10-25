@@ -83,6 +83,9 @@ export const LUMEN_LOOP_INERTIA_MULT_MIN = 0.75; // Startup inertia multiplier a
 export const LUMEN_LOOP_INERTIA_MULT_MAX = 1.4; // Startup inertia multiplier at max scale
 export const LUMEN_LOOP_ENERGY_MULT_MIN = 0.7; // Energy drain multiplier at min scale
 export const LUMEN_LOOP_ENERGY_MULT_MAX = 1.35; // Energy drain multiplier at max scale
+export const LUMEN_LOOP_DEMO_HELIUM = 1; // Starting helium charge for demo builds
+export const LUMEN_LOOP_PINCH_HELIUM_RATE = 2.4; // Helium injected per normalized pinch delta (when zooming in)
+export const LUMEN_LOOP_HELIUM_SCALE_RETURN_RATE = 1.3; // Per-second easing toward base halo scale while helium bleeds
 
 // Gates
 export const USE_RANDOM_GATES = false;

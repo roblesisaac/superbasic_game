@@ -16,6 +16,7 @@ import {
   LUMEN_LOOP_INERTIA_MULT_MAX,
   LUMEN_LOOP_ENERGY_MULT_MIN,
   LUMEN_LOOP_ENERGY_MULT_MAX,
+  LUMEN_LOOP_HELIUM_SCALE_RETURN_RATE,
   ENERGY_MAX,
 } from "../../config/constants.js";
 import { clamp } from "../../shared/utils.js";
@@ -29,6 +30,7 @@ const PINCH_DECAY_PER_SECOND = 4;
 const HELIUM_CAP = 3;
 const BASE_HALO_COLOR = "#f5f797";
 const HELIUM_HALO_COLOR = "#9be7ff";
+const BASE_HALO_SCALE = 1;
 export interface LumenLoopActivationOptions {
   scale?: number;
   unlocked?: boolean;
@@ -210,6 +212,9 @@ function bleedHelium(state: LumenLoopState, dt: number): void {
   }
   const drain = LUMEN_LOOP_HELIUM_BLEED_RATE * dt;
   state.heliumAmount = Math.max(0, state.heliumAmount - drain);
+  if (state.heliumAmount > 0 || state.heliumFloatTimer > 0) {
+    relaxHaloScaleTowardBase(state, dt);
+  }
   state.heliumFloatTimer += dt;
   if (state.heliumAmount <= 0) state.heliumFloatTimer = 0;
 }
@@ -237,4 +242,14 @@ function lerpColor(start: string, end: string, t: number): string {
   const mix = (channelA: number, channelB: number) =>
     Math.round(channelA + (channelB - channelA) * clamp(t, 0, 1));
   return `rgb(${mix(a.r, b.r)}, ${mix(a.g, b.g)}, ${mix(a.b, b.b)})`;
+}
+
+function relaxHaloScaleTowardBase(
+  state: LumenLoopState,
+  dt: number,
+): void {
+  if (!Number.isFinite(dt) || dt <= 0) return;
+  const settle = Math.min(1, dt * LUMEN_LOOP_HELIUM_SCALE_RETURN_RATE);
+  if (settle <= 0) return;
+  state.haloScale += (BASE_HALO_SCALE - state.haloScale) * settle;
 }
