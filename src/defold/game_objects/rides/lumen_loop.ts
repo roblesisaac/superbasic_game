@@ -55,6 +55,8 @@ export interface LumenLoopDrawParams {
   cameraY: number;
   color?: string;
   segments?: number;
+  pendingActivation?: boolean;
+  accumulatedAngle?: number;
 }
 export function activateLumenLoop(
   state: LumenLoopState,
@@ -114,15 +116,32 @@ export function updateLumenLoopState(
     LUMEN_LOOP_ROTATION_TO_VELOCITY *
     scaleVelocityMultiplier;
   const horizontalVelocity = clampRideVelocity(rawHorizontalVelocity);
-  const energyMultiplier = scaleLerp(
-    haloScale,
-    LUMEN_LOOP_ENERGY_MULT_MIN,
-    LUMEN_LOOP_ENERGY_MULT_MAX,
-  );
-  const rotations = Math.abs(rotationDelta) / TWO_PI;
-  const rawEnergyCost =
-    rotations * LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION * energyMultiplier;
-  const energySpent = consumeEnergy(state, rawEnergyCost);
+  // Inertia-based energy drain system
+  // Energy only drains when there's active rotation input (not during coasting)
+  let energySpent = 0;
+  if (rotationDelta !== 0) {
+    const energyMultiplier = scaleLerp(
+      haloScale,
+      LUMEN_LOOP_ENERGY_MULT_MIN,
+      LUMEN_LOOP_ENERGY_MULT_MAX,
+    );
+    
+    // Calculate base energy cost from rotation amount
+    const rotations = Math.abs(rotationDelta) / TWO_PI;
+    const baseEnergyCost = rotations * LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION * energyMultiplier;
+    
+    // Calculate inertia factor: higher when velocity is low (overcoming torque)
+    // When angular velocity is zero or near-zero, inertia factor is maximum (1.0)
+    // As momentum builds, inertia factor decreases (easier to maintain speed)
+    const normalizedVelocity = Math.abs(state.angularVelocity) / momentumCap;
+    const inertiaFactor = 1.0 - (normalizedVelocity * 0.7); // Reduces drain by up to 70% at max momentum
+    
+    // Apply inertia-based multiplier to energy cost
+    const rawEnergyCost = baseEnergyCost * Math.max(0.3, inertiaFactor);
+    
+    energySpent = consumeEnergy(state, rawEnergyCost);
+  }
+  // No energy drain during coasting (when rotationDelta === 0)
   bleedHelium(state, dt);
   decayPinchIntent(state, dt);
   const heliumLift = state.heliumAmount * LUMEN_LOOP_HELIUM_FLOAT_FORCE;
@@ -171,12 +190,97 @@ export function triggerLumenLoopJump(
   state.angularVelocity = 0;
   return { direction, impulseScale: LUMEN_LOOP_JUMP_IMPULSE_SCALE };
 }
+
+function drawPendingActivationHalo(
+  ctx: CanvasRenderingContext2D,
+  sprite: Sprite,
+  cameraY: number,
+  accumulatedAngle: number,
+): void {
+  const centerX = sprite.x;
+  const centerY = sprite.y - cameraY;
+  
+  // Calculate arc completion percentage (0 to 1)
+  const completionPercentage = Math.min(Math.abs(accumulatedAngle) / TWO_PI, 1);
+  
+  // Base radius for pending activation
+  const radius = LUMEN_LOOP_BASE_RADIUS;
+  
+  // Visual parameters for pending state
+  const pendingColor = BASE_HALO_COLOR;
+  const thickness = LUMEN_LOOP_GLOW_THICKNESS * 0.7; // Slightly thinner during activation
+  
+  // Calculate glow that intensifies as we approach completion
+  const glowIntensity = 1.5 + completionPercentage * 1.5;
+  const glowBlur = computePixelStripGlow(Math.max(2, Math.round(thickness)), {
+    glow: {
+      multiplier: glowIntensity,
+      min: 8,
+    },
+  });
+  
+  // Calculate how many segments to render based on completion
+  const totalSegments = HALO_SEGMENTS;
+  const segmentsToRender = Math.max(1, Math.round(totalSegments * completionPercentage));
+  
+  const segmentLength = Math.max(
+    4,
+    (TWO_PI * radius) / Math.max(totalSegments, 12) / 2,
+  );
+  
+  const dotStyle = {
+    dotSize: Math.max(2, thickness * 0.5),
+    spacing: 2,
+  };
+  
+  // Alpha increases as we approach completion
+  ctx.globalAlpha = 0.4 + completionPercentage * 0.3;
+  
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.fillStyle = pendingColor;
+  ctx.shadowColor = pendingColor;
+  ctx.shadowBlur = glowBlur;
+  
+  // Render arc segments proportional to rotation progress
+  // Start from top (angle 0) and go in the direction of rotation
+  const startAngle = -Math.PI / 2; // Start at top
+  const rotationDirection = Math.sign(accumulatedAngle) || 1;
+  
+  for (let i = 0; i < segmentsToRender; i++) {
+    const angle = startAngle + (i / totalSegments) * TWO_PI * rotationDirection;
+    ctx.save();
+    ctx.rotate(angle);
+    drawPixelStripDots({
+      ctx,
+      startX: radius - segmentLength / 2,
+      startY: -thickness / 2,
+      length: segmentLength,
+      thickness: Math.max(2, Math.round(thickness)),
+      orientation: "horizontal",
+      style: dotStyle,
+    });
+    ctx.restore();
+  }
+  
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
 export function drawLumenLoop(
   state: LumenLoopState,
   params: LumenLoopDrawParams,
 ): void {
+  const { ctx, sprite, cameraY, segments = HALO_SEGMENTS, pendingActivation = false, accumulatedAngle = 0 } = params;
+  
+  // Render partial halo during activation gesture
+  if (pendingActivation && !state.isActive) {
+    if (!sprite) return;
+    drawPendingActivationHalo(ctx, sprite, cameraY, accumulatedAngle);
+    return;
+  }
+  
   if (!state.isActive) return;
-  const { ctx, sprite, cameraY, segments = HALO_SEGMENTS } = params;
   if (!sprite) return;
   const haloScale = clampScale(state.haloScale);
   const scaleT = scaleLerp(haloScale, 0, 1);

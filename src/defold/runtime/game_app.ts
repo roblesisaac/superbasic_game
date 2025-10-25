@@ -284,6 +284,8 @@ function drawWorld(): void {
       ctx,
       sprite: gameWorld.sprite,
       cameraY,
+      pendingActivation: gameWorld.input?.lumenLoopGesture.pendingActivation ?? false,
+      accumulatedAngle: gameWorld.input?.lumenLoopGesture.accumulatedAngle ?? 0,
     });
     gameWorld.sprite?.draw(ctx, cameraY);
   }

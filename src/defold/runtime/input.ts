@@ -53,6 +53,8 @@ const PINCH_SCROLL_SCALE = 0.0025;
 const TWO_PI = Math.PI * 2;
 const LUMEN_ROTATION_ACTIVATION = TWO_PI;
 const LUMEN_INPUT_CLAIM_THRESHOLD = Math.PI / 3; // claim after ~120° rotation
+const TAP_MAX_DURATION = 300; // ms - max duration for a tap
+const TAP_MAX_DISTANCE = 15; // pixels - max movement for a tap
 
 type PointerKey = number | "mouse";
 
@@ -386,6 +388,9 @@ export class InputHandler {
           ) {
             this.game.sprite.startGliding();
           }
+        } else if (this.game.lumenLoop.isActive) {
+          // Allow charging for tap-to-jump when Lumen-Loop is active
+          this.game.sprite?.startCharging();
         }
       },
       { passive: false },
@@ -496,11 +501,20 @@ export class InputHandler {
         const last =
           this.touchSamples[this.touchSamples.length - 1] || this.touchStart;
         const dx = last.x - this.touchStart.x;
+        const dy = last.y - this.touchStart.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
         const total = Math.max(1, endTime - this.touchStart.time);
 
         const lumenActive = this.game.lumenLoop.isActive;
 
-        if (
+        // Check for tap-to-jump when Lumen-Loop is active
+        // Only trigger if it's a quick tap and not a drag-release jump
+        const isTap = total <= TAP_MAX_DURATION && distance <= TAP_MAX_DISTANCE;
+        const dragReleaseJumpTriggered = this.lumenLoopJumpIntent !== null;
+        
+        if (lumenActive && isTap && !dragReleaseJumpTriggered) {
+          this.game.sprite?.releaseJump();
+        } else if (
           !lumenActive &&
           this.touchSwipe &&
           sprite &&
@@ -598,6 +612,9 @@ export class InputHandler {
         ) {
           this.game.sprite.startGliding();
         }
+      } else if (this.game.lumenLoop.isActive) {
+        // Allow charging for tap-to-jump when Lumen-Loop is active
+        this.game.sprite?.startCharging();
       }
     });
 
@@ -683,6 +700,8 @@ export class InputHandler {
       const last =
         this.mouseSamples[this.mouseSamples.length - 1] || this.mouseStart;
       const dx = last.x - this.mouseStart.x;
+      const dy = last.y - this.mouseStart.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
       const total = Math.max(1, endTime - this.mouseStart.time);
 
       const sprite = this.game.sprite;
@@ -691,7 +710,14 @@ export class InputHandler {
 
       const lumenActive = this.game.lumenLoop.isActive;
 
-      if (
+      // Check for tap-to-jump when Lumen-Loop is active
+      // Only trigger if it's a quick tap and not a drag-release jump
+      const isTap = total <= TAP_MAX_DURATION && distance <= TAP_MAX_DISTANCE;
+      const dragReleaseJumpTriggered = this.lumenLoopJumpIntent !== null;
+      
+      if (lumenActive && isTap && !dragReleaseJumpTriggered) {
+        this.game.sprite?.releaseJump();
+      } else if (
         !lumenActive &&
         this.mouseSwipe &&
         sprite &&

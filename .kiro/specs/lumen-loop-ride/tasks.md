@@ -1,13 +1,13 @@
 # Implementation Plan
 
-- [ ] 1. Implement progressive halo rendering during activation gesture
+- [x] 1. Implement progressive halo rendering during activation gesture
   - Modify `drawLumenLoop()` in `src/defold/game_objects/rides/lumen_loop.ts` to render partial halo arc when `pendingActivation` is true
   - Calculate arc completion percentage from `accumulatedAngle / (2π)`
   - Render arc segments proportional to rotation progress
   - Add visual parameter to distinguish pending vs active state
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Implement inertia-based energy drain system
+- [x] 2. Implement inertia-based energy drain system
   - Modify `updateLumenLoopState()` in `src/defold/game_objects/rides/lumen_loop.ts` to calculate energy drain based on acceleration effort
   - Implement maximum energy drain when angular velocity is zero or near-zero (overcoming initial torque)
   - Reduce energy drain when momentum exists (proportional to current angular velocity)
@@ -15,7 +15,7 @@
   - Scale energy drain by halo scale multiplier
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
 
-- [ ] 3. Enable tap-to-jump while Lumen-Loop is active
+- [x] 3. Enable tap-to-jump while Lumen-Loop is active
   - Modify input handling in `src/defold/runtime/input.ts` to allow tap gestures to trigger jumps when Lumen-Loop is active
   - Ensure taps don't interfere with rotation gesture tracking
   - Verify Lumen-Loop state (angular velocity, halo scale) is preserved during jump
