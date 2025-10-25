@@ -29,14 +29,16 @@ The Lumen-Loop is a wheel-like ride mechanic for SuperBasic Man that transforms 
 
 #### Acceptance Criteria
 
-1. WHEN the Player taps the Sprite AND completes a rotation of plus or minus 360 degrees, THE Game System SHALL activate the Lumen-Loop and display the Halo
-2. WHILE the Lumen-Loop is active, THE Game System SHALL block standard ride spawning gestures
-3. WHEN the Lumen-Loop activates, THE Game System SHALL initialize Angular Velocity to zero and Halo Scale to the base radius value
-4. WHEN the Player completes the Activation Gesture, THE Game System SHALL center the Halo on the Sprite position
+1. WHEN the Player taps the Sprite, THE Game System SHALL begin rendering the Halo following the path the user has rotated
+2. WHILE the Player rotates from the initial tap position, THE Game System SHALL progressively complete the Halo visual based on rotation progress
+3. WHEN the Player completes a rotation of >= 360 degrees, THE Game System SHALL fully render the Halo and activate the Lumen-Loop
+4. WHILE the Lumen-Loop is active, THE Game System SHALL block standard ride spawning gestures
+5. WHEN the Lumen-Loop activates, THE Game System SHALL initialize Angular Velocity to zero and Halo Scale to the base radius value
+6. WHEN the Player completes the Activation Gesture, THE Game System SHALL center the Halo on the Sprite position
 
 ### Requirement 2
 
-**User Story:** As a player, I want to control my horizontal movement by dragging to rotate the Lumen-Loop, so that I can roll left or right like pedaling a bike
+**User Story:** As a player, I want to control my horizontal movement by rotating the joystick to rotate the Lumen-Loop, so that I can roll left or right like pedaling a bike
 
 #### Acceptance Criteria
 
@@ -53,7 +55,7 @@ The Lumen-Loop is a wheel-like ride mechanic for SuperBasic Man that transforms 
 #### Acceptance Criteria
 
 1. WHEN Rotation Input ceases, THE Game System SHALL apply angular decay to reduce Angular Velocity over time
-2. WHILE Angular Velocity is non-zero AND no Rotation Input is active, THE Game System SHALL continue moving the Sprite horizontally
+2. WHILE Angular Velocity is non-zero AND no Rotation Input is active, THE Game System SHALL continue moving the Sprite horizontally with decay
 3. WHEN Angular Velocity reaches zero through decay, THE Game System SHALL stop horizontal movement
 4. THE Game System SHALL clamp horizontal velocity between the minimum ride speed and maximum ride speed constants
 
@@ -87,21 +89,24 @@ The Lumen-Loop is a wheel-like ride mechanic for SuperBasic Man that transforms 
 #### Acceptance Criteria
 
 1. WHEN the Sprite is airborne AND the Player performs a pinch gesture, THE Game System SHALL consume Helium Resource and inject it into the Lumen-Loop
-2. WHILE Helium Resource is present in the Lumen-Loop, THE Game System SHALL apply an upward force to the Sprite
+2. WHILE Helium Resource is present in the Lumen-Loop, THE Game System SHALL apply an upward force to the Sprite causing the sprite to float like a hot air balloon
 3. WHILE Helium Resource is present, THE Game System SHALL reduce the Helium Resource amount over time at the helium bleed rate
 4. WHEN Helium Resource depletes to zero, THE Game System SHALL cease applying upward force
 5. WHILE Helium Resource is bleeding off, THE Game System SHALL gradually reduce Halo Scale toward the base radius
 
 ### Requirement 7
 
-**User Story:** As a player, I want faster rotation to drain my energy bar, so that there is a stamina cost to sustained high-speed rolling
+**User Story:** As a player, I want rotation input to drain my energy bar based on acceleration effort, so that there is a stamina cost to building speed but not to coasting
 
 #### Acceptance Criteria
 
-1. WHEN Angular Velocity is non-zero, THE Game System SHALL drain the Energy Bar at a rate proportional to the absolute Angular Velocity
-2. WHEN the Energy Bar reaches zero, THE Game System SHALL prevent further Angular Velocity increases from Rotation Input
-3. WHILE the Energy Bar is depleted, THE Game System SHALL allow Angular Velocity to decay naturally
-4. THE Game System SHALL scale energy drain by the Halo Scale multiplier
+1. WHILE the Player provides Rotation Input, THE Game System SHALL drain the Energy Bar at a rate proportional to the acceleration effort required
+2. WHEN Angular Velocity is zero or near zero, THE Game System SHALL apply maximum energy drain per rotation input to overcome initial Torque
+3. WHEN Angular Velocity is non-zero, THE Game System SHALL reduce energy drain per rotation input due to existing momentum
+4. WHILE Angular Velocity is non-zero AND no Rotation Input is active, THE Game System SHALL not drain the Energy Bar but instead it will replenish the energy bar
+5. WHEN the Energy Bar reaches zero, THE Game System SHALL prevent further Angular Velocity increases from Rotation Input
+6. WHILE the Energy Bar is depleted, the sprite enters cool down mode preventing any further acceleration. THE Game System SHALL allow Angular Velocity to decay naturally
+7. THE Game System SHALL scale energy drain by the Halo Scale multiplier
 
 ### Requirement 8
 
@@ -116,6 +121,17 @@ The Lumen-Loop is a wheel-like ride mechanic for SuperBasic Man that transforms 
 
 ### Requirement 9
 
+**User Story:** As a player, I want to tap the screen while the Lumen-Loop is active to jump, so that I can use standard jump mechanics without deactivating the ride
+
+#### Acceptance Criteria
+
+1. WHILE the Lumen-Loop is active, WHEN the Player taps the screen, THE Game System SHALL trigger a jump using the standard jump mechanics
+2. WHEN the tap-to-jump is triggered, THE Game System SHALL apply the same jump impulse as when the Lumen-Loop is not active and the same click and drag jump mechanics work
+3. WHEN the tap-to-jump is triggered, THE Game System SHALL maintain the Lumen-Loop active state
+4. WHEN the tap-to-jump is triggered, THE Game System SHALL preserve the current Angular Velocity and Halo Scale values
+
+### Requirement 10
+
 **User Story:** As a player, I want the halo to render as a glowing ring that responds to my inputs, so that I receive clear visual feedback on the ride state
 
 #### Acceptance Criteria
@@ -126,7 +142,7 @@ The Lumen-Loop is a wheel-like ride mechanic for SuperBasic Man that transforms 
 4. WHILE Helium Resource is bleeding off, THE Game System SHALL animate the Halo shrinking toward the base radius
 5. THE Game System SHALL apply camera offsets to keep the Halo centered on the Sprite in screen space
 
-### Requirement 10
+### Requirement 11
 
 **User Story:** As a player, I want the Lumen-Loop to deactivate under specific conditions, so that I can return to standard controls when the ride ends
 
@@ -134,21 +150,20 @@ The Lumen-Loop is a wheel-like ride mechanic for SuperBasic Man that transforms 
 
 1. WHEN the Player zooms out past the dismissal threshold, THE Game System SHALL deactivate the Lumen-Loop and hide the Halo
 2. WHEN the Sprite exits the visible screen bounds, THE Game System SHALL deactivate the Lumen-Loop
-3. WHEN Angular Velocity reaches zero AND the Energy Bar is depleted, THE Game System SHALL deactivate the Lumen-Loop after a timeout period
-4. WHEN the Lumen-Loop deactivates, THE Game System SHALL reset all Lumen-Loop state variables to their initial values
-5. WHEN the Lumen-Loop deactivates, THE Game System SHALL restore standard ride spawning and control inputs
+3. WHEN the Lumen-Loop deactivates, THE Game System SHALL reset all Lumen-Loop state variables to their initial values
+4. WHEN the Lumen-Loop deactivates, THE Game System SHALL restore standard ride spawning and control inputs
 
-### Requirement 11
+### Requirement 12
 
 **User Story:** As a demo player, I want to start with helium resources and an unlocked Lumen-Loop skill, so that I can immediately experience the floating mechanic
 
 #### Acceptance Criteria
 
-1. WHEN the Game System initializes in demo mode, THE Game System SHALL set the Helium Resource to a non-zero starting value
+1. WHEN the Game System initializes in demo mode, THE Game System SHALL set the Helium Resource to a generous non-zero starting value
 2. WHEN the Game System initializes in demo mode, THE Game System SHALL mark the Lumen-Loop skill as unlocked
 3. WHERE demo mode is active, THE Game System SHALL display the Lumen-Loop skill in the skills menu accessed via the top-right button
 
-### Requirement 12
+### Requirement 13
 
 **User Story:** As a player, I want to see the Lumen-Loop skill in the skills menu, so that I know it is available and understand how to use it
 
