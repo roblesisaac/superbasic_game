@@ -6,6 +6,20 @@ import type { InputHandler } from "../input.js";
 import type { EnergyBar, Hearts } from "../../gui/hud.js";
 import type { HeartPickup } from "../../game_objects/heartPickup.js";
 import type { HeartEffectSystem } from "../controllers/heart_effects.js";
+import { ENERGY_MAX } from "../../config/constants.js";
+
+export interface LumenLoopState {
+  isUnlocked: boolean;
+  isActive: boolean;
+  angularVelocity: number;
+  rotationAccum: number;
+  haloScale: number;
+  pinchIntent: number;
+  heliumAmount: number;
+  heliumFloatTimer: number;
+  energy: number;
+  cooldownTime: number;
+}
 
 export interface GameWorldState {
   sprite: Sprite | null;
@@ -18,6 +32,24 @@ export interface GameWorldState {
   heartEffects: HeartEffectSystem | null;
   lastTime: number;
   running: boolean;
+  lumenLoop: LumenLoopState;
+}
+
+const DEMO_LUMEN_LOOP_HELIUM = 1; // Seed helium so the demo starts with float potential
+
+function createDefaultLumenLoopState(): LumenLoopState {
+  return {
+    isUnlocked: true,
+    isActive: false,
+    angularVelocity: 0,
+    rotationAccum: 0,
+    haloScale: 1,
+    pinchIntent: 0,
+    heliumAmount: DEMO_LUMEN_LOOP_HELIUM,
+    heliumFloatTimer: 0,
+    energy: ENERGY_MAX,
+    cooldownTime: 0,
+  };
 }
 
 export const gameWorld: GameWorldState = {
@@ -31,6 +63,7 @@ export const gameWorld: GameWorldState = {
   heartEffects: null,
   lastTime: 0,
   running: true,
+  lumenLoop: createDefaultLumenLoopState(),
 };
 
 export function resetGameWorld(): void {
@@ -45,4 +78,5 @@ export function resetGameWorld(): void {
   gameWorld.heartEffects = null;
   gameWorld.lastTime = 0;
   gameWorld.running = true;
+  gameWorld.lumenLoop = createDefaultLumenLoopState();
 }

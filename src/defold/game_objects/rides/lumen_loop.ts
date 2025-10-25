@@ -1,0 +1,249 @@
+import type { Sprite } from "../sprite.js";
+import type { LumenLoopState } from "../../runtime/state/game_state.js";
+import {
+  LUMEN_LOOP_BASE_RADIUS,
+  LUMEN_LOOP_MIN_SCALE,
+  LUMEN_LOOP_MAX_SCALE,
+  LUMEN_LOOP_GLOW_THICKNESS,
+  LUMEN_LOOP_ROTATION_TO_VELOCITY,
+  LUMEN_LOOP_ANGULAR_DECAY,
+  LUMEN_LOOP_PINCH_RESPONSIVENESS,
+  LUMEN_LOOP_HELIUM_FLOAT_FORCE,
+  LUMEN_LOOP_HELIUM_BLEED_RATE,
+  LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION,
+  LUMEN_LOOP_JUMP_IMPULSE_SCALE,
+  LUMEN_LOOP_INERTIA_MULT_MIN,
+  LUMEN_LOOP_INERTIA_MULT_MAX,
+  LUMEN_LOOP_ENERGY_MULT_MIN,
+  LUMEN_LOOP_ENERGY_MULT_MAX,
+  ENERGY_MAX,
+} from "../../config/constants.js";
+import { clamp } from "../../shared/utils.js";
+import {
+  computePixelStripGlow,
+  drawPixelStripDots,
+} from "../rendering/pixelStrip.js";
+const TWO_PI = Math.PI * 2;
+const HALO_SEGMENTS = 36;
+const PINCH_DECAY_PER_SECOND = 4;
+const HELIUM_CAP = 3;
+const BASE_HALO_COLOR = "#f5f797";
+const HELIUM_HALO_COLOR = "#9be7ff";
+export interface LumenLoopActivationOptions {
+  scale?: number;
+  unlocked?: boolean;
+}
+export interface LumenLoopUpdateInput {
+  rotationDelta?: number; // radians accumulated this frame
+  dt: number;
+}
+export interface LumenLoopUpdateResult {
+  horizontalVelocity: number;
+  energySpent: number;
+  heliumLift: number;
+}
+export interface LumenLoopDrawParams {
+  ctx: CanvasRenderingContext2D;
+  sprite: Sprite | null;
+  cameraY: number;
+  color?: string;
+  segments?: number;
+}
+export function activateLumenLoop(
+  state: LumenLoopState,
+  options: LumenLoopActivationOptions = {},
+): boolean {
+  if (!state.isUnlocked && !options.unlocked) return false;
+  state.isUnlocked = true;
+  state.isActive = true;
+  state.angularVelocity = 0;
+  state.rotationAccum = 0;
+  state.haloScale = clampScale(options.scale ?? state.haloScale ?? 1);
+  state.pinchIntent = 0;
+  state.cooldownTime = 0;
+  return true;
+}
+export function deactivateLumenLoop(state: LumenLoopState): void {
+  state.isActive = false;
+  state.angularVelocity = 0;
+  state.rotationAccum = 0;
+  state.pinchIntent = 0;
+}
+export function updateLumenLoopState(
+  state: LumenLoopState,
+  input: LumenLoopUpdateInput,
+): LumenLoopUpdateResult {
+  const dt = Math.max(0.0001, input.dt);
+  if (!state.isActive) {
+    bleedHelium(state, dt);
+    decayPinchIntent(state, dt);
+    return { horizontalVelocity: 0, energySpent: 0, heliumLift: 0 };
+  }
+  const rotationDelta = input.rotationDelta ?? 0;
+  state.rotationAccum += rotationDelta;
+  const inertiaMultiplier = scaleLerp(
+    state.haloScale,
+    LUMEN_LOOP_INERTIA_MULT_MIN,
+    LUMEN_LOOP_INERTIA_MULT_MAX,
+  );
+  const angularAcceleration = rotationDelta / dt / inertiaMultiplier;
+  state.angularVelocity += angularAcceleration;
+  const decayFactor = Math.exp(-LUMEN_LOOP_ANGULAR_DECAY * dt);
+  state.angularVelocity *= decayFactor;
+  const scaleVelocityMultiplier = state.haloScale;
+  const horizontalVelocity =
+    state.angularVelocity *
+    LUMEN_LOOP_ROTATION_TO_VELOCITY *
+    scaleVelocityMultiplier;
+  const energyMultiplier = scaleLerp(
+    state.haloScale,
+    LUMEN_LOOP_ENERGY_MULT_MIN,
+    LUMEN_LOOP_ENERGY_MULT_MAX,
+  );
+  const rotations = Math.abs(rotationDelta) / TWO_PI;
+  const rawEnergyCost =
+    rotations * LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION * energyMultiplier;
+  const energySpent = consumeEnergy(state, rawEnergyCost);
+  bleedHelium(state, dt);
+  decayPinchIntent(state, dt);
+  const heliumLift = state.heliumAmount * LUMEN_LOOP_HELIUM_FLOAT_FORCE;
+  return {
+    horizontalVelocity,
+    energySpent,
+    heliumLift,
+  };
+}
+export function applyPinch(
+  state: LumenLoopState,
+  deltaScale: number,
+): { scale: number; shouldDismiss: boolean } {
+  if (!state.isActive) {
+    return { scale: state.haloScale, shouldDismiss: false };
+  }
+  const scaledDelta = deltaScale * LUMEN_LOOP_PINCH_RESPONSIVENESS;
+  const nextScale = clampScale(state.haloScale + scaledDelta);
+  state.haloScale = nextScale;
+  state.pinchIntent = deltaScale;
+  const atMinimum = nextScale <= LUMEN_LOOP_MIN_SCALE + 0.01;
+  const shouldDismiss = atMinimum && deltaScale < 0;
+  return { scale: state.haloScale, shouldDismiss };
+}
+export function applyHelium(
+  state: LumenLoopState,
+  amount: number,
+): number {
+  const nextAmount = clamp(state.heliumAmount + amount, 0, HELIUM_CAP);
+  state.heliumAmount = nextAmount;
+  if (amount > 0) state.heliumFloatTimer = 0;
+  return state.heliumAmount;
+}
+export function consumeEnergy(
+  state: LumenLoopState,
+  amount: number,
+): number {
+  if (amount <= 0) return 0;
+  const prev = state.energy;
+  state.energy = clamp(prev - amount, 0, ENERGY_MAX);
+  return prev - state.energy;
+}
+export interface LumenLoopJumpResult {
+  direction: { x: number; y: number };
+  impulseScale: number;
+}
+export function triggerLumenLoopJump(
+  state: LumenLoopState,
+  direction: { x: number; y: number },
+): LumenLoopJumpResult {
+  state.cooldownTime = 0;
+  state.angularVelocity = 0;
+  return { direction, impulseScale: LUMEN_LOOP_JUMP_IMPULSE_SCALE };
+}
+export function drawLumenLoop(
+  state: LumenLoopState,
+  params: LumenLoopDrawParams,
+): void {
+  if (!state.isActive) return;
+  const { ctx, sprite, cameraY, segments = HALO_SEGMENTS } = params;
+  if (!sprite) return;
+  const radius = LUMEN_LOOP_BASE_RADIUS * clampScale(state.haloScale);
+  const haloColor = lerpColor(
+    BASE_HALO_COLOR,
+    HELIUM_HALO_COLOR,
+    clamp(state.heliumAmount / HELIUM_CAP, 0, 1),
+  );
+  const centerX = sprite.x;
+  const centerY = sprite.y - cameraY;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.fillStyle = haloColor;
+  ctx.shadowColor = haloColor;
+  ctx.shadowBlur = computePixelStripGlow(LUMEN_LOOP_GLOW_THICKNESS);
+  const segmentLength = Math.max(
+    4,
+    (TWO_PI * radius) / segments / 2,
+  );
+  const thickness = Math.max(2, Math.round(LUMEN_LOOP_GLOW_THICKNESS));
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * TWO_PI;
+    ctx.save();
+    ctx.rotate(angle);
+    drawPixelStripDots({
+      ctx,
+      startX: radius - segmentLength / 2,
+      startY: -thickness / 2,
+      length: segmentLength,
+      thickness,
+      orientation: "horizontal",
+    });
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function clampScale(scale: number): number {
+  return clamp(scale, LUMEN_LOOP_MIN_SCALE, LUMEN_LOOP_MAX_SCALE);
+}
+function scaleLerp(scale: number, min: number, max: number): number {
+  if (LUMEN_LOOP_MAX_SCALE === LUMEN_LOOP_MIN_SCALE) return min;
+  const t = clamp(
+    (scale - LUMEN_LOOP_MIN_SCALE) /
+      (LUMEN_LOOP_MAX_SCALE - LUMEN_LOOP_MIN_SCALE),
+    0,
+    1,
+  );
+  return min + (max - min) * t;
+}
+function bleedHelium(state: LumenLoopState, dt: number): void {
+  if (state.heliumAmount <= 0) {
+    state.heliumFloatTimer = 0;
+    return;
+  }
+  const drain = LUMEN_LOOP_HELIUM_BLEED_RATE * dt;
+  state.heliumAmount = Math.max(0, state.heliumAmount - drain);
+  state.heliumFloatTimer += dt;
+  if (state.heliumAmount <= 0) state.heliumFloatTimer = 0;
+}
+function decayPinchIntent(state: LumenLoopState, dt: number): void {
+  if (state.pinchIntent === 0) return;
+  const decay = PINCH_DECAY_PER_SECOND * dt;
+  if (Math.abs(state.pinchIntent) <= decay) {
+    state.pinchIntent = 0;
+    return;
+  }
+  state.pinchIntent += state.pinchIntent > 0 ? -decay : decay;
+}
+function lerpColor(start: string, end: string, t: number): string {
+  const parse = (hex: string) => {
+    const normalized = hex.replace("#", "");
+    const bigint = parseInt(normalized, 16);
+    return {
+      r: (bigint >> 16) & 255,
+      g: (bigint >> 8) & 255,
+      b: bigint & 255,
+    };
+  };
+  const a = parse(start);
+  const b = parse(end);
+  const mix = (channelA: number, channelB: number) =>
+    Math.round(channelA + (channelB - channelA) * clamp(t, 0, 1));
+  return `rgb(${mix(a.r, b.r)}, ${mix(a.g, b.g)}, ${mix(a.b, b.b)})`;
+}

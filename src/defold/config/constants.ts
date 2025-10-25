@@ -67,6 +67,23 @@ export const RIDE_FLOAT_TIME = 5.0;
 export const RIDE_MIN_WIDTH = 80;
 export const RIDE_MAX_WIDTH = 320;
 
+// Lumen-Loop ride tuning
+export const LUMEN_LOOP_BASE_RADIUS = 52; // Base halo radius in px
+export const LUMEN_LOOP_MIN_SCALE = 0.65; // Zoomed-out shrink limit
+export const LUMEN_LOOP_MAX_SCALE = 1.75; // Zoomed-in growth limit
+export const LUMEN_LOOP_GLOW_THICKNESS = 7; // Pixel thickness for glow blur
+export const LUMEN_LOOP_ROTATION_TO_VELOCITY = 420; // Horizontal speed per rad/s
+export const LUMEN_LOOP_ANGULAR_DECAY = 1.6; // Per-second angular velocity damping
+export const LUMEN_LOOP_PINCH_RESPONSIVENESS = 0.5; // Scale delta per normalized pinch
+export const LUMEN_LOOP_HELIUM_FLOAT_FORCE = 500; // Upward accel applied while helium is active
+export const LUMEN_LOOP_HELIUM_BLEED_RATE = 0.35; // Helium depletion per second
+export const LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION = 14; // Energy cost per 360°
+export const LUMEN_LOOP_JUMP_IMPULSE_SCALE = 1.15; // Multiplier applied to drag-release jumps
+export const LUMEN_LOOP_INERTIA_MULT_MIN = 0.75; // Startup inertia multiplier at min scale
+export const LUMEN_LOOP_INERTIA_MULT_MAX = 1.4; // Startup inertia multiplier at max scale
+export const LUMEN_LOOP_ENERGY_MULT_MIN = 0.7; // Energy drain multiplier at min scale
+export const LUMEN_LOOP_ENERGY_MULT_MAX = 1.35; // Energy drain multiplier at max scale
+
 // Gates
 export const USE_RANDOM_GATES = false;
 export const GATE_THICKNESS = 20;
