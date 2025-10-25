@@ -51,11 +51,11 @@
    - [x] Respect pinch-inflated halo scale when computing stride length and startup inertia so larger rings need more torque to accelerate but cruise farther per revolution.
    - [x] Apply friction/decay so the Lumen-Loop coasts briefly after input stops.
      - Sanity check: Log or visualize angular velocity vs. sprite velocity/energy to verify clamping and decay behave as expected.
-8. [ ] **Render the halo + zoom effects**
-   - [ ] Reuse `drawPixelStripDots`/`computePixelStripGlow` to render a circular pixel strip whose radius is `baseRadius * haloScale`.
-   - [ ] Tie glow intensity and thickness to angular velocity and pinch scale; ensure camera offsets keep the ring centered on the sprite.
-   - [ ] Add a shrinking animation when helium bleeds off to visually communicate the float cooldown.
-     - Sanity check: Observe the halo while pinching/rotating and confirm glow radius/intensity updates smoothly (and shrinks as helium drains).
+8. [x] **Render the halo + zoom effects**
+  - [x] Reuse `drawPixelStripDots`/`computePixelStripGlow` to render a circular pixel strip whose radius is `baseRadius * haloScale`.
+  - [x] Tie glow intensity and thickness to angular velocity and pinch scale; ensure camera offsets keep the ring centered on the sprite.
+  - [x] Add a shrinking animation when helium bleeds off to visually communicate the float cooldown.
+    - Sanity check: Observe the halo while pinching/rotating and confirm glow radius/intensity updates smoothly (and shrinks as helium drains).
 9. [ ] **Collisions, lifecycle, and teardown**
    - [ ] Decide if the halo collides like existing rides (`Ride.getRect()`) or grants temporary invulnerability; update collision checks accordingly.
    - [ ] Provide cleanup hooks for exiting the screen, exhausting helium, hitting zero energy, losing momentum, zooming out to dismissal, or manually canceling the ride so normal ride spawning resumes.
