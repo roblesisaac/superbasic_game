@@ -50,6 +50,7 @@ const JOYSTICK_PIXEL_SIZE = 2;
 const PINCH_SCROLL_SCALE = 0.0025;
 const TWO_PI = Math.PI * 2;
 const LUMEN_ROTATION_ACTIVATION = TWO_PI;
+const LUMEN_INPUT_CLAIM_THRESHOLD = Math.PI / 3; // claim after ~120° rotation
 
 type PointerKey = number | "mouse";
 
@@ -61,6 +62,7 @@ type LumenLoopGestureState = {
   dragStart: PointSample | null;
   lastSample: PointSample | null;
   jumpDragStart: PointSample | null;
+  claimedInput: boolean;
 };
 
 function drawDPadBase(
@@ -247,6 +249,7 @@ export class InputHandler {
       dragStart: null,
       lastSample: null,
       jumpDragStart: null,
+      claimedInput: false,
     };
     this.lumenLoopRotationDelta = 0;
     this.lumenLoopJumpIntent = null;
@@ -361,22 +364,26 @@ export class InputHandler {
         if (e.touches.length >= 2) {
           this.lastPinchDistance = this.computePinchDistance(e.touches, rect);
         }
+        const primaryPointerIsLumen = this.doesPointerControlLumen(
+          primaryTouch.identifier,
+        );
 
         this.touchStart = { x, y, time };
         this.touchSamples = [{ ...this.touchStart }];
         this.touchSwipe = false;
         this.isJoystickMode = false;
 
-        this.startJoystick(x, y);
-
-        this.game.sprite?.startCharging();
-        if (
-          this.game.sprite &&
-          !this.game.sprite.onGround &&
-          !this.game.sprite.inWater &&
-          this.game.sprite.vy > 0
-        ) {
-          this.game.sprite.startGliding();
+        if (!primaryPointerIsLumen) {
+          this.startJoystick(x, y);
+          this.game.sprite?.startCharging();
+          if (
+            this.game.sprite &&
+            !this.game.sprite.onGround &&
+            !this.game.sprite.inWater &&
+            this.game.sprite.vy > 0
+          ) {
+            this.game.sprite.startGliding();
+          }
         }
       },
       { passive: false },
@@ -404,7 +411,13 @@ export class InputHandler {
         this.touchSamples.push(sample);
         const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
         this.touchSamples = this.touchSamples.filter((q) => q.time >= cutoff);
-        this.updateJoystick(sample.x, sample.y);
+
+        const activePointerIsLumen = this.doesPointerControlLumen(
+          t.identifier,
+        );
+        if (!activePointerIsLumen) {
+          this.updateJoystick(sample.x, sample.y);
+        }
 
         const direction = this.calculateDirection(
           this.touchStart.x,
@@ -418,7 +431,7 @@ export class InputHandler {
         const spriteAirborne = !!(sprite && !sprite.onGround);
         const spriteSwimming = !!(sprite && sprite.inWater);
 
-        if (!this.game.lumenLoop.isActive) {
+        if (!activePointerIsLumen && !this.game.lumenLoop.isActive) {
           if (
             !this.touchSwipe &&
             !this.isJoystickMode &&
@@ -440,6 +453,7 @@ export class InputHandler {
         }
 
         if (
+          !activePointerIsLumen &&
           sprite &&
           spriteAirborne &&
           !spriteSwimming &&
@@ -505,23 +519,6 @@ export class InputHandler {
         this.touchSwipe = false;
         this.isJoystickMode = false;
       },
-      { passive: false }
-    );
-
-    canvas.addEventListener(
-      "touchcancel",
-      (e) => {
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        this.handleLumenTouchesEnded(e.changedTouches, rect);
-        this.lastPinchDistance = null;
-        this.game.sprite?.stopGliding();
-        this.endJoystick();
-        this.touchStart = null;
-        this.touchSamples = [];
-        this.touchSwipe = false;
-        this.isJoystickMode = false;
-      },
       { passive: false },
     );
 
@@ -542,7 +539,24 @@ export class InputHandler {
       { passive: false },
     );
 
-    canvas.addEventListener('mousedown', (e) => {
+    canvas.addEventListener(
+      "touchcancel",
+      (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        this.handleLumenTouchesEnded(e.changedTouches, rect);
+        this.lastPinchDistance = null;
+        this.game.sprite?.stopGliding();
+        this.endJoystick();
+        this.touchStart = null;
+        this.touchSamples = [];
+        this.touchSwipe = false;
+        this.isJoystickMode = false;
+      },
+      { passive: false },
+    );
+
+    canvas.addEventListener("mousedown", (e) => {
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
@@ -562,22 +576,26 @@ export class InputHandler {
         this.startLumenLoopGesture("mouse", sample);
       }
 
+      const mouseControlsLumen = this.doesPointerControlLumen("mouse");
+
       this.mouseStart = sample;
       this.mouseSamples = [{ ...this.mouseStart }];
       this.isMouseDragging = true;
       this.mouseSwipe = false;
       this.isMouseJoystickMode = false;
 
-      this.startJoystick(x, y);
+      if (!mouseControlsLumen) {
+        this.startJoystick(x, y);
 
-      this.game.sprite?.startCharging();
-      if (
-        this.game.sprite &&
-        !this.game.sprite.onGround &&
-        !this.game.sprite.inWater &&
-        this.game.sprite.vy > 0
-      ) {
-        this.game.sprite.startGliding();
+        this.game.sprite?.startCharging();
+        if (
+          this.game.sprite &&
+          !this.game.sprite.onGround &&
+          !this.game.sprite.inWater &&
+          this.game.sprite.vy > 0
+        ) {
+          this.game.sprite.startGliding();
+        }
       }
     });
 
@@ -593,8 +611,12 @@ export class InputHandler {
       this.mouseSamples.push(sample);
       const cutoff = sample.time - VELOCITY_SAMPLE_TIME;
       this.mouseSamples = this.mouseSamples.filter((q) => q.time >= cutoff);
-      this.updateJoystick(sample.x, sample.y);
       this.updateLumenLoopRotation("mouse", sample);
+
+      const mouseControlsLumen = this.doesPointerControlLumen("mouse");
+      if (!mouseControlsLumen) {
+        this.updateJoystick(sample.x, sample.y);
+      }
 
       const direction = this.calculateDirection(
         this.mouseStart.x,
@@ -608,7 +630,7 @@ export class InputHandler {
       const spriteAirborne = !!(sprite && !sprite.onGround);
       const spriteSwimming = !!(sprite && sprite.inWater);
 
-      if (!this.game.lumenLoop.isActive) {
+      if (!mouseControlsLumen && !this.game.lumenLoop.isActive) {
         if (
           !this.mouseSwipe &&
           !this.isMouseJoystickMode &&
@@ -630,6 +652,7 @@ export class InputHandler {
       }
 
       if (
+        !mouseControlsLumen &&
         sprite &&
         spriteAirborne &&
         !spriteSwimming &&
@@ -889,9 +912,9 @@ export class InputHandler {
     this.lumenLoopGesture.dragStart = sample;
     this.lumenLoopGesture.lastSample = sample;
     this.lumenLoopGesture.jumpDragStart = null;
-    if (this.game.sprite) {
-      this.game.sprite.charging = false;
-      this.game.sprite.chargeTime = 0;
+    this.lumenLoopGesture.claimedInput = this.game.lumenLoop.isActive;
+    if (this.game.lumenLoop.isActive) {
+      this.claimLumenPointerControl();
     }
   }
 
@@ -916,6 +939,13 @@ export class InputHandler {
     if (!loopState.isActive && this.lumenLoopGesture.pendingActivation) {
       this.lumenLoopGesture.accumulatedAngle += delta;
       if (
+        !this.lumenLoopGesture.claimedInput &&
+        Math.abs(this.lumenLoopGesture.accumulatedAngle) >=
+          LUMEN_INPUT_CLAIM_THRESHOLD
+      ) {
+        this.claimLumenPointerControl();
+      }
+      if (
         Math.abs(this.lumenLoopGesture.accumulatedAngle) >=
         LUMEN_ROTATION_ACTIVATION
       ) {
@@ -923,6 +953,7 @@ export class InputHandler {
         if (activated) {
           this.lumenLoopGesture.pendingActivation = false;
           this.lumenLoopGesture.accumulatedAngle = 0;
+          this.claimLumenPointerControl();
         }
       }
     }
@@ -944,15 +975,11 @@ export class InputHandler {
     }
   }
 
-  private handleLumenTouchesEnded(
-    touches: TouchList,
-    rect: DOMRect,
-  ): boolean {
+  private handleLumenTouchesEnded(touches: TouchList, rect: DOMRect): boolean {
     let consumed = false;
     for (const touch of Array.from(touches)) {
       const sample = this.touchToSample(touch, rect);
-      consumed =
-        this.endLumenLoopGesture(touch.identifier, sample) || consumed;
+      consumed = this.endLumenLoopGesture(touch.identifier, sample) || consumed;
     }
     return consumed;
   }
@@ -962,9 +989,12 @@ export class InputHandler {
     sample?: PointSample,
   ): boolean {
     if (this.lumenLoopGesture.pointerId !== pointerId) return false;
+    const consumeRelease =
+      this.lumenLoopGesture.claimedInput || this.game.lumenLoop.isActive;
     const finalSample = sample ?? this.lumenLoopGesture.lastSample;
     const dragStart = this.lumenLoopGesture.jumpDragStart;
     if (
+      consumeRelease &&
       this.game.lumenLoop.isActive &&
       dragStart &&
       finalSample &&
@@ -980,15 +1010,15 @@ export class InputHandler {
           finalSample.y,
         );
         if (direction.y > 0.3) {
-          this.lumenLoopJumpIntent = triggerLumenLoopJump(
-            this.game.lumenLoop,
-            { x: direction.x, y: direction.y },
-          );
+          this.lumenLoopJumpIntent = triggerLumenLoopJump(this.game.lumenLoop, {
+            x: direction.x,
+            y: direction.y,
+          });
         }
       }
     }
     this.resetLumenLoopGesture();
-    return true;
+    return consumeRelease;
   }
 
   private resetLumenLoopGesture(): void {
@@ -999,6 +1029,7 @@ export class InputHandler {
     this.lumenLoopGesture.dragStart = null;
     this.lumenLoopGesture.lastSample = null;
     this.lumenLoopGesture.jumpDragStart = null;
+    this.lumenLoopGesture.claimedInput = false;
   }
 
   private handlePinchZoom(touches: TouchList, rect: DOMRect): void {
@@ -1022,6 +1053,30 @@ export class InputHandler {
       this.applyLumenPinchDelta(deltaScale);
     }
     this.lastPinchDistance = distance;
+  }
+
+  private doesPointerControlLumen(pointerId: PointerKey | null): boolean {
+    if (pointerId == null) return false;
+    if (this.lumenLoopGesture.pointerId !== pointerId) return false;
+    if (this.game.lumenLoop.isActive) return true;
+    return this.lumenLoopGesture.claimedInput;
+  }
+
+  private claimLumenPointerControl(): void {
+    if (this.lumenLoopGesture.claimedInput) return;
+    this.lumenLoopGesture.claimedInput = true;
+    this.touchSwipe = false;
+    this.isJoystickMode = false;
+    this.mouseSwipe = false;
+    this.isMouseJoystickMode = false;
+    this.endJoystick();
+    const sprite = this.game.sprite;
+    if (sprite) {
+      sprite.charging = false;
+      sprite.chargeTime = 0;
+      sprite.cancelMovementCharging();
+      sprite.stopGliding();
+    }
   }
 
   private computePinchDistance(touches: TouchList, rect: DOMRect): number {
@@ -1063,9 +1118,7 @@ export class InputHandler {
     return Math.atan2(y - centerY, x - sprite.x);
   }
 
-  private getSpriteScreenPosition():
-    | { x: number; y: number }
-    | null {
+  private getSpriteScreenPosition(): { x: number; y: number } | null {
     const sprite = this.game.sprite;
     if (!sprite) return null;
     return { x: sprite.x, y: sprite.y - cameraY };

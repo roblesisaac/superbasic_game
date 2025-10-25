@@ -42,9 +42,7 @@ const resolveStyle = (style?: Partial<PixelStripStyle>): PixelStripStyle => ({
   ...(style ?? {}),
 });
 
-const resolveGlowStyle = (
-  glow?: Partial<PixelGlowStyle>,
-): PixelGlowStyle => ({
+const resolveGlowStyle = (glow?: Partial<PixelGlowStyle>): PixelGlowStyle => ({
   ...PIXEL_GLOW_STYLE,
   ...(glow ?? {}),
 });

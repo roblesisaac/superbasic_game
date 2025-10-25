@@ -128,19 +128,13 @@ export function applyPinch(
   const shouldDismiss = atMinimum && deltaScale < 0;
   return { scale: state.haloScale, shouldDismiss };
 }
-export function applyHelium(
-  state: LumenLoopState,
-  amount: number,
-): number {
+export function applyHelium(state: LumenLoopState, amount: number): number {
   const nextAmount = clamp(state.heliumAmount + amount, 0, HELIUM_CAP);
   state.heliumAmount = nextAmount;
   if (amount > 0) state.heliumFloatTimer = 0;
   return state.heliumAmount;
 }
-export function consumeEnergy(
-  state: LumenLoopState,
-  amount: number,
-): number {
+export function consumeEnergy(state: LumenLoopState, amount: number): number {
   if (amount <= 0) return 0;
   const prev = state.energy;
   state.energy = clamp(prev - amount, 0, ENERGY_MAX);
@@ -178,10 +172,7 @@ export function drawLumenLoop(
   ctx.fillStyle = haloColor;
   ctx.shadowColor = haloColor;
   ctx.shadowBlur = computePixelStripGlow(LUMEN_LOOP_GLOW_THICKNESS);
-  const segmentLength = Math.max(
-    4,
-    (TWO_PI * radius) / segments / 2,
-  );
+  const segmentLength = Math.max(4, (TWO_PI * radius) / segments / 2);
   const thickness = Math.max(2, Math.round(LUMEN_LOOP_GLOW_THICKNESS));
   for (let i = 0; i < segments; i++) {
     const angle = (i / segments) * TWO_PI;

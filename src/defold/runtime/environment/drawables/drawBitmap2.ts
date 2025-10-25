@@ -116,17 +116,17 @@ function normalizeToLines(value?: string | string[]): string[] | undefined {
 
 // ---- Built-in grayscale map (0..9) -----------------------------------------
 const DIGIT_COLOR_MAP: Record<string, string> = {
-    "0": "#CCCCCC",
-    "1": "#AAAAAA",
-    "2": "#888888",
-    "3": "#666666",
-    "4": "#222222",
-    "5": "#333333",
-    "6": "#222222",
-    "7": "#222222",
-    "8": "#111111",
-    "9": "#111111",
-};  
+  "0": "#CCCCCC",
+  "1": "#AAAAAA",
+  "2": "#888888",
+  "3": "#666666",
+  "4": "#222222",
+  "5": "#333333",
+  "6": "#222222",
+  "7": "#222222",
+  "8": "#111111",
+  "9": "#111111",
+};
 
 // ---- Synchronous drawBitmap2 (no await anywhere) ----------------------------
 export function drawBitmap2(
@@ -134,7 +134,7 @@ export function drawBitmap2(
   config: {
     // You will import raw txt on top and pass it in here:
     pattern?: string[] | string; // preferred: pass raw string from `?raw` and let us split
-    txt?: string;                // alias of pattern as raw string (optional)
+    txt?: string; // alias of pattern as raw string (optional)
 
     x: number;
     y: number;
@@ -172,9 +172,7 @@ export function drawBitmap2(
   } = config;
 
   // Resolve pattern synchronously (no fetch)
-  const pattern =
-    normalizeToLines(patternIn) ??
-    normalizeToLines(txt);
+  const pattern = normalizeToLines(patternIn) ?? normalizeToLines(txt);
 
   if (!pattern || pattern.length === 0) return;
 
@@ -189,7 +187,13 @@ export function drawBitmap2(
   };
 
   const net = Math.max(-1, Math.min(1, brighten - darken));
-  const key = cacheKey(pattern, effectiveMap, defaultColor, transparentChars, net);
+  const key = cacheKey(
+    pattern,
+    effectiveMap,
+    defaultColor,
+    transparentChars,
+    net,
+  );
 
   let sprite = _bitmapCache.get(key);
   if (!sprite) {

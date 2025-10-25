@@ -20,7 +20,7 @@ import {
 } from "./bubble_field.js";
 import { getWellBounds } from "./well_layout.js";
 import { CABIN_BITMAP } from "../../assets/bitmaps/cabin.js";
-import cabinRaw from '../../assets/bitmaps/cabin.txt?raw';
+import cabinRaw from "../../assets/bitmaps/cabin.txt?raw";
 import { drawRollingHills } from "./drawables/drawRollingHills.js";
 import { drawCampfire } from "./drawables/drawCampfire.js";
 
