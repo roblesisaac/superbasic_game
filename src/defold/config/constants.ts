@@ -72,7 +72,7 @@ export const LUMEN_LOOP_BASE_RADIUS = 52; // Base halo radius in px
 export const LUMEN_LOOP_MIN_SCALE = 0.65; // Zoomed-out shrink limit
 export const LUMEN_LOOP_MAX_SCALE = 1.75; // Zoomed-in growth limit
 export const LUMEN_LOOP_GLOW_THICKNESS = 7; // Pixel thickness for glow blur
-export const LUMEN_LOOP_ROTATION_TO_VELOCITY = 420; // Horizontal speed per rad/s
+export const LUMEN_LOOP_ROTATION_TO_VELOCITY = 120; // Horizontal speed per pedal momentum unit
 export const LUMEN_LOOP_ANGULAR_DECAY = 1.6; // Per-second angular velocity damping
 export const LUMEN_LOOP_PINCH_RESPONSIVENESS = 0.5; // Scale delta per normalized pinch
 export const LUMEN_LOOP_HELIUM_FLOAT_FORCE = 500; // Upward accel applied while helium is active
@@ -86,6 +86,8 @@ export const LUMEN_LOOP_ENERGY_MULT_MAX = 1.35; // Energy drain multiplier at ma
 export const LUMEN_LOOP_DEMO_HELIUM = 1; // Starting helium charge for demo builds
 export const LUMEN_LOOP_PINCH_HELIUM_RATE = 2.4; // Helium injected per normalized pinch delta (when zooming in)
 export const LUMEN_LOOP_HELIUM_SCALE_RETURN_RATE = 1.3; // Per-second easing toward base halo scale while helium bleeds
+export const LUMEN_LOOP_PEDAL_IMPULSE = 12; // Momentum gained per completed rotation input
+export const LUMEN_LOOP_PEDAL_MOMENTUM_MAX = 6.5; // Clamp for pedal momentum magnitude
 
 // Gates
 export const USE_RANDOM_GATES = false;

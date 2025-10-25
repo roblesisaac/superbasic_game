@@ -4,6 +4,7 @@
 
 - Wheel-like ride that appears as a glowing halo when the player taps the sprite and completes a ±360° joystick rotation.
 - While active, the player drags anywhere on-screen to rotate the joystick proxy; clockwise rotation rolls right, counter-clockwise rolls left, preserving velocity like a wheel.
+- Rotation behaves like pedaling a bike: partial arcs add small nudges, sustained spins build momentum, and reversing direction bleeds speed before accelerating the other way.
 - Pinch-to-zoom while Lumen-Loop is active scales the halo radius; zooming in enlarges the ring so each degree of rotation covers more ground (higher leverage), while zooming out shortens the stride
 - Larger rings behave like bigger gears: they require more torque to start rolling (slower to spool up) but cover more ground per rotation once moving; smaller rings engage almost instantly with less effort but travel shorter distances per spin.
 - Helium is injected while airborne by pinching/zooming the loop: jumping + pinch inflates the ring with helium, causing a floaty descent until the gas bleeds off.
@@ -49,6 +50,7 @@
 7. [x] **Movement + physics coupling**
    - [x] In `src/defold/runtime/game_app.ts` (or the movement controller), convert angular velocity × circumference into horizontal sprite velocity, clamped by `MIN_RIDE_SPEED`/`MAX_RIDE_SPEED`, and scale energy drain with angular speed.
    - [x] Respect pinch-inflated halo scale when computing stride length and startup inertia so larger rings need more torque to accelerate but cruise farther per revolution.
+   - [x] Rework rotation input so it feeds a pedal-style momentum accumulator (small drags = light pushes, continuous spins = high speed) instead of instantly mapping angle deltas to full ride velocity.
    - [x] Apply friction/decay so the Lumen-Loop coasts briefly after input stops.
      - Sanity check: Log or visualize angular velocity vs. sprite velocity/energy to verify clamping and decay behave as expected.
 8. [x] **Render the halo + zoom effects**

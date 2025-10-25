@@ -17,6 +17,8 @@ import {
   LUMEN_LOOP_ENERGY_MULT_MIN,
   LUMEN_LOOP_ENERGY_MULT_MAX,
   LUMEN_LOOP_HELIUM_SCALE_RETURN_RATE,
+  LUMEN_LOOP_PEDAL_IMPULSE,
+  LUMEN_LOOP_PEDAL_MOMENTUM_MAX,
   MIN_RIDE_SPEED,
   MAX_RIDE_SPEED,
   ENERGY_MAX,
@@ -86,23 +88,34 @@ export function updateLumenLoopState(
   }
   const rotationDelta = input.rotationDelta ?? 0;
   state.rotationAccum += rotationDelta;
+  const haloScale = clampScale(state.haloScale);
   const inertiaMultiplier = scaleLerp(
-    state.haloScale,
+    haloScale,
     LUMEN_LOOP_INERTIA_MULT_MIN,
     LUMEN_LOOP_INERTIA_MULT_MAX,
   );
-  const angularAcceleration = rotationDelta / dt / inertiaMultiplier;
-  state.angularVelocity += angularAcceleration;
+  const pedalFraction = rotationDelta / TWO_PI;
+  const pedalImpulse =
+    (pedalFraction * LUMEN_LOOP_PEDAL_IMPULSE) /
+    Math.max(0.2, inertiaMultiplier);
+  state.angularVelocity += pedalImpulse;
+  const scaleVelocityMultiplier = haloScale;
+  const momentumCap =
+    LUMEN_LOOP_PEDAL_MOMENTUM_MAX * Math.max(0.25, scaleVelocityMultiplier);
+  state.angularVelocity = clamp(
+    state.angularVelocity,
+    -momentumCap,
+    momentumCap,
+  );
   const decayFactor = Math.exp(-LUMEN_LOOP_ANGULAR_DECAY * dt);
   state.angularVelocity *= decayFactor;
-  const scaleVelocityMultiplier = state.haloScale;
   const rawHorizontalVelocity =
     state.angularVelocity *
     LUMEN_LOOP_ROTATION_TO_VELOCITY *
     scaleVelocityMultiplier;
   const horizontalVelocity = clampRideVelocity(rawHorizontalVelocity);
   const energyMultiplier = scaleLerp(
-    state.haloScale,
+    haloScale,
     LUMEN_LOOP_ENERGY_MULT_MIN,
     LUMEN_LOOP_ENERGY_MULT_MAX,
   );
