@@ -46,10 +46,10 @@
 - [x] Detect airborne pinch/zoom gestures to inject helium into the active loop; while helium is present, apply an upward force/offset and slowly reduce halo scale toward the base radius as helium drains over time.
   - [x] Expose hooks so pickups (e.g., `src/defold/game_objects/heartPickup.ts` or a future helium collectible) can call `applyHelium`.
 
-7. [ ] **Movement + physics coupling**
-   - [ ] In `src/defold/runtime/game_app.ts` (or the movement controller), convert angular velocity × circumference into horizontal sprite velocity, clamped by `MIN_RIDE_SPEED`/`MAX_RIDE_SPEED`, and scale energy drain with angular speed.
-   - [ ] Respect pinch-inflated halo scale when computing stride length and startup inertia so larger rings need more torque to accelerate but cruise farther per revolution.
-   - [ ] Apply friction/decay so the Lumen-Loop coasts briefly after input stops.
+7. [x] **Movement + physics coupling**
+   - [x] In `src/defold/runtime/game_app.ts` (or the movement controller), convert angular velocity × circumference into horizontal sprite velocity, clamped by `MIN_RIDE_SPEED`/`MAX_RIDE_SPEED`, and scale energy drain with angular speed.
+   - [x] Respect pinch-inflated halo scale when computing stride length and startup inertia so larger rings need more torque to accelerate but cruise farther per revolution.
+   - [x] Apply friction/decay so the Lumen-Loop coasts briefly after input stops.
      - Sanity check: Log or visualize angular velocity vs. sprite velocity/energy to verify clamping and decay behave as expected.
 8. [ ] **Render the halo + zoom effects**
    - [ ] Reuse `drawPixelStripDots`/`computePixelStripGlow` to render a circular pixel strip whose radius is `baseRadius * haloScale`.

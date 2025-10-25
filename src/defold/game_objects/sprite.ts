@@ -123,6 +123,7 @@ export class Sprite {
   movementDirection: { x: number; y: number };
   movementEnergyUsed: number;
   movementDragStrength: number;
+  rideVelocityOverride: number | null;
   gliding: boolean;
   stunned: boolean;
   stunTime: number;
@@ -174,6 +175,7 @@ export class Sprite {
     this.movementDirection = { x: 0, y: 0 }; // normalized direction vector
     this.movementEnergyUsed = 0;
     this.movementDragStrength = 0;
+    this.rideVelocityOverride = null;
 
     this.gliding = false;
     this.stunned = false;
@@ -212,6 +214,14 @@ export class Sprite {
     this.oxygenDamageTimer = 0;
     this.inBubble = false;
     this.bubbleRadius = SPRITE_SIZE / 2 + BUBBLE_EXIT_PADDING;
+  }
+
+  setRideVelocityOverride(velocity: number | null): void {
+    if (typeof velocity === "number" && Number.isFinite(velocity)) {
+      this.rideVelocityOverride = velocity;
+    } else {
+      this.rideVelocityOverride = null;
+    }
   }
 
   private setSwimmingInputActive(active: boolean) {
@@ -785,6 +795,12 @@ export class Sprite {
     this.prevY = this.y;
     this.prevVy = this.vy;
     const wasInWater = this.inWater;
+    const rideVelocity = this.rideVelocityOverride;
+    const hasRideOverride =
+      typeof rideVelocity === "number" && Number.isFinite(rideVelocity);
+    if (hasRideOverride) {
+      this.vx = rideVelocity;
+    }
 
     this._updateVelocityStretch();
     this._updateImpactSquash(dt);
@@ -899,7 +915,7 @@ export class Sprite {
       }
     }
 
-    if (this.onGround && Math.abs(this.vx) > 0) {
+    if (this.onGround && Math.abs(this.vx) > 0 && !hasRideOverride) {
       const fr = GROUND_FRICTION * dt;
       if (Math.abs(this.vx) <= fr) this.vx = 0;
       else this.vx -= Math.sign(this.vx) * fr;
@@ -1399,6 +1415,7 @@ export class Sprite {
 
     if (wasOnGround && !this.onGround) this.fallStartY = this.y;
     this._applyFinalScale();
+    this.rideVelocityOverride = null;
   }
 
   draw(ctx, cameraY) {

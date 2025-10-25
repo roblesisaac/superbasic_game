@@ -17,6 +17,8 @@ import {
   LUMEN_LOOP_ENERGY_MULT_MIN,
   LUMEN_LOOP_ENERGY_MULT_MAX,
   LUMEN_LOOP_HELIUM_SCALE_RETURN_RATE,
+  MIN_RIDE_SPEED,
+  MAX_RIDE_SPEED,
   ENERGY_MAX,
 } from "../../config/constants.js";
 import { clamp } from "../../shared/utils.js";
@@ -31,6 +33,7 @@ const HELIUM_CAP = 3;
 const BASE_HALO_COLOR = "#f5f797";
 const HELIUM_HALO_COLOR = "#9be7ff";
 const BASE_HALO_SCALE = 1;
+const HORIZONTAL_STOP_EPSILON = MIN_RIDE_SPEED * 0.25;
 export interface LumenLoopActivationOptions {
   scale?: number;
   unlocked?: boolean;
@@ -93,10 +96,11 @@ export function updateLumenLoopState(
   const decayFactor = Math.exp(-LUMEN_LOOP_ANGULAR_DECAY * dt);
   state.angularVelocity *= decayFactor;
   const scaleVelocityMultiplier = state.haloScale;
-  const horizontalVelocity =
+  const rawHorizontalVelocity =
     state.angularVelocity *
     LUMEN_LOOP_ROTATION_TO_VELOCITY *
     scaleVelocityMultiplier;
+  const horizontalVelocity = clampRideVelocity(rawHorizontalVelocity);
   const energyMultiplier = scaleLerp(
     state.haloScale,
     LUMEN_LOOP_ENERGY_MULT_MIN,
@@ -204,6 +208,14 @@ function scaleLerp(scale: number, min: number, max: number): number {
     1,
   );
   return min + (max - min) * t;
+}
+
+function clampRideVelocity(velocity: number): number {
+  if (!Number.isFinite(velocity)) return 0;
+  const absValue = Math.abs(velocity);
+  if (absValue <= HORIZONTAL_STOP_EPSILON) return 0;
+  const limited = clamp(absValue, Math.max(0, MIN_RIDE_SPEED), MAX_RIDE_SPEED);
+  return Math.sign(velocity) * limited;
 }
 function bleedHelium(state: LumenLoopState, dt: number): void {
   if (state.heliumAmount <= 0) {

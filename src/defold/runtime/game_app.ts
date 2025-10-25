@@ -33,7 +33,10 @@ import {
   drawRides,
   mergeCollidingRides,
 } from "../game_objects/rides.js";
-import { updateLumenLoopState } from "../game_objects/rides/lumen_loop.js";
+import {
+  updateLumenLoopState,
+  type LumenLoopUpdateResult,
+} from "../game_objects/rides/lumen_loop.js";
 import {
   updateGates,
   pruneInactiveGates,
@@ -172,31 +175,47 @@ function drawHeartPickups(): void {
 }
 
 function applyHeliumLift(sprite: Sprite, liftForce: number, dt: number): void {
-  if (!Number.isFinite(liftForce) || liftForce <= 0) return;
+  if (
+    !Number.isFinite(liftForce) ||
+    liftForce <= 0 ||
+    sprite.onGround ||
+    sprite.inWater
+  ) {
+    return;
+  }
   const accel = liftForce;
   const deltaVy = accel * dt;
   sprite.y -= 0.5 * accel * dt * dt;
   sprite.vy -= deltaVy;
 }
 
-function stepLumenLoop(dt: number, sprite: Sprite | null): void {
+function stepLumenLoop(
+  dt: number,
+  sprite: Sprite | null,
+): LumenLoopUpdateResult {
   const rotationDelta =
     gameWorld.input?.consumeLumenLoopRotationDelta() ?? 0;
   const result = updateLumenLoopState(gameWorld.lumenLoop, {
     dt,
     rotationDelta,
   });
-  if (
-    !sprite ||
-    !gameWorld.lumenLoop.isActive ||
-    !Number.isFinite(result.heliumLift) ||
-    result.heliumLift <= 0 ||
-    sprite.onGround ||
-    sprite.inWater
-  ) {
-    return;
+  if (result.energySpent > 0) {
+    gameWorld.energyBar?.drain(result.energySpent);
   }
-  applyHeliumLift(sprite, result.heliumLift, dt);
+  if (!sprite) {
+    return result;
+  }
+  if (!gameWorld.lumenLoop.isActive) {
+    sprite.setRideVelocityOverride(null);
+    return result;
+  }
+  const velocity = result.horizontalVelocity;
+  if (Number.isFinite(velocity) && velocity !== 0) {
+    sprite.setRideVelocityOverride(velocity);
+  } else {
+    sprite.setRideVelocityOverride(null);
+  }
+  return result;
 }
 
 function updateWorld(dt: number): void {
@@ -208,8 +227,9 @@ function updateWorld(dt: number): void {
     return;
   }
 
+  const lumenStep = stepLumenLoop(dt, sprite);
   sprite.update(dt);
-  stepLumenLoop(dt, sprite);
+  applyHeliumLift(sprite, lumenStep.heliumLift, dt);
 
   const cardFrame = syncCards(sprite.y);
   gameWorld.gates = [...cardFrame.gates];
