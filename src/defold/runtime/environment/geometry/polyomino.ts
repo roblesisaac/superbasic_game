@@ -1,11 +1,13 @@
 // Density controls for rock generation (0.0 = fully hollow, 1.0 = fully solid)
-const POLYOMINO_DENSITY_SINGLE = 0.6; // Single layer blocks (40% hollow chance)
-const POLYOMINO_DENSITY_OUTER = 0.6; // Outer layer of double-layer blocks (10% hollow chance)
-const POLYOMINO_DENSITY_INNER = 0.1; // Inner layer of double-layer blocks (60% hollow chance)
+// Lower values = more porous/weathered, Higher values = more solid
+// NOTE: Values below 0.4 for INNER may cause performance issues - see polyomino-debug.md
+const POLYOMINO_DENSITY_SINGLE = 0.6; // Single layer blocks
+const POLYOMINO_DENSITY_OUTER = 0.9; // Outer layer of double-layer blocks (solid)
+const POLYOMINO_DENSITY_INNER = 0.4; // Inner layer of double-layer blocks (porous)
 
-// Hollow intensity when hollowing occurs (0.0 = no holes, 1.0 = maximum holes)
-const POLYOMINO_HOLLOW_INTENSITY_LOW = 0.15;
-const POLYOMINO_HOLLOW_INTENSITY_HIGH = 0.25;
+// Cache for generated polyominos (key: "seed_minSize_maxSize")
+const polyominoCache = new Map<string, PolyominoCellSet>();
+const MAX_CACHE_SIZE = 500; // Limit cache size to prevent memory issues
 
 export type PolyominoEdge = "left" | "right" | "top" | "bottom";
 
@@ -40,18 +42,35 @@ export function generatePolyomino(
   minSize = 4,
   maxSize = 9
 ): PolyominoCellSet {
+  // Check cache first
+  const cacheKey = `${seed}_${minSize}_${maxSize}`;
+  const cached = polyominoCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const h = randInt(Math.max(3, minSize), maxSize, seed);
   const isLeftPerfect = seededRandom(seed + 1) < 0.35;
   const width = randInt(3, 5, seed + 2);
 
-  // Use single layer with density-controlled hollowing
-  return generateSingleLayer(
+  // Use single layer with density control
+  const result = generateSingleLayer(
     seed,
     h,
     width,
     isLeftPerfect,
-    1 - POLYOMINO_DENSITY_SINGLE
+    POLYOMINO_DENSITY_SINGLE
   );
+
+  // Cache the result (with size limit)
+  if (polyominoCache.size >= MAX_CACHE_SIZE) {
+    // Remove oldest entry (first key)
+    const firstKey = polyominoCache.keys().next().value;
+    if (firstKey) polyominoCache.delete(firstKey);
+  }
+  polyominoCache.set(cacheKey, result);
+
+  return result;
 }
 
 function generateSingleLayer(
@@ -59,7 +78,7 @@ function generateSingleLayer(
   h: number,
   width: number,
   isLeftPerfect: boolean,
-  hollowChance: number
+  density: number
 ): PolyominoCellSet {
   const cells: PolyominoCellSet = new Set();
   let leftInset = 0;
@@ -111,26 +130,23 @@ function generateSingleLayer(
     }
   }
 
-  // Hollowing
-  if (seededRandom(seed + 800) < hollowChance && h >= 4 && currentWidth >= 4) {
+  // Apply density by removing cells (lower density = more removal)
+  if (density < 1.0) {
     const bounds = getPolyominoBounds(cells);
-    const hollowIntensity =
-      seededRandom(seed + 801) < 0.5
-        ? POLYOMINO_HOLLOW_INTENSITY_LOW
-        : POLYOMINO_HOLLOW_INTENSITY_HIGH;
+    const removalChance = 1.0 - density;
 
     for (const key of Array.from(cells)) {
       const [x, y] = key.split(",").map(Number);
-      const isInterior =
-        x > bounds.minX &&
-        x < bounds.maxX &&
-        y > bounds.minY &&
-        y < bounds.maxY;
 
-      if (
-        isInterior &&
-        seededRandom(seed + x * 1000 + y * 2000) < hollowIntensity
-      ) {
+      // Always keep edge cells for structural integrity
+      const isEdge =
+        x === bounds.minX ||
+        x === bounds.maxX ||
+        y === bounds.minY ||
+        y === bounds.maxY;
+
+      // Remove non-edge cells based on density
+      if (!isEdge && seededRandom(seed + x * 1000 + y * 2000) < removalChance) {
         cells.delete(key);
       }
     }
@@ -145,6 +161,13 @@ export function generatePolyominoWithLayers(
   maxSize = 9,
   edge: PolyominoEdge = "left"
 ): PolyominoCellSet {
+  // Check cache first
+  const cacheKey = `L_${seed}_${minSize}_${maxSize}_${edge}`;
+  const cached = polyominoCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const combined: PolyominoCellSet = new Set();
 
   const h = randInt(Math.max(3, minSize), maxSize, seed);
@@ -157,7 +180,7 @@ export function generatePolyominoWithLayers(
     h,
     baseWidth,
     isLeftPerfect,
-    1 - POLYOMINO_DENSITY_OUTER
+    POLYOMINO_DENSITY_OUTER
   );
 
   // Second layer - more porous inner layer
@@ -166,7 +189,7 @@ export function generatePolyominoWithLayers(
     h,
     baseWidth,
     false,
-    1 - POLYOMINO_DENSITY_INNER
+    POLYOMINO_DENSITY_INNER
   );
 
   // Position layers based on edge
@@ -191,6 +214,13 @@ export function generatePolyominoWithLayers(
 
     combined.add(`${newX},${newY}`);
   }
+
+  // Cache the result
+  if (polyominoCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = polyominoCache.keys().next().value;
+    if (firstKey) polyominoCache.delete(firstKey);
+  }
+  polyominoCache.set(cacheKey, combined);
 
   return combined;
 }
@@ -257,6 +287,14 @@ export function flattenPolyominoEdge(
   }
 
   const filteredBounds = getPolyominoBounds(mainCells);
+
+  // Safety check: if bounds are too large, skip flattening
+  const maxDimension = Math.max(filteredBounds.w, filteredBounds.h);
+  if (maxDimension > 50) {
+    // Bounds too large, return without flattening
+    return mainCells;
+  }
+
   const map = new Map<number, number[]>();
 
   for (const key of mainCells) {
