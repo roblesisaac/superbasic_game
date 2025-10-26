@@ -11,6 +11,11 @@ import {
   MIN_RIDE_SPEED,
   MAX_RIDE_SPEED,
 } from "../../config/constants.js";
+import {
+  computePixelStripGlow,
+  drawPixelCircleArc,
+  drawPixelCircleDots,
+} from "../rendering/pixelStrip.js";
 
 export interface LumenLoopGestureState {
   pointerId: number | null;
@@ -46,7 +51,7 @@ export function drawLumenLoop(
   sprite: Sprite,
   state: LumenLoopState,
   gestureState: LumenLoopGestureState,
-  cameraY: number,
+  cameraY: number
 ): void {
   if (!state.isActive && !gestureState.pendingActivation) {
     return;
@@ -58,41 +63,92 @@ export function drawLumenLoop(
 
   ctx.save();
 
-  if (gestureState.pendingActivation) {
+  if (state.isActive) {
+    // Full halo rendering when active
+    const glowIntensity = Math.min(1, Math.abs(state.angularVelocity) / 3);
+    const baseColor = "#f5f797";
+    const heliumColor = "#9be7ff";
+
+    // Lerp color based on helium amount
+    const heliumFactor = Math.min(1, state.heliumAmount / 3);
+    const color = lerpColor(baseColor, heliumColor, heliumFactor);
+
+    // Draw pixel dots around the circle (no continuous line, just dots like rides/gates)
+    const numDots = 76;
+    const baseDotSize = 3;
+    const dotSize = baseDotSize + glowIntensity * 2;
+    const dotGlow = computePixelStripGlow(dotSize, { glow: { min: 6 } });
+
+    // Draw dots with glow
+    ctx.fillStyle = color;
+    ctx.shadowBlur = dotGlow + glowIntensity * 8;
+    ctx.shadowColor = color;
+
+    drawPixelCircleDots({
+      ctx,
+      centerX: screenX,
+      centerY: screenY,
+      radius,
+      dotSize,
+      numDots,
+      rotationOffset: state.rotationAccum,
+    });
+
+    // Draw dots again without glow for solid appearance (like gates do)
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color;
+
+    drawPixelCircleDots({
+      ctx,
+      centerX: screenX,
+      centerY: screenY,
+      radius,
+      dotSize,
+      numDots,
+      rotationOffset: state.rotationAccum,
+    });
+  } else if (gestureState.pendingActivation) {
     // Progressive rendering during activation gesture
     const completion = Math.min(
       1,
-      gestureState.accumulatedAngle / LUMEN_LOOP_ACTIVATION_ANGLE,
+      gestureState.accumulatedAngle / LUMEN_LOOP_ACTIVATION_ANGLE
     );
     const arcAngle = completion * Math.PI * 2;
 
-    // Draw partial arc with glow effect
-    ctx.strokeStyle = "#f5f797";
-    ctx.lineWidth = 3;
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = "#f5f797";
+    const color = "#f5f797";
+    const dotSize = 4;
+    const dotGlow = computePixelStripGlow(dotSize, { glow: { min: 6 } });
 
-    ctx.beginPath();
-    ctx.arc(
-      screenX,
-      screenY,
+    // Draw pixel dots along the arc (no continuous line)
+    ctx.fillStyle = color;
+    ctx.shadowBlur = dotGlow;
+    ctx.shadowColor = color;
+
+    drawPixelCircleDots({
+      ctx,
+      centerX: screenX,
+      centerY: screenY,
       radius,
-      gestureState.startAngle,
-      gestureState.startAngle + arcAngle,
-    );
-    ctx.stroke();
+      dotSize,
+      numDots: 6,
+      startAngle: gestureState.startAngle,
+      endAngle: gestureState.startAngle + arcAngle,
+    });
 
-    // Add dots along the arc for pixelated effect
-    const numDots = Math.floor(completion * 36);
-    ctx.fillStyle = "#f5f797";
-    ctx.shadowBlur = 6;
+    // Draw dots again without glow for solid appearance
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color;
 
-    for (let i = 0; i <= numDots; i++) {
-      const angle = gestureState.startAngle + (i / 36) * Math.PI * 2;
-      const dotX = screenX + Math.cos(angle) * radius;
-      const dotY = screenY + Math.sin(angle) * radius;
-      ctx.fillRect(dotX - 2, dotY - 2, 4, 4);
-    }
+    drawPixelCircleDots({
+      ctx,
+      centerX: screenX,
+      centerY: screenY,
+      radius,
+      dotSize,
+      numDots: 36,
+      startAngle: gestureState.startAngle,
+      endAngle: gestureState.startAngle + arcAngle,
+    });
   } else if (state.isActive) {
     // Full halo rendering when active
     const glowIntensity = Math.min(1, Math.abs(state.angularVelocity) / 3);
@@ -103,28 +159,40 @@ export function drawLumenLoop(
     const heliumFactor = Math.min(1, state.heliumAmount / 3);
     const color = lerpColor(baseColor, heliumColor, heliumFactor);
 
+    const lineThickness = 3;
+    const baseGlow = computePixelStripGlow(lineThickness);
+
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.shadowBlur = 8 + glowIntensity * 12;
+    ctx.shadowBlur = baseGlow + glowIntensity * 12;
     ctx.shadowColor = color;
 
     // Draw full circle
-    ctx.beginPath();
-    ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-    ctx.stroke();
+    drawPixelCircleArc({
+      ctx,
+      centerX: screenX,
+      centerY: screenY,
+      radius,
+      lineWidth: lineThickness,
+    });
 
     // Draw pixel dots around the circle
     const numDots = 36;
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 6 + glowIntensity * 8;
+    const baseDotSize = 3;
+    const dotSize = baseDotSize + glowIntensity * 2;
+    const dotGlow = computePixelStripGlow(dotSize, { glow: { min: 6 } });
 
-    for (let i = 0; i < numDots; i++) {
-      const angle = (i / numDots) * Math.PI * 2 + state.rotationAccum;
-      const dotX = screenX + Math.cos(angle) * radius;
-      const dotY = screenY + Math.sin(angle) * radius;
-      const dotSize = 3 + glowIntensity * 2;
-      ctx.fillRect(dotX - dotSize / 2, dotY - dotSize / 2, dotSize, dotSize);
-    }
+    ctx.fillStyle = color;
+    ctx.shadowBlur = dotGlow + glowIntensity * 8;
+
+    drawPixelCircleDots({
+      ctx,
+      centerX: screenX,
+      centerY: screenY,
+      radius,
+      dotSize,
+      numDots,
+      rotationOffset: state.rotationAccum,
+    });
   }
 
   ctx.restore();
@@ -157,7 +225,7 @@ export function startLumenLoopGesture(
   sprite: Sprite,
   x: number,
   y: number,
-  cameraY: number,
+  cameraY: number
 ): void {
   const spriteScreenY = sprite.y - cameraY;
   const dx = x - sprite.x;
@@ -181,7 +249,7 @@ export function updateLumenLoopRotation(
   sprite: Sprite,
   x: number,
   y: number,
-  cameraY: number,
+  cameraY: number
 ): void {
   if (!gestureState.pendingActivation) return;
 
@@ -211,7 +279,7 @@ export function updateLumenLoopRotation(
  */
 export function activateLumenLoop(
   state: LumenLoopState,
-  gestureState: LumenLoopGestureState,
+  gestureState: LumenLoopGestureState
 ): void {
   if (gestureState.accumulatedAngle >= LUMEN_LOOP_ACTIVATION_ANGLE) {
     state.isActive = true;
@@ -226,7 +294,7 @@ export function activateLumenLoop(
  */
 export function deactivateLumenLoop(
   state: LumenLoopState,
-  gestureState: LumenLoopGestureState,
+  gestureState: LumenLoopGestureState
 ): void {
   state.isActive = false;
   state.angularVelocity = 0;
@@ -241,7 +309,7 @@ export function deactivateLumenLoop(
 
 /**
  * Update Lumen-Loop physics and energy drain based on rotation input
- * 
+ *
  * @param state - The Lumen-Loop state
  * @param dt - Delta time in seconds
  * @param rotationDelta - Rotation input in radians (0 if no input)
@@ -252,7 +320,7 @@ export function updateLumenLoopState(
   state: LumenLoopState,
   dt: number,
   rotationDelta: number,
-  hasRotationInput: boolean,
+  hasRotationInput: boolean
 ): number {
   if (!state.isActive) {
     return 0;
@@ -269,8 +337,9 @@ export function updateLumenLoopState(
     // Player is actively rotating - apply acceleration and energy drain
 
     // Calculate pedal impulse scaled by inertia
-    const impulse = (Math.abs(rotationDelta) / (Math.PI * 2)) * 
-                    LUMEN_LOOP_PEDAL_IMPULSE / inertiaMultiplier;
+    const impulse =
+      ((Math.abs(rotationDelta) / (Math.PI * 2)) * LUMEN_LOOP_PEDAL_IMPULSE) /
+      inertiaMultiplier;
 
     // Determine direction from rotation delta
     const direction = rotationDelta > 0 ? 1 : -1;
@@ -289,22 +358,22 @@ export function updateLumenLoopState(
     // Reduced drain when momentum exists
     const currentSpeed = Math.abs(state.angularVelocity);
     const maxSpeed = momentumCap;
-    
+
     // Inertia factor: 1.0 at rest, approaches 0 at max speed
     // This represents the effort needed to overcome inertia
     const inertiaFactor = 1.0 - Math.min(1.0, currentSpeed / maxSpeed);
-    
+
     // Base energy drain per rotation
     const rotationAmount = Math.abs(rotationDelta) / (Math.PI * 2);
     const baseDrain = rotationAmount * LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION;
-    
+
     // Scale drain by inertia factor (more drain when starting from rest)
     // Minimum 30% drain even at max speed, maximum 100% drain at rest
-    const inertiaScale = 0.3 + (inertiaFactor * 0.7);
-    
+    const inertiaScale = 0.3 + inertiaFactor * 0.7;
+
     // Scale by halo size (larger halos require more energy)
     const energyMultiplier = state.haloScale;
-    
+
     const energyDrain = baseDrain * inertiaScale * energyMultiplier;
 
     // Apply energy drain
@@ -318,10 +387,10 @@ export function updateLumenLoopState(
   } else {
     // No rotation input - coasting with decay
     // No energy drain during coasting
-    
+
     if (state.angularVelocity !== 0) {
       const decayAmount = LUMEN_LOOP_ANGULAR_DECAY * dt;
-      
+
       if (Math.abs(state.angularVelocity) < decayAmount) {
         state.angularVelocity = 0;
       } else {
@@ -335,7 +404,7 @@ export function updateLumenLoopState(
   state.rotationAccum += state.angularVelocity * dt;
 
   // Convert angular velocity to horizontal velocity
-  const horizontalVelocity = 
+  const horizontalVelocity =
     state.angularVelocity * LUMEN_LOOP_ROTATION_TO_VELOCITY * state.haloScale;
 
   // Clamp to ride speed limits

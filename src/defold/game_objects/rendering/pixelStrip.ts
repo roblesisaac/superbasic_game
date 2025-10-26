@@ -26,6 +26,28 @@ export interface PixelStripGlowOptions {
   glow?: Partial<PixelGlowStyle>;
 }
 
+export interface PixelCircleDrawOptions {
+  ctx: CanvasRenderingContext2D;
+  centerX: number;
+  centerY: number;
+  radius: number;
+  lineWidth: number;
+  startAngle?: number;
+  endAngle?: number;
+}
+
+export interface PixelCircleDotsOptions {
+  ctx: CanvasRenderingContext2D;
+  centerX: number;
+  centerY: number;
+  radius: number;
+  dotSize: number;
+  numDots: number;
+  startAngle?: number;
+  endAngle?: number;
+  rotationOffset?: number;
+}
+
 export const PIXEL_STRIP_STYLE: PixelStripStyle = {
   dotSize: 3,
   spacing: 1,
@@ -103,4 +125,67 @@ export function computePixelStripGlow(
     ? Math.max(resolvedGlow.min, resolvedGlow.damagedMin ?? resolvedGlow.min)
     : resolvedGlow.min;
   return Math.max(thickness * resolvedGlow.multiplier, minBlur);
+}
+
+/**
+ * Draw a circular arc with consistent pixel styling
+ */
+export function drawPixelCircleArc({
+  ctx,
+  centerX,
+  centerY,
+  radius,
+  lineWidth,
+  startAngle = 0,
+  endAngle = Math.PI * 2,
+}: PixelCircleDrawOptions) {
+  if (radius <= 0 || lineWidth <= 0) return;
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+}
+
+/**
+ * Draw pixel dots around a circle or circular arc
+ */
+export function drawPixelCircleDots({
+  ctx,
+  centerX,
+  centerY,
+  radius,
+  dotSize,
+  numDots,
+  startAngle = 0,
+  endAngle = Math.PI * 2,
+  rotationOffset = 0,
+}: PixelCircleDotsOptions) {
+  if (radius <= 0 || dotSize <= 0 || numDots <= 0) return;
+
+  const angleRange = endAngle - startAngle;
+  const isFullCircle = Math.abs(angleRange - Math.PI * 2) < 0.01;
+
+  // For full circles, render exactly numDots
+  // For partial arcs, calculate proportional number of dots
+  const completionRatio = angleRange / (Math.PI * 2);
+  const dotsToRender = isFullCircle
+    ? numDots
+    : Math.max(1, Math.floor(numDots * completionRatio) + 1);
+
+  for (let i = 0; i < dotsToRender; i++) {
+    // For full circles, space dots evenly around the circle
+    // For partial arcs, space dots evenly along the arc
+    const t = isFullCircle ? i / numDots : i / (dotsToRender - 1);
+    const angle = startAngle + t * angleRange + rotationOffset;
+    const dotX = Math.round(centerX + Math.cos(angle) * radius);
+    const dotY = Math.round(centerY + Math.sin(angle) * radius);
+    const roundedSize = Math.round(dotSize);
+    ctx.fillRect(
+      dotX - Math.floor(roundedSize / 2),
+      dotY - Math.floor(roundedSize / 2),
+      roundedSize,
+      roundedSize
+    );
+  }
 }
