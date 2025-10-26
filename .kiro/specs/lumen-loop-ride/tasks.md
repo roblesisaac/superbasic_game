@@ -22,7 +22,7 @@
   - Confirm standard jump mechanics apply without modification
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 4. Integrate rotation-to-movement physics into game loop
+- [x] 4. Integrate rotation-to-movement physics into game loop
   - Add rotation delta tracking to `InputHandler` in `src/defold/runtime/input.ts` to capture rotation input during active Lumen-Loop
   - Call `updateLumenLoopState()` in the game loop (`src/defold/runtime/game_app.ts`) with rotation delta and input state
   - Apply the returned horizontal velocity to sprite via velocity override system
