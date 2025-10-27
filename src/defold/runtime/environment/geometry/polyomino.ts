@@ -1,14 +1,3 @@
-// Density controls for rock generation (0.0 = fully hollow, 1.0 = fully solid)
-// Lower values = more porous/weathered, Higher values = more solid
-// NOTE: Values below 0.4 for INNER may cause performance issues - see polyomino-debug.md
-const POLYOMINO_DENSITY_SINGLE = 0.6; // Single layer blocks
-const POLYOMINO_DENSITY_OUTER = 0.9; // Outer layer of double-layer blocks (solid)
-const POLYOMINO_DENSITY_INNER = 0.4; // Inner layer of double-layer blocks (porous)
-
-// Cache for generated polyominos (key: "seed_minSize_maxSize")
-const polyominoCache = new Map<string, PolyominoCellSet>();
-const MAX_CACHE_SIZE = 500; // Limit cache size to prevent memory issues
-
 export type PolyominoEdge = "left" | "right" | "top" | "bottom";
 
 export type PolyominoCellSet = Set<string>;
@@ -33,196 +22,50 @@ export function randInt(min: number, max: number, seed: number): number {
   return Math.floor(seededRandom(seed) * (max - min + 1)) + min;
 }
 
-function seededChoice<T>(arr: T[], seed: number): T {
-  return arr[Math.floor(seededRandom(seed) * arr.length)];
-}
-
 export function generatePolyomino(
   seed: number,
   minSize = 4,
-  maxSize = 9
-): PolyominoCellSet {
-  // Check cache first
-  const cacheKey = `${seed}_${minSize}_${maxSize}`;
-  const cached = polyominoCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const h = randInt(Math.max(3, minSize), maxSize, seed);
-  const isLeftPerfect = seededRandom(seed + 1) < 0.35;
-  const width = randInt(3, 5, seed + 2);
-
-  // Use single layer with density control
-  const result = generateSingleLayer(
-    seed,
-    h,
-    width,
-    isLeftPerfect,
-    POLYOMINO_DENSITY_SINGLE
-  );
-
-  // Cache the result (with size limit)
-  if (polyominoCache.size >= MAX_CACHE_SIZE) {
-    // Remove oldest entry (first key)
-    const firstKey = polyominoCache.keys().next().value;
-    if (firstKey) polyominoCache.delete(firstKey);
-  }
-  polyominoCache.set(cacheKey, result);
-
-  return result;
-}
-
-function generateSingleLayer(
-  seed: number,
-  h: number,
-  width: number,
-  isLeftPerfect: boolean,
-  density: number
-): PolyominoCellSet {
-  const cells: PolyominoCellSet = new Set();
-  let leftInset = 0;
-  let currentWidth = width;
-
-  for (let y = 0; y < h; y++) {
-    let tempNick = 0;
-
-    if (!isLeftPerfect && seededRandom(seed + y * 100) < 0.18) {
-      leftInset += seededChoice([-1, 0, 0, 1], seed + y * 101);
-      leftInset = Math.max(0, Math.min(2, leftInset));
-    }
-
-    if (!isLeftPerfect && seededRandom(seed + y * 102) < 0.06) {
-      tempNick = 1;
-    }
-
-    if (seededRandom(seed + y * 200) < 0.6) {
-      currentWidth += seededChoice([-1, 0, 0, 1], seed + y * 201);
-      currentWidth = Math.max(3, Math.min(6, currentWidth));
-    }
-
-    const notch =
-      seededRandom(seed + y * 300) < 0.18
-        ? randInt(1, Math.max(1, currentWidth - 2), seed + y * 301)
-        : null;
-
-    const rowLeft = isLeftPerfect ? 0 : leftInset + tempNick;
-
-    for (let x = 0; x < currentWidth; x++) {
-      if (notch !== null && x === notch) continue;
-      cells.add(`${rowLeft + x},${y}`);
-    }
-  }
-
-  // Floating pixels
-  if (h >= 3) {
-    const nFloat = randInt(2, 4, seed + 400);
-    for (let i = 0; i < nFloat; i++) {
-      const ry = randInt(1, h - 2, seed + 500 + i);
-      let rowRight = 0;
-      for (let x = 0; x < 10; x++) {
-        if (cells.has(`${x},${ry}`)) rowRight = x;
-      }
-      const fx = rowRight + 1;
-      const fyOffset = seededChoice([-1, 0, 0, 1], seed + 700 + i);
-      const fy = Math.max(0, Math.min(h - 1, ry + fyOffset));
-      cells.add(`${fx},${fy}`);
-    }
-  }
-
-  // Apply density by removing cells (lower density = more removal)
-  if (density < 1.0) {
-    const bounds = getPolyominoBounds(cells);
-    const removalChance = 1.0 - density;
-
-    for (const key of Array.from(cells)) {
-      const [x, y] = key.split(",").map(Number);
-
-      // Always keep edge cells for structural integrity
-      const isEdge =
-        x === bounds.minX ||
-        x === bounds.maxX ||
-        y === bounds.minY ||
-        y === bounds.maxY;
-
-      // Remove non-edge cells based on density
-      if (!isEdge && seededRandom(seed + x * 1000 + y * 2000) < removalChance) {
-        cells.delete(key);
-      }
-    }
-  }
-
-  return cells;
-}
-
-export function generatePolyominoWithLayers(
-  seed: number,
-  minSize = 4,
   maxSize = 9,
-  edge: PolyominoEdge = "left"
 ): PolyominoCellSet {
-  // Check cache first
-  const cacheKey = `L_${seed}_${minSize}_${maxSize}_${edge}`;
-  const cached = polyominoCache.get(cacheKey);
-  if (cached) {
-    return cached;
+  const target = randInt(minSize, maxSize, seed);
+  const cells: PolyominoCellSet = new Set(["0,0"]);
+
+  const dirs: Array<[number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+
+  let attempts = 0;
+  while (cells.size < target && attempts < target * 10) {
+    const arr = Array.from(cells);
+    const anchorIndex = randInt(0, arr.length - 1, seed + attempts);
+    const [x, y] = arr[anchorIndex]?.split(",").map(Number) ?? [0, 0];
+    const dirIndex = randInt(0, dirs.length - 1, seed + attempts + 1000);
+    const [dx, dy] = dirs[dirIndex];
+    const nx = x + dx;
+    const ny = y + dy;
+    const key = `${nx},${ny}`;
+    if (!cells.has(key)) cells.add(key);
+    attempts += 1;
   }
 
-  const combined: PolyominoCellSet = new Set();
-
-  const h = randInt(Math.max(3, minSize), maxSize, seed);
-  const isLeftPerfect = seededRandom(seed + 1) < 0.35;
-  const baseWidth = randInt(3, 5, seed + 2);
-
-  // First layer - solid outer layer with straight edge
-  const layer1 = generateSingleLayer(
-    seed,
-    h,
-    baseWidth,
-    isLeftPerfect,
-    POLYOMINO_DENSITY_OUTER
-  );
-
-  // Second layer - more porous inner layer
-  const layer2 = generateSingleLayer(
-    seed + 5000,
-    h,
-    baseWidth,
-    false,
-    POLYOMINO_DENSITY_INNER
-  );
-
-  // Position layers based on edge
-  const bounds1 = getPolyominoBounds(layer1);
-
-  for (const key of layer1) {
-    combined.add(key);
-  }
-
-  for (const key of layer2) {
+  let minX = Infinity;
+  let minY = Infinity;
+  for (const key of cells) {
     const [x, y] = key.split(",").map(Number);
-    let newX = x;
-    let newY = y;
-
-    if (edge === "left" || edge === "right") {
-      // Stack horizontally
-      newX = edge === "left" ? x + bounds1.w : x - bounds1.w;
-    } else {
-      // Stack vertically
-      newY = edge === "top" ? y + bounds1.h : y - bounds1.h;
-    }
-
-    combined.add(`${newX},${newY}`);
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
   }
 
-  // Cache the result
-  if (polyominoCache.size >= MAX_CACHE_SIZE) {
-    const firstKey = polyominoCache.keys().next().value;
-    if (firstKey) polyominoCache.delete(firstKey);
+  const normalized: PolyominoCellSet = new Set();
+  for (const key of cells) {
+    const [x, y] = key.split(",").map(Number);
+    normalized.add(`${x - minX},${y - minY}`);
   }
-  polyominoCache.set(cacheKey, combined);
 
-  return combined;
+  return normalized;
 }
 
 export function getPolyominoBounds(cells: PolyominoCellSet): PolyominoBounds {
@@ -245,59 +88,11 @@ export function getPolyominoBounds(cells: PolyominoCellSet): PolyominoBounds {
 export function flattenPolyominoEdge(
   cells: PolyominoCellSet,
   side: PolyominoEdge,
-  useDoubleLayers = true
 ): PolyominoCellSet {
-  // If double layers requested, generate layered version before flattening
-  if (useDoubleLayers) {
-    // Extract seed from cell pattern (use a hash of the cells)
-    let seedHash = 0;
-    for (const key of cells) {
-      const [x, y] = key.split(",").map(Number);
-      seedHash = (seedHash * 31 + x * 17 + y * 13) | 0;
-    }
-
-    const bounds = getPolyominoBounds(cells);
-    const h = bounds.h;
-    const w = bounds.w;
-
-    // Generate double-layer version
-    const layered = generatePolyominoWithLayers(
-      Math.abs(seedHash),
-      Math.max(3, Math.min(h, w)),
-      Math.max(h, w),
-      side
-    );
-
-    cells = layered;
-  }
-
-  // Remove floating pixels before flattening to avoid huge bounds
-  const mainCells: PolyominoCellSet = new Set();
   const bounds = getPolyominoBounds(cells);
-
-  // Filter out isolated floating pixels by only keeping cells connected to main mass
-  for (const key of cells) {
-    const [x, y] = key.split(",").map(Number);
-    // Keep cells that are within reasonable distance from minX/minY
-    const distFromLeft = x - bounds.minX;
-    const distFromTop = y - bounds.minY;
-    if (distFromLeft <= bounds.w * 0.8 && distFromTop <= bounds.h * 0.8) {
-      mainCells.add(key);
-    }
-  }
-
-  const filteredBounds = getPolyominoBounds(mainCells);
-
-  // Safety check: if bounds are too large, skip flattening
-  const maxDimension = Math.max(filteredBounds.w, filteredBounds.h);
-  if (maxDimension > 50) {
-    // Bounds too large, return without flattening
-    return mainCells;
-  }
-
   const map = new Map<number, number[]>();
 
-  for (const key of mainCells) {
+  for (const key of cells) {
     const [x, y] = key.split(",").map(Number);
     const primary = side === "top" || side === "bottom" ? x : y;
     const secondary = side === "top" || side === "bottom" ? y : x;
@@ -306,37 +101,37 @@ export function flattenPolyominoEdge(
     else map.set(primary, [secondary]);
   }
 
-  const addCell = (x: number, y: number) => mainCells.add(`${x},${y}`);
+  const addCell = (x: number, y: number) => cells.add(`${x},${y}`);
 
   if (side === "right") {
-    for (let y = 0; y < filteredBounds.h; y += 1) {
+    for (let y = 0; y < bounds.h; y += 1) {
       const arr = map.get(y) ?? [];
       const max = arr.length ? Math.max(...arr) : -Infinity;
-      for (let x = max + 1; x <= filteredBounds.maxX; x += 1) addCell(x, y);
+      for (let x = max + 1; x <= bounds.maxX; x += 1) addCell(x, y);
     }
   } else if (side === "left") {
-    for (let y = 0; y < filteredBounds.h; y += 1) {
+    for (let y = 0; y < bounds.h; y += 1) {
       const arr = map.get(y) ?? [];
       const min = arr.length ? Math.min(...arr) : Infinity;
-      const limit = Number.isFinite(min) ? min - 1 : filteredBounds.maxX;
+      const limit = Number.isFinite(min) ? min - 1 : bounds.maxX;
       for (let x = 0; x <= limit; x += 1) addCell(x, y);
     }
   } else if (side === "top") {
-    for (let x = 0; x < filteredBounds.w; x += 1) {
+    for (let x = 0; x < bounds.w; x += 1) {
       const arr = map.get(x) ?? [];
       const min = arr.length ? Math.min(...arr) : Infinity;
-      const limit = Number.isFinite(min) ? min - 1 : filteredBounds.maxY;
+      const limit = Number.isFinite(min) ? min - 1 : bounds.maxY;
       for (let y = 0; y <= limit; y += 1) addCell(x, y);
     }
   } else if (side === "bottom") {
-    for (let x = 0; x < filteredBounds.w; x += 1) {
+    for (let x = 0; x < bounds.w; x += 1) {
       const arr = map.get(x) ?? [];
       const max = arr.length ? Math.max(...arr) : -Infinity;
-      for (let y = max + 1; y <= filteredBounds.maxY; y += 1) addCell(x, y);
+      for (let y = max + 1; y <= bounds.maxY; y += 1) addCell(x, y);
     }
   }
 
-  return mainCells;
+  return cells;
 }
 
 export function polyominoToOffsets(cells: PolyominoCellSet): PolyominoOffsets {

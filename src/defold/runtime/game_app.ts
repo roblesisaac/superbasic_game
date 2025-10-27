@@ -57,7 +57,7 @@ import {
 } from "./state/rendering_state.js";
 import { cameraY } from "./state/camera_state.js";
 import { gameWorld } from "./state/game_state.js";
-import { drawLumenLoop } from "../game_objects/rides/lumen_loop.js";
+import { drawLumenLoop, updateLumenLoopState } from "../game_objects/rides/lumen_loop.js";
 
 const MAX_DELTA_SECONDS = 0.04;
 let animationHandle: number | null = null;
@@ -181,6 +181,24 @@ function updateWorld(dt: number): void {
   }
 
   sprite.update(dt);
+
+  // Update Lumen-Loop physics if active (matches HTML example)
+  if (gameWorld.lumenLoop.isActive && gameWorld.input) {
+    const rotationDelta = gameWorld.input.getAndResetRotationDelta();
+    
+    const horizontalVelocity = updateLumenLoopState(
+      gameWorld.lumenLoop,
+      dt,
+      rotationDelta
+    );
+    
+    // Override sprite velocity with Lumen-Loop physics
+    sprite.vx = horizontalVelocity;
+    
+    // Disable other sprite mechanics when Lumen-Loop is active
+    sprite.onGround = false; // Prevent ground friction
+    sprite.vy = 0; // Disable gravity
+  }
 
   const cardFrame = syncCards(sprite.y);
   gameWorld.gates = [...cardFrame.gates];

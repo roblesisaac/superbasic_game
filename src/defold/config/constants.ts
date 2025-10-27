@@ -117,7 +117,7 @@ export const BUBBLE_SHRINK_OXYGEN_MULTIPLIER = 0.65;
 export const BUBBLE_EXIT_PADDING = 2;
 
 // Lumen Loop
-export const LUMEN_LOOP_BASE_RADIUS = 52;
+export const LUMEN_LOOP_BASE_RADIUS = 32;
 export const LUMEN_LOOP_MIN_SCALE = 0.65;
 export const LUMEN_LOOP_MAX_SCALE = 1.75;
 export const LUMEN_LOOP_ROTATION_TO_VELOCITY = 120;

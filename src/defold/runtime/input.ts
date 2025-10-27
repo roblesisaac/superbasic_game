@@ -51,7 +51,7 @@ function drawDPadBase(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  radius: number,
+  radius: number
 ): void {
   const pixel = JOYSTICK_PIXEL_SIZE;
   const maxOffset = Math.floor(radius / pixel) * pixel;
@@ -101,7 +101,7 @@ function drawPixelCircle(
   x: number,
   y: number,
   radius: number,
-  fill = false,
+  fill = false
 ): void {
   if (fill) {
     for (let px = -radius; px <= radius; px += JOYSTICK_PIXEL_SIZE) {
@@ -112,7 +112,7 @@ function drawPixelCircle(
             x + px,
             y + py,
             JOYSTICK_PIXEL_SIZE,
-            JOYSTICK_PIXEL_SIZE,
+            JOYSTICK_PIXEL_SIZE
           );
         }
       }
@@ -179,6 +179,9 @@ export class InputHandler {
   arrowCooldownMs: number;
   joystick: JoystickState;
   lumenLoopGesture: LumenLoopGestureState;
+  lumenLoopRotationDelta: number;
+  lumenLoopCenter: { x: number; y: number } | null;
+  lumenLoopLastAngle: number;
 
   constructor(game: GameWorldState, ensureReset: () => void) {
     this.game = game;
@@ -221,15 +224,27 @@ export class InputHandler {
     };
 
     this.lumenLoopGesture = createLumenLoopGestureState();
+    this.lumenLoopRotationDelta = 0;
+    this.lumenLoopCenter = null;
+    this.lumenLoopLastAngle = 0;
 
     this.bind();
+  }
+
+  /**
+   * Get accumulated rotation delta and reset for next frame
+   */
+  getAndResetRotationDelta(): number {
+    const delta = this.lumenLoopRotationDelta;
+    this.lumenLoopRotationDelta = 0;
+    return delta;
   }
 
   calculateDirection(
     startX: number,
     startY: number,
     currentX: number,
-    currentY: number,
+    currentY: number
   ) {
     const dx = currentX - startX;
     const dy = currentY - startY;
@@ -327,9 +342,14 @@ export class InputHandler {
             this.game.sprite,
             x,
             y,
-            cameraY,
+            cameraY
           );
         }
+        
+        // Start rotation tracking from FIXED center point (like HTML example)
+        this.lumenLoopCenter = { x, y };
+        this.lumenLoopLastAngle = Math.atan2(y - this.lumenLoopCenter.y, x - this.lumenLoopCenter.x);
+        this.lumenLoopRotationDelta = 0;
 
         this.touchStart = { x, y, time: Date.now() };
         this.touchSamples = [{ ...this.touchStart }];
@@ -348,7 +368,7 @@ export class InputHandler {
           this.game.sprite.startGliding();
         }
       },
-      { passive: false },
+      { passive: false }
     );
 
     canvas.addEventListener(
@@ -376,7 +396,7 @@ export class InputHandler {
             this.game.sprite,
             sample.x,
             sample.y,
-            cameraY,
+            cameraY
           );
 
           // Check if activation is complete
@@ -388,11 +408,29 @@ export class InputHandler {
           }
         }
 
+        // Track rotation using FIXED center point (like HTML example)
+        if (this.lumenLoopCenter) {
+          const currentAngle = Math.atan2(
+            sample.y - this.lumenLoopCenter.y,
+            sample.x - this.lumenLoopCenter.x
+          );
+
+          // Calculate angle delta and normalize
+          let delta = currentAngle - this.lumenLoopLastAngle;
+
+          // Normalize angle delta to [-PI, PI]
+          while (delta > Math.PI) delta -= Math.PI * 2;
+          while (delta < -Math.PI) delta += Math.PI * 2;
+
+          this.lumenLoopRotationDelta += delta;
+          this.lumenLoopLastAngle = currentAngle;
+        }
+
         const direction = this.calculateDirection(
           this.touchStart.x,
           this.touchStart.y,
           sample.x,
-          sample.y,
+          sample.y
         );
         const dt = sample.time - this.touchStart.time;
 
@@ -400,23 +438,26 @@ export class InputHandler {
         const spriteAirborne = !!(sprite && !sprite.onGround);
         const spriteSwimming = !!(sprite && sprite.inWater);
 
-        if (
-          !this.touchSwipe &&
-          !this.isJoystickMode &&
-          direction.distance >= MIN_SWIPE_DISTANCE &&
-          dt >= MIN_SWIPE_TIME
-        ) {
-          if (spriteAirborne && !spriteSwimming && sprite) {
-            this.touchSwipe = true;
-            sprite.charging = false;
-            sprite.cancelMovementCharging();
-          } else if (sprite) {
-            this.isJoystickMode = true;
-            sprite.charging = false;
-            sprite.startMovementCharging(direction);
+        // Don't process swipe/joystick gestures when Lumen-Loop is active
+        if (!this.game.lumenLoop.isActive) {
+          if (
+            !this.touchSwipe &&
+            !this.isJoystickMode &&
+            direction.distance >= MIN_SWIPE_DISTANCE &&
+            dt >= MIN_SWIPE_TIME
+          ) {
+            if (spriteAirborne && !spriteSwimming && sprite) {
+              this.touchSwipe = true;
+              sprite.charging = false;
+              sprite.cancelMovementCharging();
+            } else if (sprite) {
+              this.isJoystickMode = true;
+              sprite.charging = false;
+              sprite.startMovementCharging(direction);
+            }
+          } else if (this.isJoystickMode && this.game.sprite) {
+            this.game.sprite.updateMovementCharging(direction);
           }
-        } else if (this.isJoystickMode && this.game.sprite) {
-          this.game.sprite.updateMovementCharging(direction);
         }
 
         if (
@@ -430,7 +471,7 @@ export class InputHandler {
           sprite.startGliding();
         }
       },
-      { passive: false },
+      { passive: false }
     );
 
     canvas.addEventListener(
@@ -454,6 +495,10 @@ export class InputHandler {
         const distance = Math.sqrt(dx * dx + dy * dy);
         const total = Math.max(1, endTime - this.touchStart.time);
 
+        // Reset rotation tracking
+        this.lumenLoopCenter = null;
+        this.lumenLoopRotationDelta = 0;
+        
         // Check for tap-to-jump when Lumen-Loop is active
         const isTap = distance < 10 && total < 200;
         if (isTap && this.game.lumenLoop.isActive && sprite) {
@@ -468,7 +513,14 @@ export class InputHandler {
           return;
         }
 
-        if (this.touchSwipe && sprite && spriteAirborne && !spriteSwimming) {
+        // Don't spawn rides when Lumen-Loop is active
+        if (
+          this.touchSwipe &&
+          sprite &&
+          spriteAirborne &&
+          !spriteSwimming &&
+          !this.game.lumenLoop.isActive
+        ) {
           this.spawnRideFromGesture(dx, total, last.y);
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
@@ -483,7 +535,7 @@ export class InputHandler {
         this.touchSwipe = false;
         this.isJoystickMode = false;
       },
-      { passive: false },
+      { passive: false }
     );
 
     canvas.addEventListener("mousedown", (e) => {
@@ -509,9 +561,14 @@ export class InputHandler {
           this.game.sprite,
           x,
           y,
-          cameraY,
+          cameraY
         );
       }
+      
+      // Start rotation tracking from FIXED center point (like HTML example)
+      this.lumenLoopCenter = { x, y };
+      this.lumenLoopLastAngle = Math.atan2(y - this.lumenLoopCenter.y, x - this.lumenLoopCenter.x);
+      this.lumenLoopRotationDelta = 0;
 
       this.mouseStart = { x, y, time: Date.now() };
       this.mouseSamples = [{ ...this.mouseStart }];
@@ -553,7 +610,7 @@ export class InputHandler {
           this.game.sprite,
           sample.x,
           sample.y,
-          cameraY,
+          cameraY
         );
 
         // Check if activation is complete
@@ -565,11 +622,29 @@ export class InputHandler {
         }
       }
 
+      // Track rotation using FIXED center point (like HTML example)
+      if (this.lumenLoopCenter) {
+        const currentAngle = Math.atan2(
+          sample.y - this.lumenLoopCenter.y,
+          sample.x - this.lumenLoopCenter.x
+        );
+
+        // Calculate angle delta and normalize
+        let delta = currentAngle - this.lumenLoopLastAngle;
+
+        // Normalize angle delta to [-PI, PI]
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+
+        this.lumenLoopRotationDelta += delta;
+        this.lumenLoopLastAngle = currentAngle;
+      }
+
       const direction = this.calculateDirection(
         this.mouseStart.x,
         this.mouseStart.y,
         sample.x,
-        sample.y,
+        sample.y
       );
       const dt = sample.time - this.mouseStart.time;
 
@@ -577,23 +652,26 @@ export class InputHandler {
       const spriteAirborne = !!(sprite && !sprite.onGround);
       const spriteSwimming = !!(sprite && sprite.inWater);
 
-      if (
-        !this.mouseSwipe &&
-        !this.isMouseJoystickMode &&
-        direction.distance >= MIN_SWIPE_DISTANCE &&
-        dt >= MIN_SWIPE_TIME
-      ) {
-        if (spriteAirborne && !spriteSwimming && sprite) {
-          this.mouseSwipe = true;
-          sprite.charging = false;
-          sprite.cancelMovementCharging();
-        } else if (sprite) {
-          this.isMouseJoystickMode = true;
-          sprite.charging = false;
-          sprite.startMovementCharging(direction);
+      // Don't process swipe/joystick gestures when Lumen-Loop is active
+      if (!this.game.lumenLoop.isActive) {
+        if (
+          !this.mouseSwipe &&
+          !this.isMouseJoystickMode &&
+          direction.distance >= MIN_SWIPE_DISTANCE &&
+          dt >= MIN_SWIPE_TIME
+        ) {
+          if (spriteAirborne && !spriteSwimming && sprite) {
+            this.mouseSwipe = true;
+            sprite.charging = false;
+            sprite.cancelMovementCharging();
+          } else if (sprite) {
+            this.isMouseJoystickMode = true;
+            sprite.charging = false;
+            sprite.startMovementCharging(direction);
+          }
+        } else if (this.isMouseJoystickMode && this.game.sprite) {
+          this.game.sprite.updateMovementCharging(direction);
         }
-      } else if (this.isMouseJoystickMode && this.game.sprite) {
-        this.game.sprite.updateMovementCharging(direction);
       }
 
       if (
@@ -641,7 +719,14 @@ export class InputHandler {
         return;
       }
 
-      if (this.mouseSwipe && sprite && spriteAirborne && !spriteSwimming) {
+      // Don't spawn rides when Lumen-Loop is active
+      if (
+        this.mouseSwipe &&
+        sprite &&
+        spriteAirborne &&
+        !spriteSwimming &&
+        !this.game.lumenLoop.isActive
+      ) {
         this.spawnRideFromGesture(dx, total, last.y);
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
@@ -680,12 +765,14 @@ export class InputHandler {
           const totalDeltaX = e.deltaX - this.trackpadStartX;
           const totalTime = currentTime - this.trackpadStartTime;
 
+          // Don't spawn rides when Lumen-Loop is active
           if (
             Math.abs(totalDeltaX) > 50 &&
             totalTime > 100 &&
             this.game.sprite &&
             !this.game.sprite.onGround &&
-            !this.game.sprite.inWater
+            !this.game.sprite.inWater &&
+            !this.game.lumenLoop.isActive
           ) {
             const rect = canvas.getBoundingClientRect();
             const mouseY = e.clientY - rect.top;
@@ -696,7 +783,7 @@ export class InputHandler {
           this.trackpadGestureActive = false;
         }
       },
-      { passive: false },
+      { passive: false }
     );
 
     canvas.addEventListener("mouseleave", () => {
@@ -730,12 +817,12 @@ export class InputHandler {
           this.keyboardMovementCharging = true;
           this.updateKeyboardMovementDirection();
           this.game.sprite?.startMovementCharging(
-            this.keyboardMovementDirection,
+            this.keyboardMovementDirection
           );
         } else {
           this.updateKeyboardMovementDirection();
           this.game.sprite?.updateMovementCharging(
-            this.keyboardMovementDirection,
+            this.keyboardMovementDirection
           );
         }
       }
@@ -762,7 +849,7 @@ export class InputHandler {
         } else if (this.keyboardMovementCharging) {
           this.updateKeyboardMovementDirection();
           this.game.sprite?.updateMovementCharging(
-            this.keyboardMovementDirection,
+            this.keyboardMovementDirection
           );
         }
       }

@@ -3,13 +3,6 @@ import type { LumenLoopState } from "../../runtime/state/game_state.js";
 import {
   LUMEN_LOOP_BASE_RADIUS,
   LUMEN_LOOP_ACTIVATION_ANGLE,
-  LUMEN_LOOP_PEDAL_IMPULSE,
-  LUMEN_LOOP_PEDAL_MOMENTUM_MAX,
-  LUMEN_LOOP_ANGULAR_DECAY,
-  LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION,
-  LUMEN_LOOP_ROTATION_TO_VELOCITY,
-  MIN_RIDE_SPEED,
-  MAX_RIDE_SPEED,
 } from "../../config/constants.js";
 import {
   computePixelStripGlow,
@@ -274,6 +267,8 @@ export function updateLumenLoopRotation(
   }
 }
 
+
+
 /**
  * Activate the Lumen-Loop when gesture completes
  */
@@ -308,108 +303,52 @@ export function deactivateLumenLoop(
 }
 
 /**
- * Update Lumen-Loop physics and energy drain based on rotation input
+ * Update Lumen-Loop physics based on rotation input
+ * Matches the HTML example logic exactly
  *
  * @param state - The Lumen-Loop state
  * @param dt - Delta time in seconds
- * @param rotationDelta - Rotation input in radians (0 if no input)
- * @param hasRotationInput - Whether player is actively rotating
+ * @param rotationDelta - Accumulated rotation input in radians
  * @returns The horizontal velocity to apply to the sprite
  */
 export function updateLumenLoopState(
   state: LumenLoopState,
   dt: number,
-  rotationDelta: number,
-  hasRotationInput: boolean
+  rotationDelta: number
 ): number {
   if (!state.isActive) {
     return 0;
   }
 
-  // Calculate inertia multiplier based on halo scale
-  // Larger halos = more inertia = harder to accelerate
-  const inertiaMultiplier = state.haloScale;
+  // HTML example logic:
+  // if (joystick.active && joystick.rotationDelta !== 0) {
+  //   const rotationDirection = Math.sign(joystick.rotationDelta);
+  //   sprite.velocity = rotationDirection * sprite.speed;
+  //   joystick.rotationDelta *= 0.9;
+  // } else {
+  //   sprite.velocity *= 0.95;
+  // }
 
-  // Calculate momentum cap based on halo scale
-  const momentumCap = LUMEN_LOOP_PEDAL_MOMENTUM_MAX * state.haloScale;
+  const SPEED = 200; // Horizontal speed (pixels per second)
+  const DECAY = 0.95; // Velocity decay when not rotating
 
-  if (hasRotationInput && rotationDelta !== 0) {
-    // Player is actively rotating - apply acceleration and energy drain
-
-    // Calculate pedal impulse scaled by inertia
-    const impulse =
-      ((Math.abs(rotationDelta) / (Math.PI * 2)) * LUMEN_LOOP_PEDAL_IMPULSE) /
-      inertiaMultiplier;
-
-    // Determine direction from rotation delta
-    const direction = rotationDelta > 0 ? 1 : -1;
-
-    // Apply impulse to angular velocity
-    state.angularVelocity += impulse * direction;
-
-    // Clamp to momentum cap
-    state.angularVelocity = Math.max(
-      -momentumCap,
-      Math.min(momentumCap, state.angularVelocity)
-    );
-
-    // Calculate energy drain based on inertia (acceleration effort)
-    // Maximum drain when starting from rest (overcoming initial torque)
-    // Reduced drain when momentum exists
-    const currentSpeed = Math.abs(state.angularVelocity);
-    const maxSpeed = momentumCap;
-
-    // Inertia factor: 1.0 at rest, approaches 0 at max speed
-    // This represents the effort needed to overcome inertia
-    const inertiaFactor = 1.0 - Math.min(1.0, currentSpeed / maxSpeed);
-
-    // Base energy drain per rotation
-    const rotationAmount = Math.abs(rotationDelta) / (Math.PI * 2);
-    const baseDrain = rotationAmount * LUMEN_LOOP_ENERGY_DRAIN_PER_ROTATION;
-
-    // Scale drain by inertia factor (more drain when starting from rest)
-    // Minimum 30% drain even at max speed, maximum 100% drain at rest
-    const inertiaScale = 0.3 + inertiaFactor * 0.7;
-
-    // Scale by halo size (larger halos require more energy)
-    const energyMultiplier = state.haloScale;
-
-    const energyDrain = baseDrain * inertiaScale * energyMultiplier;
-
-    // Apply energy drain
-    state.energy = Math.max(0, state.energy - energyDrain);
-
-    // If energy depleted, prevent further acceleration
-    if (state.energy <= 0) {
-      // Allow coasting but no new acceleration
-      // Angular velocity will naturally decay
-    }
+  if (rotationDelta !== 0) {
+    // Player is actively rotating - set velocity directly
+    const rotationDirection = Math.sign(rotationDelta);
+    state.angularVelocity = rotationDirection * SPEED;
   } else {
-    // No rotation input - coasting with decay
-    // No energy drain during coasting
-
-    if (state.angularVelocity !== 0) {
-      const decayAmount = LUMEN_LOOP_ANGULAR_DECAY * dt;
-
-      if (Math.abs(state.angularVelocity) < decayAmount) {
-        state.angularVelocity = 0;
-      } else {
-        const direction = state.angularVelocity > 0 ? 1 : -1;
-        state.angularVelocity -= decayAmount * direction;
-      }
+    // No rotation input - apply decay
+    state.angularVelocity *= DECAY;
+    
+    // Stop completely when velocity is very small
+    if (Math.abs(state.angularVelocity) < 0.01) {
+      state.angularVelocity = 0;
     }
   }
 
   // Update rotation accumulator for visual rotation
   state.rotationAccum += state.angularVelocity * dt;
 
-  // Convert angular velocity to horizontal velocity
-  const horizontalVelocity =
-    state.angularVelocity * LUMEN_LOOP_ROTATION_TO_VELOCITY * state.haloScale;
-
-  // Clamp to ride speed limits
-  return Math.max(
-    -MAX_RIDE_SPEED,
-    Math.min(MAX_RIDE_SPEED, horizontalVelocity)
-  );
+  // Return velocity directly (no conversion needed)
+  return state.angularVelocity;
 }
