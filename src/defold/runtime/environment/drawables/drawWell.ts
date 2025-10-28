@@ -5,7 +5,14 @@ import {
   getWellGeometry,
 } from "../well_layout.js";
 import type { WellGeometry } from "../well_layout.js";
-import { CLIFF_CELL_SIZE, drawCavernCliffs } from "./drawCliffs.js";
+import {
+  createCliffState,
+  generateInitialCliffs,
+  generateAhead,
+  drawCliffs,
+  DEFAULT_CLIFF_SETTINGS,
+  type CliffState,
+} from "../../../assets/bitmaps/drawCliffs2.js";
 import {
   flattenPolyominoEdge as flattenEdge,
   generatePolyomino,
@@ -13,6 +20,8 @@ import {
   polyominoToOffsets,
   seededRandom,
 } from "../geometry/polyomino.js";
+
+const CLIFF_CELL_SIZE = 2;
 
 const WELL_COLOR_RIM_CAP = "#f6f6fb";
 const WELL_COLOR_RIM_COLLAR = "#d8dae4";
@@ -25,6 +34,11 @@ const WELL_COLOR_SHAFT_ARM = "#2f3340";
 const WELL_COLOR_WATER_SURFACE = "#1f82d0";
 const WELL_COLOR_LIP = "#eceff5";
 const WELL_COLOR_CAVERN = "#000000";
+
+// Cliff state management
+let cliffState: CliffState | null = null;
+let lastCanvasWidth = 0;
+let lastCanvasHeight = 0;
 
 interface DrawWellOptions {
   centerX: number;
@@ -633,13 +647,23 @@ export function drawWell(
       );
 
       if (geometry.cavern.cliffStart < geometry.shaft.expansionBottom) {
-        drawCavernCliffs(ctx, {
-          canvasWidth,
-          canvasHeight,
-          cameraY,
-          cavernTop: geometry.cavern.cliffStart,
-          cavernBottom: geometry.shaft.expansionBottom,
-        });
+        // Initialize or reinitialize cliff state if needed
+        if (!cliffState || lastCanvasWidth !== canvasWidth || lastCanvasHeight !== canvasHeight) {
+          cliffState = createCliffState();
+          generateInitialCliffs(cliffState, canvasWidth, canvasHeight, DEFAULT_CLIFF_SETTINGS);
+          lastCanvasWidth = canvasWidth;
+          lastCanvasHeight = canvasHeight;
+        }
+
+        // Update scroll position to match camera
+        const cavernTop = geometry.cavern.cliffStart;
+        cliffState.scrollY = cameraY - cavernTop;
+
+        // Generate ahead as needed
+        generateAhead(cliffState, canvasWidth, canvasHeight, DEFAULT_CLIFF_SETTINGS);
+
+        // Draw cliffs without clearing background (well already drew black)
+        drawCliffs(ctx, cliffState, canvasWidth, canvasHeight, DEFAULT_CLIFF_SETTINGS, false);
       }
     }
   }

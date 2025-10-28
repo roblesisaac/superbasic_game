@@ -16,10 +16,10 @@
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
 
 - [x] 3. Enable tap-to-jump while Lumen-Loop is active
-  - Modify input handling in `src/defold/runtime/input.ts` to allow tap gestures to trigger jumps when Lumen-Loop is active
-  - Ensure taps don't interfere with rotation gesture tracking
-  - Verify Lumen-Loop state (angular velocity, halo scale) is preserved during jump
-  - Confirm standard jump mechanics apply without modification
+  - ✅ Standard jump mechanics (charge and release) work naturally when Lumen-Loop is active
+  - ✅ No special tap detection needed - existing `startCharging()` and `releaseJump()` flow preserved
+  - ✅ Lumen-Loop state (angular velocity, halo scale) is preserved during jump
+  - ✅ Rotation tracking continues independently of jump input
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
 - [x] 4. Integrate rotation-to-movement physics into game loop

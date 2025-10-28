@@ -192,12 +192,17 @@ function updateWorld(dt: number): void {
       rotationDelta
     );
     
-    // Override sprite velocity with Lumen-Loop physics
+    // Override sprite horizontal velocity with Lumen-Loop physics
     sprite.vx = horizontalVelocity;
     
-    // Disable other sprite mechanics when Lumen-Loop is active
-    sprite.onGround = false; // Prevent ground friction
-    sprite.vy = 0; // Disable gravity
+    // Disable ground friction when Lumen-Loop is active
+    sprite.onGround = false;
+    
+    // Only disable gravity when NOT jumping/charging
+    // This allows tap-to-jump to work while maintaining hover when idle
+    if (!sprite.charging && sprite.vy >= 0) {
+      sprite.vy = 0; // Hover in place when not jumping
+    }
   }
 
   const cardFrame = syncCards(sprite.y);

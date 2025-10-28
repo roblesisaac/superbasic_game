@@ -345,10 +345,13 @@ export class InputHandler {
             cameraY
           );
         }
-        
+
         // Start rotation tracking from FIXED center point (like HTML example)
         this.lumenLoopCenter = { x, y };
-        this.lumenLoopLastAngle = Math.atan2(y - this.lumenLoopCenter.y, x - this.lumenLoopCenter.x);
+        this.lumenLoopLastAngle = Math.atan2(
+          y - this.lumenLoopCenter.y,
+          x - this.lumenLoopCenter.x
+        );
         this.lumenLoopRotationDelta = 0;
 
         this.touchStart = { x, y, time: Date.now() };
@@ -498,19 +501,12 @@ export class InputHandler {
         // Reset rotation tracking
         this.lumenLoopCenter = null;
         this.lumenLoopRotationDelta = 0;
-        
-        // Check for tap-to-jump when Lumen-Loop is active
-        const isTap = distance < 10 && total < 200;
-        if (isTap && this.game.lumenLoop.isActive && sprite) {
-          // Trigger standard jump without affecting Lumen-Loop state
-          sprite.releaseJump();
-          this.game.sprite?.stopGliding();
-          this.endJoystick();
-          this.touchStart = null;
-          this.touchSamples = [];
-          this.touchSwipe = false;
-          this.isJoystickMode = false;
-          return;
+
+        // Reset incomplete loop gesture (didn't complete 360°)
+        if (this.lumenLoopGesture.pendingActivation) {
+          this.lumenLoopGesture.pendingActivation = false;
+          this.lumenLoopGesture.accumulatedAngle = 0;
+          this.lumenLoopGesture.claimedInput = false;
         }
 
         // Don't spawn rides when Lumen-Loop is active
@@ -525,6 +521,7 @@ export class InputHandler {
         } else if (this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
         } else {
+          // Standard jump release (works both with and without Lumen-Loop active)
           this.game.sprite?.releaseJump();
         }
 
@@ -564,10 +561,13 @@ export class InputHandler {
           cameraY
         );
       }
-      
+
       // Start rotation tracking from FIXED center point (like HTML example)
       this.lumenLoopCenter = { x, y };
-      this.lumenLoopLastAngle = Math.atan2(y - this.lumenLoopCenter.y, x - this.lumenLoopCenter.x);
+      this.lumenLoopLastAngle = Math.atan2(
+        y - this.lumenLoopCenter.y,
+        x - this.lumenLoopCenter.x
+      );
       this.lumenLoopRotationDelta = 0;
 
       this.mouseStart = { x, y, time: Date.now() };
@@ -704,19 +704,15 @@ export class InputHandler {
       const spriteAirborne = !!(sprite && !sprite.onGround);
       const spriteSwimming = !!(sprite && sprite.inWater);
 
-      // Check for tap-to-jump when Lumen-Loop is active
-      const isTap = distance < 10 && total < 200;
-      if (isTap && this.game.lumenLoop.isActive && sprite) {
-        // Trigger standard jump without affecting Lumen-Loop state
-        sprite.releaseJump();
-        this.game.sprite?.stopGliding();
-        this.endJoystick();
-        this.isMouseDragging = false;
-        this.mouseStart = null;
-        this.mouseSamples = [];
-        this.mouseSwipe = false;
-        this.isMouseJoystickMode = false;
-        return;
+      // Reset rotation tracking
+      this.lumenLoopCenter = null;
+      this.lumenLoopRotationDelta = 0;
+
+      // Reset incomplete loop gesture (didn't complete 360°)
+      if (this.lumenLoopGesture.pendingActivation) {
+        this.lumenLoopGesture.pendingActivation = false;
+        this.lumenLoopGesture.accumulatedAngle = 0;
+        this.lumenLoopGesture.claimedInput = false;
       }
 
       // Don't spawn rides when Lumen-Loop is active
@@ -731,6 +727,7 @@ export class InputHandler {
       } else if (this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
       } else {
+        // Standard jump release (works both with and without Lumen-Loop active)
         this.game.sprite?.releaseJump();
       }
 
