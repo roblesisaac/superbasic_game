@@ -118,11 +118,14 @@ All failed because they calculated rotation relative to the **moving sprite** in
 ### Jump While Lumen-Loop Active
 - **Standard jump mechanics**: Works naturally - hold to charge, release to jump
 - **Implementation**: Existing `startCharging()` on touch down and `releaseJump()` on touch up work regardless of Lumen-Loop state
+- **Rotation tracking isolation**: Only track rotation when Lumen-Loop is already active
+  - `if (this.game.lumenLoop.isActive)` guards rotation center setup and delta tracking
+  - Prevents rotation tracking from interfering with jump gestures
 - **Gravity override logic**: Only disable gravity when NOT charging AND not moving upward
   - `if (!sprite.charging && sprite.vy >= 0) { sprite.vy = 0; }`
   - Allows jumps to work while maintaining hover effect when idle
 - **Preserves state**: Lumen-Loop remains active (angular velocity, halo scale unchanged)
-- **Result**: Tap = small jump, hold = charged jump, just like normal gameplay
+- **Result**: Tap = small jump, hold = charged jump, rotation works independently
 
 ### Incomplete Loop Reset
 - **Problem**: Partial loop rendering persisted if user didn't complete full 360°

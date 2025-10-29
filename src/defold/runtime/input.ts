@@ -346,13 +346,15 @@ export class InputHandler {
           );
         }
 
-        // Start rotation tracking from FIXED center point (like HTML example)
-        this.lumenLoopCenter = { x, y };
-        this.lumenLoopLastAngle = Math.atan2(
-          y - this.lumenLoopCenter.y,
-          x - this.lumenLoopCenter.x
-        );
-        this.lumenLoopRotationDelta = 0;
+        // Start rotation tracking from FIXED center point (only when Lumen-Loop is active)
+        if (this.game.lumenLoop.isActive) {
+          this.lumenLoopCenter = { x, y };
+          this.lumenLoopLastAngle = Math.atan2(
+            y - this.lumenLoopCenter.y,
+            x - this.lumenLoopCenter.x
+          );
+          this.lumenLoopRotationDelta = 0;
+        }
 
         this.touchStart = { x, y, time: Date.now() };
         this.touchSamples = [{ ...this.touchStart }];
@@ -412,7 +414,8 @@ export class InputHandler {
         }
 
         // Track rotation using FIXED center point (like HTML example)
-        if (this.lumenLoopCenter) {
+        // Only track rotation when Lumen-Loop is active (not during activation gesture)
+        if (this.lumenLoopCenter && this.game.lumenLoop.isActive) {
           const currentAngle = Math.atan2(
             sample.y - this.lumenLoopCenter.y,
             sample.x - this.lumenLoopCenter.x
@@ -562,13 +565,15 @@ export class InputHandler {
         );
       }
 
-      // Start rotation tracking from FIXED center point (like HTML example)
-      this.lumenLoopCenter = { x, y };
-      this.lumenLoopLastAngle = Math.atan2(
-        y - this.lumenLoopCenter.y,
-        x - this.lumenLoopCenter.x
-      );
-      this.lumenLoopRotationDelta = 0;
+      // Start rotation tracking from FIXED center point (only when Lumen-Loop is active)
+      if (this.game.lumenLoop.isActive) {
+        this.lumenLoopCenter = { x, y };
+        this.lumenLoopLastAngle = Math.atan2(
+          y - this.lumenLoopCenter.y,
+          x - this.lumenLoopCenter.x
+        );
+        this.lumenLoopRotationDelta = 0;
+      }
 
       this.mouseStart = { x, y, time: Date.now() };
       this.mouseSamples = [{ ...this.mouseStart }];
@@ -623,7 +628,8 @@ export class InputHandler {
       }
 
       // Track rotation using FIXED center point (like HTML example)
-      if (this.lumenLoopCenter) {
+      // Only track rotation when Lumen-Loop is active (not during activation gesture)
+      if (this.lumenLoopCenter && this.game.lumenLoop.isActive) {
         const currentAngle = Math.atan2(
           sample.y - this.lumenLoopCenter.y,
           sample.x - this.lumenLoopCenter.x

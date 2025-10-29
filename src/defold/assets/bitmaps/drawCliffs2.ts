@@ -275,8 +275,8 @@ export class CliffSegment {
       // Right cliff: light from upper-left (150-180 degrees)
       const lightAngle =
         this.side === "left"
-          ? 30 + Math.random() * 15
-          : 150 + Math.random() * 30;
+          ? 270 + Math.random() * 15
+          : 270 + Math.random() * 30;
 
       // Store boulder info for rendering
       this.boulders.push({
