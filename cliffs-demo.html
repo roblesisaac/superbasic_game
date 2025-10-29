@@ -59,9 +59,16 @@
       const MIN_SHAFT_HEIGHT = 80; // Minimum shaft height
       const MAX_SHAFT_HEIGHT = 150; // Maximum shaft height
 
-      // Horizontal segment width constraints (as percentage of screen width)
-      const MIN_SEGMENT_WIDTH_PERCENT = 5; // Minimum width: 5% of screen
-      const MAX_SEGMENT_WIDTH_PERCENT = 40; // Maximum width: 40% of screen
+      // Cliff edge position bounds (as percentage of screen width)
+      const MIN_CLIFF_EDGE_PERCENT = 5; // Minimum distance from screen edge: 5% of screen
+      const MAX_CLIFF_EDGE_PERCENT = 40; // Maximum distance from screen edge: 40% of screen
+
+      // Cliff path point spacing
+      const MIN_PATH_POINT_Y_STEP = 30; // Minimum vertical distance between path points
+      const MAX_PATH_POINT_Y_STEP = 50; // Maximum vertical distance between path points
+      const MIN_PATH_POINT_X_VARIATION_PERCENT = 5; // Min horizontal variation as % of screen width
+      const MAX_PATH_POINT_X_VARIATION_PERCENT = 7; // Max horizontal variation as % of screen width
+      const PATH_LINE_JAGGEDNESS = 20; // How crooked the lines are (0 = straight, 5-10 recommended)
 
       const state = {
         scrollY: 0,
@@ -88,23 +95,23 @@
       class CliffSegment {
         constructor(side, prevSegment, canvasWidth, shouldBeCave) {
           this.side = side;
-          const minW = canvasWidth * (MIN_SEGMENT_WIDTH_PERCENT / 100);
-          const maxW = canvasWidth * (MAX_SEGMENT_WIDTH_PERCENT / 100);
+          this.canvasWidth = canvasWidth;
+          const minW = canvasWidth * (MIN_CLIFF_EDGE_PERCENT / 100);
+          const maxW = canvasWidth * (MAX_CLIFF_EDGE_PERCENT / 100);
 
           if (!prevSegment) {
             this.y = 0;
-            this.currentWidth = Math.random() * (maxW - minW) + minW;
+            this.startX = Math.random() * (maxW - minW) + minW;
           } else {
             this.y = prevSegment.y + prevSegment.height;
-            this.currentWidth = prevSegment.endWidth;
+            this.startX = prevSegment.endX;
           }
 
           // Create a cave if it's time for one
           if (shouldBeCave) {
             this.isCave = true;
-            // Cave starts at 0 (screen edge) and ends at 0
-            this.currentWidth = 0;
-            this.endWidth = 0;
+            this.startX = 0;
+            this.endX = 0;
 
             // Random cave size between min and max
             this.caveRadius =
@@ -122,41 +129,33 @@
               `Creating ${side} cave at y=${this.y}, radius=${this.caveRadius.toFixed(0)}, shaft=${this.shaftLength.toFixed(0)}x${this.shaftHeight.toFixed(0)}`
             );
 
-            // Height is based on the shaft height (shaft determines the segment height)
+            // Height is based on the shaft height
             this.height = this.shaftHeight;
 
             // Cave depth (shaft length + cave radius)
             this.caveDepth = this.shaftLength + this.caveRadius;
           } else {
-            // Normal cliff segment
+            // Normal cliff segment - just one Y step
             this.isCave = false;
 
-            // Generate organic cliff edge
-            const minH = 40;
-            const maxH = 120;
-            this.height = Math.random() * (maxH - minH) + minH;
+            // Height is just one random Y step
+            this.height =
+              Math.random() * (MAX_PATH_POINT_Y_STEP - MIN_PATH_POINT_Y_STEP) +
+              MIN_PATH_POINT_Y_STEP;
 
-            // Normal behavior - stay within bounds
-            const widthRange = maxW - minW;
-            const lowerThird = minW + widthRange * 0.33;
-            const upperThird = minW + widthRange * 0.67;
+            // End position is based on start position with random variation between min and max
+            const xVariationPercent =
+              Math.random() *
+                (MAX_PATH_POINT_X_VARIATION_PERCENT -
+                  MIN_PATH_POINT_X_VARIATION_PERCENT) +
+              MIN_PATH_POINT_X_VARIATION_PERCENT;
+            // Random direction: left or right
+            const direction = Math.random() < 0.5 ? -1 : 1;
+            const xChange = direction * (xVariationPercent / 100) * canvasWidth;
+            this.endX = this.startX + xChange;
 
-            // Determine direction based on position in range
-            const moveInward =
-              this.currentWidth < lowerThird
-                ? true
-                : this.currentWidth > upperThird
-                  ? false
-                  : Math.random() > 0.5;
-
-            // Calculate end width with variation (20% of range)
-            const widthChange =
-              Math.random() * widthRange * 0.2 + widthRange * 0.1;
-            if (moveInward) {
-              this.endWidth = Math.min(maxW, this.currentWidth + widthChange);
-            } else {
-              this.endWidth = Math.max(minW, this.currentWidth - widthChange);
-            }
+            // Keep X within bounds
+            this.endX = Math.max(minW, Math.min(maxW, this.endX));
           }
 
           // Generate path points for organic shape
@@ -170,25 +169,22 @@
             const steps = 30;
             this.pathPoints = [];
 
-            // Shaft rectangle connects main passage (width=0) to cave entrance
+            // Shaft rectangle connects main passage (x=0) to cave entrance
             const shaftTop = this.y;
             const shaftBottom = this.y + this.shaftHeight;
             const shaftEnd = -this.shaftLength; // Negative = extends into screen
 
-            // Start at top of shaft opening (at screen edge, width = 0)
-            this.pathPoints.push({ y: shaftTop, width: 0 });
+            // Start at top of shaft opening (at screen edge, x = 0)
+            this.pathPoints.push({ y: shaftTop, x: 0 });
 
             // Top edge of shaft - horizontal line to cave entrance
-            this.pathPoints.push({ y: shaftTop, width: shaftEnd });
+            this.pathPoints.push({ y: shaftTop, x: shaftEnd });
 
             // Now generate the circular cave at the end of the shaft
             const centerY = this.y + this.shaftHeight / 2;
             const centerX = -this.caveDepth; // Center is shaft length + radius into screen
 
             // Calculate opening angle so the opening height matches shaft height
-            // Opening height = 2 * radius * sin(halfOpening)
-            // We want: 2 * radius * sin(halfOpening) = shaftHeight
-            // So: sin(halfOpening) = shaftHeight / (2 * radius)
             const sinHalfOpening = Math.min(
               1,
               this.shaftHeight / (2 * this.caveRadius)
@@ -200,11 +196,11 @@
             const endAngle = 2 * Math.PI - halfOpening;
             const angleRange = endAngle - startAngle;
 
-            // Top connection point between shaft and cave - should align with shaft top
+            // Top connection point between shaft and cave
             const topCaveY = centerY + this.shaftHeight / 2;
-            this.pathPoints.push({ y: topCaveY, width: shaftEnd });
+            this.pathPoints.push({ y: topCaveY, x: shaftEnd });
 
-            // Pre-generate random macro variations for this cave (cheap, done once)
+            // Pre-generate random macro variations for this cave
             const macroVariations = [];
             for (let i = 0; i < 8; i++) {
               macroVariations.push((Math.random() - 0.5) * 2);
@@ -215,8 +211,7 @@
               const t = i / steps;
               const angle = startAngle + t * angleRange;
 
-              // MACRO VARIATION: Deform the overall circle shape using low-frequency noise
-              // Use pre-generated random values interpolated smoothly
+              // MACRO VARIATION: Deform the overall circle shape
               const macroIndex = t * (macroVariations.length - 1);
               const macroIdx1 = Math.floor(macroIndex);
               const macroIdx2 = Math.min(
@@ -228,25 +223,21 @@
                 macroVariations[macroIdx1] * (1 - macroBlend) +
                 macroVariations[macroIdx2] * macroBlend;
 
-              // Apply macro deformation (bulges and indents in overall shape)
-              // Increase to 40% for more dramatic shape variation
               const macroDeform = macroNoise * this.caveRadius * 0.4;
 
               // Calculate base position with macro deformation
               const radiusWithMacro = this.caveRadius + macroDeform;
               const y = centerY + Math.sin(angle) * radiusWithMacro;
               const circleX = Math.cos(angle);
-              const width = centerX + circleX * radiusWithMacro;
+              const x = centerX + circleX * radiusWithMacro;
 
               // MICRO VARIATION: Rocky texture with sharp edges
-              // Use triangle wave (abs of sine) for sharper, more angular features
               const freq1 = Math.abs(Math.sin(t * Math.PI * 17 + this.y * 0.2));
               const freq2 = Math.abs(
                 Math.sin(t * Math.PI * 29 + this.y * 0.35)
               );
               const freq3 = Math.abs(Math.sin(t * Math.PI * 41 + this.y * 0.5));
 
-              // Combine with different weights for rocky appearance
               const microNoise =
                 freq1 * CAVE_JAGGEDNESS * 0.8 +
                 freq2 * CAVE_JAGGEDNESS * 0.6 +
@@ -260,94 +251,118 @@
 
               this.pathPoints.push({
                 y,
-                width: width + microNoise + sharpEdge,
+                x: x + microNoise + sharpEdge,
               });
             }
 
-            // Bottom connection point between cave and shaft - should align with shaft bottom
+            // Bottom connection point between cave and shaft
             const bottomCaveY = centerY - this.shaftHeight / 2;
-            this.pathPoints.push({ y: bottomCaveY, width: shaftEnd });
+            this.pathPoints.push({ y: bottomCaveY, x: shaftEnd });
 
             // Bottom edge of shaft - horizontal line back to main passage
-            this.pathPoints.push({ y: shaftBottom, width: shaftEnd });
+            this.pathPoints.push({ y: shaftBottom, x: shaftEnd });
 
             // Close shaft at screen edge
-            this.pathPoints.push({ y: shaftBottom, width: 0 });
+            this.pathPoints.push({ y: shaftBottom, x: 0 });
           } else {
-            // Normal cliff path
-            const steps = 15;
+            // Normal cliff path - just two points (start and end)
             this.pathPoints = [];
 
-            // First point connects exactly to the starting width
-            this.pathPoints.push({ y: this.y, width: this.currentWidth });
+            // Start point
+            this.pathPoints.push({ y: this.y, x: this.startX });
 
-            // Middle points have organic variation - more subtle and rounded
-            for (let i = 1; i < steps; i++) {
-              const t = i / steps;
-              const y = this.y + t * this.height;
-              const baseWidth =
-                this.currentWidth + (this.endWidth - this.currentWidth) * t;
-
-              // Smoother, more subtle noise for rounded edges
-              const noise =
-                Math.sin(t * Math.PI * 2 + this.y * 0.03) * 4 +
-                Math.sin(t * Math.PI * 4 + this.y * 0.07) * 2 +
-                Math.sin(t * Math.PI * 6 + this.y * 0.12) * 1;
-
-              const width = baseWidth + noise;
-              this.pathPoints.push({ y, width });
-            }
-
-            // Last point connects exactly to the ending width
-            this.pathPoints.push({
-              y: this.y + this.height,
-              width: this.endWidth,
-            });
+            // End point
+            this.pathPoints.push({ y: this.y + this.height, x: this.endX });
           }
         }
 
         generateParticles() {
           this.particles = [];
-          const particleDensity = this.height / 3;
 
-          // Main particles with exponential distribution toward edge
-          for (let i = 0; i < particleDensity; i++) {
-            const t = Math.random();
-            const pointIdx = Math.floor(t * (this.pathPoints.length - 1));
-            const point = this.pathPoints[pointIdx];
+          if (this.isCave) {
+            // MaFor caves, use the old logic
+            const particleDensity = this.height / 3;
 
-            // Exponential distribution - most particles close to edge
-            const distFromEdge = Math.pow(Math.random(), 3) * 80;
-            const offsetX = -(distFromEdge + 5);
-            const offsetY = (Math.random() - 0.5) * 10;
-            const size = Math.floor(Math.random() * 2) + 1;
+            for (let i = 0; i < particleDensity; i++) {
+              const t = Math.random();
+              const pointIdx = Math.floor(t * (this.pathPoints.length - 1));
+              const point = this.pathPoints[pointIdx];
 
-            this.particles.push({
-              x: offsetX,
-              y: point.y + offsetY,
-              width: point.width,
-              size,
-            });
-          }
+              const distFromEdge = Math.pow(Math.random(), 3) * 80;
+              const offsetX = -(distFromEdge + 5);
+              const offsetY = (Math.random() - 0.5) * 10;
+              const size = Math.floor(Math.random() * 2) + 1;
 
-          // Extra dense particles right at the edge
-          const edgeParticles = this.height / 2;
-          for (let i = 0; i < edgeParticles; i++) {
-            const t = Math.random();
-            const pointIdx = Math.floor(t * (this.pathPoints.length - 1));
-            const point = this.pathPoints[pointIdx];
+              this.particles.push({
+                offsetX,
+                y: point.y + offsetY,
+                baseX: point.x,
+                size,
+              });
+            }
 
-            // Very close to edge (0-15 pixels)
-            const offsetX = -(Math.random() * 15);
-            const offsetY = (Math.random() - 0.5) * 6;
-            const size = Math.floor(Math.random() * 2) + 1;
+            const edgeParticles = this.height / 2;
+            for (let i = 0; i < edgeParticles; i++) {
+              const t = Math.random();
+              const pointIdx = Math.floor(t * (this.pathPoints.length - 1));
+              const point = this.pathPoints[pointIdx];
 
-            this.particles.push({
-              x: offsetX,
-              y: point.y + offsetY,
-              width: point.width,
-              size,
-            });
+              const offsetX = -(Math.random() * 15);
+              const offsetY = (Math.random() - 0.5) * 6;
+              const size = Math.floor(Math.random() * 2) + 1;
+
+              this.particles.push({
+                offsetX,
+                y: point.y + offsetY,
+                baseX: point.x,
+                size,
+              });
+            }
+          } else {
+            // For normal cliffs, distribute particles along the line segment
+            const particleDensity = this.height / 3;
+            const startPoint = this.pathPoints[0];
+            const endPoint = this.pathPoints[1];
+
+            // Main particles with exponential distribution toward edge
+            for (let i = 0; i < particleDensity; i++) {
+              // Random position along the line (0 to 1)
+              const t = Math.random();
+              const y = startPoint.y + (endPoint.y - startPoint.y) * t;
+              const baseX = startPoint.x + (endPoint.x - startPoint.x) * t;
+
+              // Exponential distribution - most particles close to edge
+              const distFromEdge = Math.pow(Math.random(), 3) * 80;
+              const offsetX = -(distFromEdge + 5);
+              const size = Math.floor(Math.random() * 2) + 1;
+
+              this.particles.push({
+                offsetX,
+                y,
+                baseX,
+                size,
+              });
+            }
+
+            // Extra dense particles right at the edge
+            const edgeParticles = this.height / 2;
+            for (let i = 0; i < edgeParticles; i++) {
+              // Random position along the line (0 to 1)
+              const t = Math.random();
+              const y = startPoint.y + (endPoint.y - startPoint.y) * t;
+              const baseX = startPoint.x + (endPoint.x - startPoint.x) * t;
+
+              // Very close to edge (0-15 pixels)
+              const offsetX = -(Math.random() * 15);
+              const size = Math.floor(Math.random() * 2) + 1;
+
+              this.particles.push({
+                offsetX,
+                y,
+                baseX,
+                size,
+              });
+            }
           }
         }
 
@@ -367,83 +382,6 @@
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
 
-          if (this.isCave) {
-            // For caves, draw shaft edges separately (only top and bottom horizontal lines)
-            // Top shaft edge
-            const shaftTop = this.pathPoints[0];
-            const shaftTopEnd = this.pathPoints[1];
-            const topY = shaftTop.y - scrollY;
-
-            ctx.beginPath();
-            if (this.side === "left") {
-              ctx.moveTo(shaftTop.width - scrollX, topY);
-              ctx.lineTo(shaftTopEnd.width - scrollX, topY);
-            } else {
-              ctx.moveTo(canvasWidth - shaftTop.width - scrollX, topY);
-              ctx.lineTo(canvasWidth - shaftTopEnd.width - scrollX, topY);
-            }
-            ctx.stroke();
-
-            // Draw the circular cave portion (skip first 2 shaft points, last 2 shaft points)
-            ctx.beginPath();
-            for (let i = 2; i < this.pathPoints.length - 2; i++) {
-              const point = this.pathPoints[i];
-              const screenY = point.y - scrollY;
-              const x =
-                this.side === "left"
-                  ? point.width - scrollX
-                  : canvasWidth - point.width - scrollX;
-
-              if (i === 2) {
-                ctx.moveTo(x, screenY);
-              } else {
-                ctx.lineTo(x, screenY);
-              }
-            }
-            ctx.stroke();
-
-            // Bottom shaft edge
-            const shaftBottomEnd = this.pathPoints[this.pathPoints.length - 2];
-            const shaftBottom = this.pathPoints[this.pathPoints.length - 1];
-            const bottomY = shaftBottom.y - scrollY;
-
-            ctx.beginPath();
-            if (this.side === "left") {
-              ctx.moveTo(shaftBottomEnd.width - scrollX, bottomY);
-              ctx.lineTo(shaftBottom.width - scrollX, bottomY);
-            } else {
-              ctx.moveTo(canvasWidth - shaftBottomEnd.width - scrollX, bottomY);
-              ctx.lineTo(canvasWidth - shaftBottom.width - scrollX, bottomY);
-            }
-            ctx.stroke();
-          } else {
-            // Normal cliff - draw as continuous path (skip horizontal line from edge)
-            ctx.beginPath();
-
-            for (let i = 0; i < this.pathPoints.length; i++) {
-              const point = this.pathPoints[i];
-              const screenY = point.y - scrollY;
-
-              if (this.side === "left") {
-                const x = point.width - scrollX;
-                if (i === 0) {
-                  ctx.moveTo(x, screenY);
-                } else {
-                  ctx.lineTo(x, screenY);
-                }
-              } else {
-                const x = canvasWidth - point.width - scrollX;
-                if (i === 0) {
-                  ctx.moveTo(x, screenY);
-                } else {
-                  ctx.lineTo(x, screenY);
-                }
-              }
-            }
-
-            ctx.stroke();
-          }
-
           // Draw particles as squares (8-bit style)
           for (const p of this.particles) {
             const screenY = p.y - scrollY;
@@ -451,8 +389,8 @@
 
             const x =
               this.side === "left"
-                ? p.width + p.x - scrollX
-                : canvasWidth - p.width - p.x - scrollX;
+                ? p.baseX + p.offsetX - scrollX
+                : canvasWidth - p.baseX - p.offsetX - scrollX;
 
             // Draw square instead of circle for 8-bit aesthetic
             ctx.fillRect(x - p.size / 2, screenY - p.size / 2, p.size, p.size);
@@ -490,9 +428,9 @@
             rightShouldBeCave && prevRight && prevRight.endWidth > 0;
 
           if (needsLeftTransition) {
-            // Create transition segment from current width to 0
+            // Create transition segment from current X to 0
             const transition = new CliffSegment("left", prevLeft, w, false);
-            transition.endWidth = 0; // Force end at 0
+            transition.endX = 0; // Force end at 0
             transition.generatePath();
             transition.generateParticles();
             state.leftCliffs.push(transition);
@@ -500,9 +438,9 @@
           }
 
           if (needsRightTransition) {
-            // Create transition segment from current width to 0
+            // Create transition segment from current X to 0
             const transition = new CliffSegment("right", prevRight, w, false);
-            transition.endWidth = 0; // Force end at 0
+            transition.endX = 0; // Force end at 0
             transition.generatePath();
             transition.generateParticles();
             state.rightCliffs.push(transition);
@@ -595,10 +533,10 @@
             cliff.y <= visibleEnd
           ) {
             hasCaverns = true;
-            // Find the maximum negative width (deepest point into cave)
+            // Find the maximum negative x (deepest point into cave)
             for (const point of cliff.pathPoints) {
-              if (point.width < maxLeftCaveDepth) {
-                maxLeftCaveDepth = point.width;
+              if (point.x < maxLeftCaveDepth) {
+                maxLeftCaveDepth = point.x;
               }
             }
           }
@@ -611,10 +549,10 @@
             cliff.y <= visibleEnd
           ) {
             hasCaverns = true;
-            // Find the maximum negative width (deepest point into cave)
+            // Find the maximum negative x (deepest point into cave)
             for (const point of cliff.pathPoints) {
-              if (point.width < maxRightCaveDepth) {
-                maxRightCaveDepth = point.width;
+              if (point.x < maxRightCaveDepth) {
+                maxRightCaveDepth = point.x;
               }
             }
           }
@@ -654,17 +592,16 @@
             );
           }
 
-          // If we need a cave, first create a transition segment to width 0
+          // If we need a cave, first create a transition segment to X = 0
           let leftPrev = prevLeft;
           let rightPrev = prevRight;
-          let needsLeftTransition = leftShouldBeCave && prevLeft.endWidth > 0;
-          let needsRightTransition =
-            rightShouldBeCave && prevRight.endWidth > 0;
+          let needsLeftTransition = leftShouldBeCave && prevLeft.endX > 0;
+          let needsRightTransition = rightShouldBeCave && prevRight.endX > 0;
 
           if (needsLeftTransition) {
-            // Create transition segment from current width to 0
+            // Create transition segment from current X to 0
             const transition = new CliffSegment("left", prevLeft, w, false);
-            transition.endWidth = 0; // Force end at 0
+            transition.endX = 0; // Force end at 0
             transition.generatePath();
             transition.generateParticles();
             state.leftCliffs.push(transition);
@@ -673,9 +610,9 @@
           }
 
           if (needsRightTransition) {
-            // Create transition segment from current width to 0
+            // Create transition segment from current X to 0
             const transition = new CliffSegment("right", prevRight, w, false);
-            transition.endWidth = 0; // Force end at 0
+            transition.endX = 0; // Force end at 0
             transition.generatePath();
             transition.generateParticles();
             state.rightCliffs.push(transition);
