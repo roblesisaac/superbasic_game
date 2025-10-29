@@ -225,18 +225,14 @@ function renderBoulderToCanvas(
   const centerX = canvasSize / 2;
   const centerY = canvasSize / 2;
 
-  // Create off-canvas at device pixel ratio resolution
-  const dpr = window.devicePixelRatio || 1;
+  // Create off-canvas
   const offCanvas = document.createElement("canvas");
-  offCanvas.width = canvasSize * dpr;
-  offCanvas.height = canvasSize * dpr;
+  offCanvas.width = canvasSize;
+  offCanvas.height = canvasSize;
   const ctx = offCanvas.getContext("2d")!;
 
   // Disable image smoothing for crisp pixel art
   ctx.imageSmoothingEnabled = false;
-  
-  // Scale context to match DPR
-  ctx.scale(dpr, dpr);
 
   // Clear to transparent
   ctx.clearRect(0, 0, canvasSize, canvasSize);

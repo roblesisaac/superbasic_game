@@ -297,20 +297,15 @@ export class CliffSegment {
   ): void {
     // Check if we need to create or recreate the offscreen canvas
     if (!this.offscreenCanvas || this.cachedCanvasWidth !== canvasWidth) {
-      // Get device pixel ratio to match main canvas resolution
-      const dpr = window.devicePixelRatio || 1;
-      
       this.offscreenCanvas = document.createElement("canvas");
-      this.offscreenCanvas.width = canvasWidth * dpr;
-      this.offscreenCanvas.height = Math.ceil(this.height * dpr);
+      this.offscreenCanvas.width = canvasWidth;
+      this.offscreenCanvas.height = Math.ceil(this.height);
       this.offscreenCtx = this.offscreenCanvas.getContext("2d");
       this.cachedCanvasWidth = canvasWidth;
 
       if (this.offscreenCtx) {
         // Disable image smoothing for crisp pixel art
         this.offscreenCtx.imageSmoothingEnabled = false;
-        // Scale context to match DPR
-        this.offscreenCtx.scale(dpr, dpr);
         this.renderToOffscreenCanvas(canvasWidth, settings);
       }
     }

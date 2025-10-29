@@ -42,10 +42,7 @@ body {
 }
 #gameCanvas {
   display: block;
-  width: 100%;
-  max-width: 480px;
   margin: 0 auto;
-  height: auto;
   position: relative;
   z-index: 1;
   background-color: transparent;

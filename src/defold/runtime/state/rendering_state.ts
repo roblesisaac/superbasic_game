@@ -21,24 +21,20 @@ export let canvasHeight = 0;
 export let groundY = 0;
 
 export function updateCanvasSize(): void {
-  const dpr = window.devicePixelRatio || 1;
   const desiredWidth = Math.min(window.innerWidth, CANVAS_MAX_WIDTH);
-  
-  // Set canvas internal resolution to match physical pixels
-  canvas.width = desiredWidth * dpr;
-  canvas.height = window.innerHeight * dpr;
-  
-  // Set canvas display size (CSS pixels)
+
+  // Set canvas size (no DPR scaling - we handle crisp rendering via imageSmoothingEnabled)
+  canvas.width = desiredWidth;
+  canvas.height = window.innerHeight;
+
+  // Set canvas display size (same as internal size)
   canvas.style.width = `${desiredWidth}px`;
   canvas.style.height = `${window.innerHeight}px`;
-  
+
   // Disable image smoothing for crisp pixel art
   ctx.imageSmoothingEnabled = false;
-  
-  // Scale the context to match device pixel ratio
-  ctx.scale(dpr, dpr);
-  
-  // Use CSS pixel dimensions for game logic
+
+  // Use canvas dimensions for game logic
   canvasWidth = desiredWidth;
   canvasHeight = window.innerHeight;
   groundY = canvasHeight - 116;
