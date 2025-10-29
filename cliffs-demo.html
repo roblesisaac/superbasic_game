@@ -417,7 +417,7 @@
             }
             ctx.stroke();
           } else {
-            // Normal cliff - draw as continuous path
+            // Normal cliff - draw as continuous path (skip horizontal line from edge)
             ctx.beginPath();
 
             for (let i = 0; i < this.pathPoints.length; i++) {
@@ -427,16 +427,14 @@
               if (this.side === "left") {
                 const x = point.width - scrollX;
                 if (i === 0) {
-                  ctx.moveTo(-scrollX, screenY);
-                  ctx.lineTo(x, screenY);
+                  ctx.moveTo(x, screenY);
                 } else {
                   ctx.lineTo(x, screenY);
                 }
               } else {
                 const x = canvasWidth - point.width - scrollX;
                 if (i === 0) {
-                  ctx.moveTo(canvasWidth - scrollX, screenY);
-                  ctx.lineTo(x, screenY);
+                  ctx.moveTo(x, screenY);
                 } else {
                   ctx.lineTo(x, screenY);
                 }
