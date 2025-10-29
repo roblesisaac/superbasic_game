@@ -14,13 +14,16 @@ export interface BoulderSettings {
   litCoverage: number; // How much of the boulder is lit (0 = none, 0.5 = half, 1 = fully lit)
   litDensity: number; // Particle density in lit areas (0 = none, 1 = completely filled)
   litEdgeFade: number; // How much lighting fades near shadow edges (0 = no fade, 1 = strong fade)
-  litMinSize: number; // Minimum pixel size for lit particles
-  litMaxSize: number; // Maximum pixel size for lit particles
+  litMinPixelSize: number; // Minimum pixel size for lit particles
+  litMaxPixelSize: number; // Maximum pixel size for lit particles
 
   // Outline
   outlineDensity: number; // Outline particle density (0 = none, 1 = solid line)
-  outlineSize: number; // Pixel size of outline particles
+  outlinePixelSize: number; // Pixel size of outline particles
 }
+
+const PIXEL_SIZE: number = 2;
+const BOULDER_COLOR: string = "#ffffff";
 
 export const DEFAULT_BOULDER_SETTINGS: BoulderSettings = {
   // Size and shape
@@ -34,12 +37,12 @@ export const DEFAULT_BOULDER_SETTINGS: BoulderSettings = {
   litDensity: 0.4,
   litEdgeFade: 1,
   lightAngle: 30,
-  litMinSize: 1,
-  litMaxSize: 3,
+  litMinPixelSize: PIXEL_SIZE,
+  litMaxPixelSize: PIXEL_SIZE,
 
   // Outline
   outlineDensity: 0.5, // 50% outline density
-  outlineSize: 2,
+  outlinePixelSize: PIXEL_SIZE,
 };
 
 // Cache configuration
@@ -51,7 +54,7 @@ function getCacheKey(
   settings: BoulderSettings,
   seed: number | undefined
 ): string {
-  return `${settings.radius}_${settings.segments}_${settings.roughness}_${settings.noiseOctaves}_${settings.litCoverage}_${settings.litDensity}_${settings.lightAngle}_${settings.litEdgeFade}_${settings.litMinSize}_${settings.litMaxSize}_${settings.outlineDensity}_${settings.outlineSize}_${seed ?? "default"}`;
+  return `${settings.radius}_${settings.segments}_${settings.roughness}_${settings.noiseOctaves}_${settings.litCoverage}_${settings.litDensity}_${settings.lightAngle}_${settings.litEdgeFade}_${settings.litMinPixelSize}_${settings.litMaxPixelSize}_${settings.outlineDensity}_${settings.outlinePixelSize}_${seed ?? "default"}`;
 }
 
 // Clear oldest cache entries when limit is reached
@@ -217,16 +220,23 @@ function renderBoulderToCanvas(
   const rng = new Random(seed);
 
   // Calculate canvas size based on radius (with padding for outline)
-  const padding = Math.ceil(settings.outlineSize * 2);
+  const padding = Math.ceil(settings.outlinePixelSize * 2);
   const canvasSize = Math.ceil(settings.radius * 2 * 1.5) + padding * 2;
   const centerX = canvasSize / 2;
   const centerY = canvasSize / 2;
 
-  // Create off-canvas
+  // Create off-canvas at device pixel ratio resolution
+  const dpr = window.devicePixelRatio || 1;
   const offCanvas = document.createElement("canvas");
-  offCanvas.width = canvasSize;
-  offCanvas.height = canvasSize;
+  offCanvas.width = canvasSize * dpr;
+  offCanvas.height = canvasSize * dpr;
   const ctx = offCanvas.getContext("2d")!;
+
+  // Disable image smoothing for crisp pixel art
+  ctx.imageSmoothingEnabled = false;
+  
+  // Scale context to match DPR
+  ctx.scale(dpr, dpr);
 
   // Clear to transparent
   ctx.clearRect(0, 0, canvasSize, canvasSize);
@@ -322,11 +332,22 @@ function renderBoulderToCanvas(
 
     // Vary particle size based on distance from boulder edge
     const edgeFactor = 1 - Math.min(p.edgeDist / maxEdgeDist, 1);
-    const sizeRange = settings.litMaxSize - settings.litMinSize;
-    const size = settings.litMinSize + edgeFactor * sizeRange;
+    const sizeRange = settings.litMaxPixelSize - settings.litMinPixelSize;
+    const size = settings.litMinPixelSize + edgeFactor * sizeRange;
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(p.x, p.y, size, size);
+    // Apply checkered dithering pattern
+    ctx.fillStyle = BOULDER_COLOR;
+    const pixelX = Math.floor(p.x);
+    const pixelY = Math.floor(p.y);
+
+    for (let dy = 0; dy < size; dy++) {
+      for (let dx = 0; dx < size; dx++) {
+        // Checkered pattern: draw pixel if (x + y) is even
+        if ((pixelX + dx + pixelY + dy) % 2 === 0) {
+          ctx.fillRect(pixelX + dx, pixelY + dy, 1, 1);
+        }
+      }
+    }
   });
 
   // Draw boulder outline with particles (only on shadow side for definition)
@@ -393,7 +414,17 @@ function renderBoulderToCanvas(
     // Random culling based on intensity for gradual fade
     if (rng.next() < p.intensity) {
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(p.x, p.y, settings.outlineSize, settings.outlineSize);
+      const pixelX = Math.floor(p.x);
+      const pixelY = Math.floor(p.y);
+
+      // Apply checkered dithering to outline
+      for (let dy = 0; dy < settings.outlinePixelSize; dy++) {
+        for (let dx = 0; dx < settings.outlinePixelSize; dx++) {
+          if ((pixelX + dx + pixelY + dy) % 2 === 0) {
+            ctx.fillRect(pixelX + dx, pixelY + dy, 1, 1);
+          }
+        }
+      }
     }
   });
 
@@ -435,10 +466,19 @@ export function drawBoulder(
     boulderCache.set(cacheKey, cachedCanvas);
   }
 
+  // Disable image smoothing for crisp pixel art
+  const prevSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+
   // Blit cached boulder to target context
-  // Center the boulder at the requested position
+  // Center the boulder at the requested position (round to prevent sub-pixel antialiasing)
   const halfSize = cachedCanvas.width / 2;
-  ctx.drawImage(cachedCanvas, centerX - halfSize, centerY - halfSize);
+  const x = Math.round(centerX - halfSize);
+  const y = Math.round(centerY - halfSize);
+  ctx.drawImage(cachedCanvas, x, y);
+
+  // Restore smoothing setting
+  ctx.imageSmoothingEnabled = prevSmoothing;
 }
 
 /**

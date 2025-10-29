@@ -544,10 +544,11 @@ export function drawWell(
   const innerHeight = Math.max(0, rim.innerBottom - rim.innerTop);
 
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   ctx.globalCompositeOperation = "destination-out";
   ctx.fillRect(
-    rim.innerLeft - 1,
-    rim.innerTop - 1,
+    Math.round(rim.innerLeft - 1),
+    Math.round(rim.innerTop - 1),
     normalizedOpeningWidth + 2,
     innerHeight + 2,
   );

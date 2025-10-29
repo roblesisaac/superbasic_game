@@ -22,15 +22,17 @@ export interface CliffSettings {
   segmentHeight: number;
 }
 
+const PIXEL_SIZE: number = 2;
+
 export const DEFAULT_CLIFF_SETTINGS: CliffSettings = {
   edgeLineIntensity: 35,
-  edgeLinePixelSize: 3,
   edgeParticleDensity: 400,
-  edgeParticleMinPixelSize: 0.1,
-  edgeParticleMaxPixelSize: 2,
+  edgeLinePixelSize: PIXEL_SIZE,
+  edgeParticleMinPixelSize: PIXEL_SIZE,
+  edgeParticleMaxPixelSize: PIXEL_SIZE,
   boulderCount: 2,
   boulderSettings: {
-    ...DEFAULT_BOULDER_SETTINGS
+    ...DEFAULT_BOULDER_SETTINGS,
   },
   boulderMinDistance: 10,
   boulderMaxDistance: 60,
@@ -275,8 +277,8 @@ export class CliffSegment {
       // Right cliff: light from upper-left (150-180 degrees)
       const lightAngle =
         this.side === "left"
-          ? 270 + Math.random() * 15
-          : 270 + Math.random() * 30;
+          ? 270 + Math.random() * 5
+          : 220 + Math.random() * 5;
 
       // Store boulder info for rendering
       this.boulders.push({
@@ -295,13 +297,20 @@ export class CliffSegment {
   ): void {
     // Check if we need to create or recreate the offscreen canvas
     if (!this.offscreenCanvas || this.cachedCanvasWidth !== canvasWidth) {
+      // Get device pixel ratio to match main canvas resolution
+      const dpr = window.devicePixelRatio || 1;
+      
       this.offscreenCanvas = document.createElement("canvas");
-      this.offscreenCanvas.width = canvasWidth;
-      this.offscreenCanvas.height = Math.ceil(this.height);
+      this.offscreenCanvas.width = canvasWidth * dpr;
+      this.offscreenCanvas.height = Math.ceil(this.height * dpr);
       this.offscreenCtx = this.offscreenCanvas.getContext("2d");
       this.cachedCanvasWidth = canvasWidth;
 
       if (this.offscreenCtx) {
+        // Disable image smoothing for crisp pixel art
+        this.offscreenCtx.imageSmoothingEnabled = false;
+        // Scale context to match DPR
+        this.offscreenCtx.scale(dpr, dpr);
         this.renderToOffscreenCanvas(canvasWidth, settings);
       }
     }
@@ -323,20 +332,33 @@ export class CliffSegment {
     for (const p of this.edgeLineParticles) {
       const x = this.side === "left" ? p.x : canvasWidth - p.x;
       const y = p.y - this.y; // Convert to local coordinates
+      // Round to whole pixels to prevent sub-pixel antialiasing
       ctx.fillRect(
-        x,
-        y,
+        Math.round(x),
+        Math.round(y),
         settings.edgeLinePixelSize,
         settings.edgeLinePixelSize
       );
     }
 
-    // Draw particles as squares (8-bit style)
+    // Draw particles with checkered dithering
     for (const p of this.particles) {
       const x =
         this.side === "left" ? p.width + p.x : canvasWidth - p.width - p.x;
       const y = p.y - this.y; // Convert to local coordinates
-      ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
+
+      // Apply checkered dithering pattern
+      const pixelX = Math.floor(x - p.size / 2);
+      const pixelY = Math.floor(y - p.size / 2);
+
+      for (let dy = 0; dy < p.size; dy++) {
+        for (let dx = 0; dx < p.size; dx++) {
+          // Checkered pattern: draw pixel if (x + y) is even
+          if ((pixelX + dx + pixelY + dy) % 2 === 0) {
+            ctx.fillRect(pixelX + dx, pixelY + dy, 1, 1);
+          }
+        }
+      }
     }
 
     // Draw procedural boulders
@@ -378,8 +400,16 @@ export class CliffSegment {
 
     // Blit the offscreen canvas to the main canvas
     if (this.offscreenCanvas) {
-      const screenY = this.y - scrollY;
+      // Disable image smoothing for crisp pixel art
+      const prevSmoothing = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+
+      // Round to whole pixels to prevent sub-pixel antialiasing
+      const screenY = Math.round(this.y - scrollY);
       ctx.drawImage(this.offscreenCanvas, 0, screenY);
+
+      // Restore smoothing setting
+      ctx.imageSmoothingEnabled = prevSmoothing;
     }
   }
 }
