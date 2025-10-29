@@ -185,17 +185,23 @@
             const centerY = this.y + this.shaftHeight / 2;
             const centerX = -this.caveDepth; // Center is shaft length + radius into screen
 
-            // Opening angle (where cave connects to shaft)
-            const openingRadians = (CAVE_OPENING_DEGREES * Math.PI) / 180;
-            const halfOpening = openingRadians / 2;
+            // Calculate opening angle so the opening height matches shaft height
+            // Opening height = 2 * radius * sin(halfOpening)
+            // We want: 2 * radius * sin(halfOpening) = shaftHeight
+            // So: sin(halfOpening) = shaftHeight / (2 * radius)
+            const sinHalfOpening = Math.min(
+              1,
+              this.shaftHeight / (2 * this.caveRadius)
+            );
+            const halfOpening = Math.asin(sinHalfOpening);
 
             // Start at top of cave opening (where shaft meets cave)
             const startAngle = halfOpening;
             const endAngle = 2 * Math.PI - halfOpening;
             const angleRange = endAngle - startAngle;
 
-            // Top connection point between shaft and cave
-            const topCaveY = centerY + Math.sin(halfOpening) * this.caveRadius;
+            // Top connection point between shaft and cave - should align with shaft top
+            const topCaveY = centerY + this.shaftHeight / 2;
             this.pathPoints.push({ y: topCaveY, width: shaftEnd });
 
             // Pre-generate random macro variations for this cave (cheap, done once)
@@ -258,9 +264,8 @@
               });
             }
 
-            // Bottom connection point between cave and shaft
-            const bottomCaveY =
-              centerY + Math.sin(-halfOpening) * this.caveRadius;
+            // Bottom connection point between cave and shaft - should align with shaft bottom
+            const bottomCaveY = centerY - this.shaftHeight / 2;
             this.pathPoints.push({ y: bottomCaveY, width: shaftEnd });
 
             // Bottom edge of shaft - horizontal line back to main passage
