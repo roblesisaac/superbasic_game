@@ -22,7 +22,7 @@ export interface CliffSettings {
   segmentHeight: number;
 }
 
-const PIXEL_SIZE: number = 2;
+const PIXEL_SIZE: number = 3;
 
 export const DEFAULT_CLIFF_SETTINGS: CliffSettings = {
   edgeLineIntensity: 35,
@@ -204,10 +204,7 @@ export class CliffSegment {
       const pointIdx = Math.floor(t * (this.pathPoints.length - 1));
       const point = this.pathPoints[pointIdx];
 
-      // Exponential distribution - most particles close to edge
-      const distFromEdge = Math.pow(Math.random(), 3) * 80;
-      const offsetX = -(distFromEdge + 5);
-      const offsetY = (Math.random() - 0.5) * 10;
+      // Generate size first
       const size =
         Math.floor(
           Math.random() *
@@ -215,6 +212,12 @@ export class CliffSegment {
               settings.edgeParticleMinPixelSize +
               1)
         ) + settings.edgeParticleMinPixelSize;
+
+      // Exponential distribution - most particles close to edge
+      // Account for particle size so it doesn't protrude beyond edge
+      const distFromEdge = Math.pow(Math.random(), 3) * 80;
+      const offsetX = -(distFromEdge + size);
+      const offsetY = (Math.random() - 0.5) * 10;
 
       this.particles.push({
         x: offsetX,
@@ -231,9 +234,7 @@ export class CliffSegment {
       const pointIdx = Math.floor(t * (this.pathPoints.length - 1));
       const point = this.pathPoints[pointIdx];
 
-      // Very close to edge (0-15 pixels)
-      const offsetX = -(Math.random() * 15);
-      const offsetY = (Math.random() - 0.5) * 6;
+      // Generate size first
       const size =
         Math.floor(
           Math.random() *
@@ -241,6 +242,10 @@ export class CliffSegment {
               settings.edgeParticleMinPixelSize +
               1)
         ) + settings.edgeParticleMinPixelSize;
+
+      // Very close to edge (0-15 pixels) - account for particle size
+      const offsetX = -(Math.random() * 15 + size);
+      const offsetY = (Math.random() - 0.5) * 6;
 
       this.particles.push({
         x: offsetX,
@@ -259,11 +264,23 @@ export class CliffSegment {
       );
       const boulderPoint = this.pathPoints[boulderPointIdx];
 
-      // Boulder center position
+      // Calculate boulder radius (from boulderSettings)
+      const boulderRadius = settings.boulderSettings.radius;
+
+      // Boulder center position - constrain so boulder doesn't extend past cliff edge
+      // The boulder center must be at least boulderRadius pixels away from the edge
+      const minDistance = Math.max(
+        settings.boulderMinDistance,
+        boulderRadius + 2
+      );
+      const maxDistance = Math.max(
+        settings.boulderMaxDistance,
+        minDistance + 10
+      );
+
       const boulderCenterX = -(
-        Math.random() *
-          (settings.boulderMaxDistance - settings.boulderMinDistance) +
-        settings.boulderMinDistance
+        Math.random() * (maxDistance - minDistance) +
+        minDistance
       );
       const boulderCenterY = boulderPoint.y;
 
@@ -338,19 +355,32 @@ export class CliffSegment {
 
     // Draw particles with checkered dithering
     for (const p of this.particles) {
-      const x =
+      // For left cliff: edge at p.width, particles offset left (negative x)
+      // For right cliff: edge at canvasWidth - p.width, particles offset right (negative x becomes positive offset)
+      const centerX =
         this.side === "left" ? p.width + p.x : canvasWidth - p.width - p.x;
-      const y = p.y - this.y; // Convert to local coordinates
+      const centerY = p.y - this.y; // Convert to local coordinates
 
       // Apply checkered dithering pattern
-      const pixelX = Math.floor(x - p.size / 2);
-      const pixelY = Math.floor(y - p.size / 2);
+      // Particles are centered, so we offset by half size
+      const pixelX = Math.floor(centerX - p.size / 2);
+      const pixelY = Math.floor(centerY - p.size / 2);
+
+      // Calculate edge position for bounds checking
+      const edgeX = this.side === "left" ? p.width : canvasWidth - p.width;
 
       for (let dy = 0; dy < p.size; dy++) {
         for (let dx = 0; dx < p.size; dx++) {
+          const px = pixelX + dx;
+          const py = pixelY + dy;
+
+          // Skip pixels that would extend beyond the cliff edge
+          if (this.side === "left" && px > edgeX) continue;
+          if (this.side === "right" && px < edgeX) continue;
+
           // Checkered pattern: draw pixel if (x + y) is even
-          if ((pixelX + dx + pixelY + dy) % 2 === 0) {
-            ctx.fillRect(pixelX + dx, pixelY + dy, 1, 1);
+          if ((px + py) % 2 === 0) {
+            ctx.fillRect(px, py, 1, 1);
           }
         }
       }
@@ -358,6 +388,8 @@ export class CliffSegment {
 
     // Draw procedural boulders
     for (const boulder of this.boulders) {
+      // For left cliff: edge at boulder.width, boulder offset left (negative centerX)
+      // For right cliff: edge at canvasWidth - boulder.width, boulder offset right (negative centerX becomes positive offset)
       const x =
         this.side === "left"
           ? boulder.width + boulder.centerX
