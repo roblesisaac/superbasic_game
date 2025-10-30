@@ -8,6 +8,8 @@ import {
   WELL_RIM_THICKNESS,
 } from "./well_layout.js";
 import { CLIFF_CELL_SIZE } from "./drawables/drawCliffs.js";
+import { getCliffStateForCollision } from "./drawables/drawWell.js";
+import { getCliffInteriorBoundsAtY } from "../../assets/bitmaps/drawCliffs2.js";
 
 export interface WellCollisionRect {
   x: number;
@@ -144,6 +146,54 @@ export function getWellCollisionRects(
         rangeTop,
         rangeBottom,
       );
+    }
+  }
+
+  // Add cliff collision rectangles for the cavern area
+  const cliffData = getCliffStateForCollision();
+  if (cliffData) {
+    const { state, cavernTop, canvasWidth: cliffCanvasWidth } = cliffData;
+    
+    // Sample cliff edges at regular intervals within the range
+    const sampleInterval = CLIFF_CELL_SIZE * 2;
+    const startY = Math.max(rangeTop, expansionTop);
+    const endY = Math.min(rangeBottom, shaftBottom);
+    
+    for (let y = startY; y < endY; y += sampleInterval) {
+      const worldY = y - cavernTop; // Convert to cliff-local coordinates
+      const bounds = getCliffInteriorBoundsAtY(state, worldY, cliffCanvasWidth);
+      
+      // Create collision rects for left cliff (from 0 to left boundary)
+      if (bounds.left > 0) {
+        clipRect(
+          rects,
+          {
+            x: 0,
+            y: y,
+            w: bounds.left,
+            h: sampleInterval,
+            side: "left",
+          },
+          rangeTop,
+          rangeBottom,
+        );
+      }
+      
+      // Create collision rects for right cliff (from right boundary to canvas width)
+      if (bounds.right < canvasWidth) {
+        clipRect(
+          rects,
+          {
+            x: bounds.right,
+            y: y,
+            w: canvasWidth - bounds.right,
+            h: sampleInterval,
+            side: "right",
+          },
+          rangeTop,
+          rangeBottom,
+        );
+      }
     }
   }
 

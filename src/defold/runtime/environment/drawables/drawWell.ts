@@ -39,6 +39,24 @@ const WELL_COLOR_CAVERN = "#000000";
 let cliffState: CliffState | null = null;
 let lastCanvasWidth = 0;
 let lastCanvasHeight = 0;
+let cavernTopWorld = 0; // Track the world Y position where cliffs start
+
+/**
+ * Get the current cliff state for collision detection
+ * Returns null if cliffs haven't been initialized yet
+ */
+export function getCliffStateForCollision(): {
+  state: CliffState;
+  cavernTop: number;
+  canvasWidth: number;
+} | null {
+  if (!cliffState) return null;
+  return {
+    state: cliffState,
+    cavernTop: cavernTopWorld,
+    canvasWidth: lastCanvasWidth,
+  };
+}
 
 interface DrawWellOptions {
   centerX: number;
@@ -657,8 +675,8 @@ export function drawWell(
         }
 
         // Update scroll position to match camera
-        const cavernTop = geometry.cavern.cliffStart;
-        cliffState.scrollY = cameraY - cavernTop;
+        cavernTopWorld = geometry.cavern.cliffStart;
+        cliffState.scrollY = cameraY - cavernTopWorld;
 
         // Generate ahead as needed
         generateAhead(cliffState, canvasWidth, canvasHeight, DEFAULT_CLIFF_SETTINGS);

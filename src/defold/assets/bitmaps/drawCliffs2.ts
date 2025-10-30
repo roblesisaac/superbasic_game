@@ -412,6 +412,46 @@ export class CliffSegment {
     }
   }
 
+  /**
+   * Get the actual screen X position of the cliff edge at a given world Y coordinate
+   * @param worldY - The world Y coordinate
+   * @param canvasWidth - The canvas width
+   * @returns The screen X position of the cliff edge, or null if Y is outside this segment
+   */
+  getEdgeXAtY(worldY: number, canvasWidth: number): number | null {
+    // Check if Y is within this segment
+    if (worldY < this.y || worldY > this.y + this.height) {
+      return null;
+    }
+
+    // Find the interpolated width at this Y position
+    const localY = worldY - this.y;
+    const t = this.height > 0 ? localY / this.height : 0;
+
+    // Find the two path points that bracket this Y
+    let width = this.currentWidth;
+    for (let i = 0; i < this.pathPoints.length - 1; i++) {
+      const p1 = this.pathPoints[i];
+      const p2 = this.pathPoints[i + 1];
+      const y1 = p1.y - this.y;
+      const y2 = p2.y - this.y;
+
+      if (localY >= y1 && localY <= y2) {
+        // Interpolate between the two points
+        const segmentT = y2 > y1 ? (localY - y1) / (y2 - y1) : 0;
+        width = p1.width + (p2.width - p1.width) * segmentT;
+        break;
+      }
+    }
+
+    // Convert width to actual screen X position
+    if (this.side === "left") {
+      return width;
+    } else {
+      return canvasWidth - width;
+    }
+  }
+
   draw(
     ctx: CanvasRenderingContext2D,
     canvasWidth: number,
@@ -568,6 +608,40 @@ function getVisibleCliffIndices(state: CliffState): {
   }
 
   return { startIdx, endIdx };
+}
+
+/**
+ * Get the interior bounds (left and right cliff edges) at a specific world Y coordinate
+ * @param state - The cliff state
+ * @param worldY - The world Y coordinate (not screen Y)
+ * @param canvasWidth - The canvas width
+ * @returns Object with left and right boundaries, or null boundaries if no cliffs at that Y
+ */
+export function getCliffInteriorBoundsAtY(
+  state: CliffState,
+  worldY: number,
+  canvasWidth: number
+): { left: number; right: number } {
+  let leftBoundary = 0;
+  let rightBoundary = canvasWidth;
+
+  // Check left cliffs
+  for (const segment of state.leftCliffs) {
+    const edgeX = segment.getEdgeXAtY(worldY, canvasWidth);
+    if (edgeX !== null) {
+      leftBoundary = Math.max(leftBoundary, edgeX);
+    }
+  }
+
+  // Check right cliffs
+  for (const segment of state.rightCliffs) {
+    const edgeX = segment.getEdgeXAtY(worldY, canvasWidth);
+    if (edgeX !== null) {
+      rightBoundary = Math.min(rightBoundary, edgeX);
+    }
+  }
+
+  return { left: leftBoundary, right: rightBoundary };
 }
 
 /**
