@@ -22,7 +22,7 @@ export interface BoulderSettings {
   outlinePixelSize: number; // Pixel size of outline particles
 }
 
-const PIXEL_SIZE: number = 3;
+const PIXEL_SIZE: number = 1;
 const BOULDER_COLOR: string = "#ffffff";
 
 export const DEFAULT_BOULDER_SETTINGS: BoulderSettings = {

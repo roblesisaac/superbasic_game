@@ -22,7 +22,7 @@ export interface CliffSettings {
   segmentHeight: number;
 }
 
-const PIXEL_SIZE: number = 3;
+const PIXEL_SIZE: number = 2;
 
 export const DEFAULT_CLIFF_SETTINGS: CliffSettings = {
   edgeLineIntensity: 35,
@@ -342,7 +342,13 @@ export class CliffSegment {
 
     // Draw pre-generated edge line particles
     for (const p of this.edgeLineParticles) {
-      const x = this.side === "left" ? p.x : canvasWidth - p.x;
+      // For left cliff: edge line extends to the right from p.x
+      // For right cliff: edge line extends to the left from canvasWidth - p.x
+      // So we need to offset by edgeLinePixelSize for right cliff
+      const x =
+        this.side === "left"
+          ? p.x
+          : canvasWidth - p.x - settings.edgeLinePixelSize;
       const y = p.y - this.y; // Convert to local coordinates
       // Round to whole pixels to prevent sub-pixel antialiasing
       ctx.fillRect(
@@ -375,7 +381,7 @@ export class CliffSegment {
           const py = pixelY + dy;
 
           // Skip pixels that would extend beyond the cliff edge
-          if (this.side === "left" && px > edgeX) continue;
+          if (this.side === "left" && px >= edgeX) continue;
           if (this.side === "right" && px < edgeX) continue;
 
           // Checkered pattern: draw pixel if (x + y) is even
