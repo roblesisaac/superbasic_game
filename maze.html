@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -197,6 +197,16 @@
       const canvas = document.getElementById("mazeCanvas");
       const ctx = canvas.getContext("2d");
 
+      // Disable image smoothing for crisp pixel rendering
+      ctx.imageSmoothingEnabled = false;
+      ctx.webkitImageSmoothingEnabled = false;
+      ctx.mozImageSmoothingEnabled = false;
+      ctx.msImageSmoothingEnabled = false;
+
+      // Offscreen canvas for pre-rendering the entire maze
+      let offscreenCanvas = null;
+      let offscreenCtx = null;
+
       // Phone-optimized settings
       const SPRITE_SIZE = 25; // Fixed 25px sprite
       const PHONE_WIDTH = Math.min(window.innerWidth, 375); // Typical phone width
@@ -220,26 +230,29 @@
         const viewportWidth = canvas.width;
         const viewportHeight = canvas.height;
 
-        // Center camera on player position (accounting for zoom)
-        targetCamera.x = player.x * ZOOM - viewportWidth / 2;
-        targetCamera.y = player.y * ZOOM - viewportHeight / 2;
+        // Camera works in world space (not zoomed)
+        // Center camera on player position
+        targetCamera.x = player.x - viewportWidth / (2 * ZOOM);
+        targetCamera.y = player.y - viewportHeight / (2 * ZOOM);
 
-        const mazeWidth = COLS * CELL_SIZE * ZOOM;
-        const mazeHeight = ROWS * CELL_SIZE * ZOOM;
+        const mazeWidth = COLS * CELL_SIZE;
+        const mazeHeight = ROWS * CELL_SIZE;
 
+        // Clamp camera to maze bounds (in world space)
         targetCamera.x = Math.max(
           0,
-          Math.min(targetCamera.x, mazeWidth - viewportWidth)
+          Math.min(targetCamera.x, mazeWidth - viewportWidth / ZOOM)
         );
         targetCamera.y = Math.max(
           0,
-          Math.min(targetCamera.y, mazeHeight - viewportHeight)
+          Math.min(targetCamera.y, mazeHeight - viewportHeight / ZOOM)
         );
 
-        if (mazeWidth < viewportWidth)
-          targetCamera.x = -(viewportWidth - mazeWidth) / 2;
-        if (mazeHeight < viewportHeight)
-          targetCamera.y = -(viewportHeight - mazeHeight) / 2;
+        // Center if maze is smaller than viewport
+        if (mazeWidth < viewportWidth / ZOOM)
+          targetCamera.x = -(viewportWidth / ZOOM - mazeWidth) / 2;
+        if (mazeHeight < viewportHeight / ZOOM)
+          targetCamera.y = -(viewportHeight / ZOOM - mazeHeight) / 2;
 
         camera.x += (targetCamera.x - camera.x) * CAMERA_SMOOTHNESS;
         camera.y += (targetCamera.y - camera.y) * CAMERA_SMOOTHNESS;
@@ -313,10 +326,22 @@
         const halfWall = WALL_THICKNESS / 2;
 
         // Check all cells that the sprite might overlap
-        const minGridX = Math.max(0, Math.floor((spriteLeft - halfWall) / CELL_SIZE));
-        const maxGridX = Math.min(COLS - 1, Math.floor((spriteRight + halfWall) / CELL_SIZE));
-        const minGridY = Math.max(0, Math.floor((spriteTop - halfWall) / CELL_SIZE));
-        const maxGridY = Math.min(ROWS - 1, Math.floor((spriteBottom + halfWall) / CELL_SIZE));
+        const minGridX = Math.max(
+          0,
+          Math.floor((spriteLeft - halfWall) / CELL_SIZE)
+        );
+        const maxGridX = Math.min(
+          COLS - 1,
+          Math.floor((spriteRight + halfWall) / CELL_SIZE)
+        );
+        const minGridY = Math.max(
+          0,
+          Math.floor((spriteTop - halfWall) / CELL_SIZE)
+        );
+        const maxGridY = Math.min(
+          ROWS - 1,
+          Math.floor((spriteBottom + halfWall) / CELL_SIZE)
+        );
 
         for (let gridY = minGridY; gridY <= maxGridY; gridY++) {
           for (let gridX = minGridX; gridX <= maxGridX; gridX++) {
@@ -399,71 +424,145 @@
         return false;
       }
 
-      function drawMaze() {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      function renderMazeToOffscreenCanvas() {
+        // Create offscreen canvas at full maze size
+        const mazeWidth = COLS * CELL_SIZE;
+        const mazeHeight = ROWS * CELL_SIZE;
 
-        ctx.fillStyle = "#fff";
+        offscreenCanvas = document.createElement("canvas");
+        offscreenCanvas.width = mazeWidth;
+        offscreenCanvas.height = mazeHeight;
+        offscreenCtx = offscreenCanvas.getContext("2d");
 
-        const scaledCellSize = CELL_SIZE * ZOOM;
-        const scaledWallThickness = WALL_THICKNESS * ZOOM;
+        // Disable image smoothing on offscreen canvas too
+        offscreenCtx.imageSmoothingEnabled = false;
+        offscreenCtx.webkitImageSmoothingEnabled = false;
+        offscreenCtx.mozImageSmoothingEnabled = false;
+        offscreenCtx.msImageSmoothingEnabled = false;
 
-        const startCol = Math.max(0, Math.floor(camera.x / scaledCellSize));
-        const endCol = Math.min(
-          COLS,
-          Math.ceil((camera.x + canvas.width) / scaledCellSize) + 1
-        );
-        const startRow = Math.max(0, Math.floor(camera.y / scaledCellSize));
-        const endRow = Math.min(
-          ROWS,
-          Math.ceil((camera.y + canvas.height) / scaledCellSize) + 1
-        );
+        // Fill background
+        offscreenCtx.fillStyle = "#000";
+        offscreenCtx.fillRect(0, 0, mazeWidth, mazeHeight);
 
-        // Draw walls as thick rectangles
-        for (let y = startRow; y < endRow; y++) {
-          for (let x = startCol; x < endCol; x++) {
+        // Draw all walls
+        offscreenCtx.fillStyle = "#fff";
+        const halfWall = WALL_THICKNESS / 2;
+
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
             const cell = maze[y][x];
-            const px = Math.round(x * scaledCellSize - camera.x);
-            const py = Math.round(y * scaledCellSize - camera.y);
-
-            const halfWall = Math.round(scaledWallThickness / 2);
-            const cellSize = Math.round(scaledCellSize);
-            const wallThickness = Math.round(scaledWallThickness);
+            const px = x * CELL_SIZE;
+            const py = y * CELL_SIZE;
 
             // Draw top wall as rectangle
             if (cell.walls.top) {
-              ctx.fillRect(
+              offscreenCtx.fillRect(
                 px - halfWall,
                 py - halfWall,
-                cellSize + wallThickness,
-                wallThickness
+                CELL_SIZE + WALL_THICKNESS,
+                WALL_THICKNESS
               );
             }
             // Draw bottom wall as rectangle
             if (cell.walls.bottom) {
-              ctx.fillRect(
+              offscreenCtx.fillRect(
                 px - halfWall,
-                py + cellSize - halfWall,
-                cellSize + wallThickness,
-                wallThickness
+                py + CELL_SIZE - halfWall,
+                CELL_SIZE + WALL_THICKNESS,
+                WALL_THICKNESS
               );
             }
             // Draw left wall as rectangle
             if (cell.walls.left) {
-              ctx.fillRect(
+              offscreenCtx.fillRect(
                 px - halfWall,
                 py - halfWall,
-                wallThickness,
-                cellSize + wallThickness
+                WALL_THICKNESS,
+                CELL_SIZE + WALL_THICKNESS
               );
             }
             // Draw right wall as rectangle
             if (cell.walls.right) {
-              ctx.fillRect(
-                px + cellSize - halfWall,
+              offscreenCtx.fillRect(
+                px + CELL_SIZE - halfWall,
                 py - halfWall,
-                wallThickness,
-                cellSize + wallThickness
+                WALL_THICKNESS,
+                CELL_SIZE + WALL_THICKNESS
+              );
+            }
+          }
+        }
+      }
+
+      function drawMaze() {
+        // Clear screen
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#fff";
+        const halfWall = WALL_THICKNESS / 2;
+
+        // Calculate visible cell range with padding for wall thickness
+        // Camera is in world space, so we need to figure out which cells are visible
+        const worldLeft = camera.x;
+        const worldRight = camera.x + canvas.width / ZOOM;
+        const worldTop = camera.y;
+        const worldBottom = camera.y + canvas.height / ZOOM;
+
+        // Add padding for wall thickness (walls extend beyond cell boundaries)
+        const padding = WALL_THICKNESS;
+        
+        // Convert to cell indices
+        const startCol = Math.max(0, Math.floor((worldLeft - padding) / CELL_SIZE));
+        const endCol = Math.min(COLS - 1, Math.ceil((worldRight + padding) / CELL_SIZE));
+        const startRow = Math.max(0, Math.floor((worldTop - padding) / CELL_SIZE));
+        const endRow = Math.min(ROWS - 1, Math.ceil((worldBottom + padding) / CELL_SIZE));
+
+        // Only draw visible cells
+        for (let y = startRow; y <= endRow; y++) {
+          for (let x = startCol; x <= endCol; x++) {
+            const cell = maze[y][x];
+            // Convert world space to screen space
+            const px = (x * CELL_SIZE - camera.x) * ZOOM;
+            const py = (y * CELL_SIZE - camera.y) * ZOOM;
+            const scaledCellSize = CELL_SIZE * ZOOM;
+            const scaledHalfWall = halfWall * ZOOM;
+            const scaledWallThickness = WALL_THICKNESS * ZOOM;
+
+            // Draw top wall
+            if (cell.walls.top) {
+              ctx.fillRect(
+                px - scaledHalfWall,
+                py - scaledHalfWall,
+                scaledCellSize + scaledWallThickness,
+                scaledWallThickness
+              );
+            }
+            // Draw bottom wall
+            if (cell.walls.bottom) {
+              ctx.fillRect(
+                px - scaledHalfWall,
+                py + scaledCellSize - scaledHalfWall,
+                scaledCellSize + scaledWallThickness,
+                scaledWallThickness
+              );
+            }
+            // Draw left wall
+            if (cell.walls.left) {
+              ctx.fillRect(
+                px - scaledHalfWall,
+                py - scaledHalfWall,
+                scaledWallThickness,
+                scaledCellSize + scaledWallThickness
+              );
+            }
+            // Draw right wall
+            if (cell.walls.right) {
+              ctx.fillRect(
+                px + scaledCellSize - scaledHalfWall,
+                py - scaledHalfWall,
+                scaledWallThickness,
+                scaledCellSize + scaledWallThickness
               );
             }
           }
@@ -472,9 +571,10 @@
 
       function drawPlayer() {
         ctx.fillStyle = "#fff";
+        // Convert world space to screen space
+        const px = (player.x - camera.x) * ZOOM;
+        const py = (player.y - camera.y) * ZOOM;
         const scaledSpriteSize = SPRITE_SIZE * ZOOM;
-        const px = player.x * ZOOM - camera.x;
-        const py = player.y * ZOOM - camera.y;
         ctx.fillRect(
           px - scaledSpriteSize / 2,
           py - scaledSpriteSize / 2,
@@ -485,9 +585,10 @@
 
       function drawGoal() {
         ctx.fillStyle = "#f00";
+        // Convert world space to screen space
+        const gx = (goal.x - camera.x) * ZOOM;
+        const gy = (goal.y - camera.y) * ZOOM;
         const goalSize = SPRITE_SIZE * 1.5 * ZOOM;
-        const gx = goal.x * ZOOM - camera.x;
-        const gy = goal.y * ZOOM - camera.y;
         ctx.fillRect(gx - goalSize / 2, gy - goalSize / 2, goalSize, goalSize);
       }
 
@@ -557,12 +658,12 @@
           y: (ROWS - 0.5) * CELL_SIZE,
         };
 
-        // Reset camera to center on player at start
+        // Reset camera to center on player at start (in world space)
         const viewportWidth = canvas.width;
         const viewportHeight = canvas.height;
 
-        camera.x = player.x * ZOOM - viewportWidth / 2;
-        camera.y = player.y * ZOOM - viewportHeight / 2;
+        camera.x = player.x - viewportWidth / (2 * ZOOM);
+        camera.y = player.y - viewportHeight / (2 * ZOOM);
         targetCamera.x = camera.x;
         targetCamera.y = camera.y;
 
@@ -583,10 +684,10 @@
       function updateZoom() {
         const input = document.getElementById("zoom");
         let value = parseInt(input.value);
-        if (value < 0) value = 0;
+        if (value < 1) value = 1; // Minimum 1% to avoid division by zero
         if (value > 100) value = 100;
         input.value = value;
-        ZOOM = value / 100; // Convert percentage to decimal (0-1)
+        ZOOM = value / 100; // Convert percentage to decimal (0.01-1)
         render();
       }
 
