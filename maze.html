@@ -305,18 +305,6 @@
       }
 
       function checkCollision(newX, newY) {
-        const gridX = Math.floor(newX / CELL_SIZE);
-        const gridY = Math.floor(newY / CELL_SIZE);
-
-        if (gridX < 0 || gridX >= COLS || gridY < 0 || gridY >= ROWS)
-          return true;
-
-        const cell = maze[gridY][gridX];
-        const cellLeft = gridX * CELL_SIZE;
-        const cellTop = gridY * CELL_SIZE;
-        const cellRight = cellLeft + CELL_SIZE;
-        const cellBottom = cellTop + CELL_SIZE;
-
         const spriteLeft = newX - SPRITE_SIZE / 2;
         const spriteRight = newX + SPRITE_SIZE / 2;
         const spriteTop = newY - SPRITE_SIZE / 2;
@@ -324,45 +312,88 @@
 
         const halfWall = WALL_THICKNESS / 2;
 
-        // Check top wall
-        if (
-          cell.walls.top &&
-          spriteTop < cellTop + halfWall &&
-          spriteBottom > cellTop - halfWall &&
-          spriteRight > cellLeft &&
-          spriteLeft < cellRight
-        ) {
-          return true;
-        }
-        // Check bottom wall
-        if (
-          cell.walls.bottom &&
-          spriteBottom > cellBottom - halfWall &&
-          spriteTop < cellBottom + halfWall &&
-          spriteRight > cellLeft &&
-          spriteLeft < cellRight
-        ) {
-          return true;
-        }
-        // Check left wall
-        if (
-          cell.walls.left &&
-          spriteLeft < cellLeft + halfWall &&
-          spriteRight > cellLeft - halfWall &&
-          spriteBottom > cellTop &&
-          spriteTop < cellBottom
-        ) {
-          return true;
-        }
-        // Check right wall
-        if (
-          cell.walls.right &&
-          spriteRight > cellRight - halfWall &&
-          spriteLeft < cellRight + halfWall &&
-          spriteBottom > cellTop &&
-          spriteTop < cellBottom
-        ) {
-          return true;
+        // Check all cells that the sprite might overlap
+        const minGridX = Math.max(0, Math.floor((spriteLeft - halfWall) / CELL_SIZE));
+        const maxGridX = Math.min(COLS - 1, Math.floor((spriteRight + halfWall) / CELL_SIZE));
+        const minGridY = Math.max(0, Math.floor((spriteTop - halfWall) / CELL_SIZE));
+        const maxGridY = Math.min(ROWS - 1, Math.floor((spriteBottom + halfWall) / CELL_SIZE));
+
+        for (let gridY = minGridY; gridY <= maxGridY; gridY++) {
+          for (let gridX = minGridX; gridX <= maxGridX; gridX++) {
+            const cell = maze[gridY][gridX];
+            const cellLeft = gridX * CELL_SIZE;
+            const cellTop = gridY * CELL_SIZE;
+            const cellRight = cellLeft + CELL_SIZE;
+            const cellBottom = cellTop + CELL_SIZE;
+
+            // Check top wall (extends from left-halfWall to right+halfWall)
+            if (cell.walls.top) {
+              const wallLeft = cellLeft - halfWall;
+              const wallRight = cellRight + halfWall;
+              const wallTop = cellTop - halfWall;
+              const wallBottom = cellTop + halfWall;
+
+              if (
+                spriteRight > wallLeft &&
+                spriteLeft < wallRight &&
+                spriteBottom > wallTop &&
+                spriteTop < wallBottom
+              ) {
+                return true;
+              }
+            }
+
+            // Check bottom wall (extends from left-halfWall to right+halfWall)
+            if (cell.walls.bottom) {
+              const wallLeft = cellLeft - halfWall;
+              const wallRight = cellRight + halfWall;
+              const wallTop = cellBottom - halfWall;
+              const wallBottom = cellBottom + halfWall;
+
+              if (
+                spriteRight > wallLeft &&
+                spriteLeft < wallRight &&
+                spriteBottom > wallTop &&
+                spriteTop < wallBottom
+              ) {
+                return true;
+              }
+            }
+
+            // Check left wall (extends from top-halfWall to bottom+halfWall)
+            if (cell.walls.left) {
+              const wallLeft = cellLeft - halfWall;
+              const wallRight = cellLeft + halfWall;
+              const wallTop = cellTop - halfWall;
+              const wallBottom = cellBottom + halfWall;
+
+              if (
+                spriteRight > wallLeft &&
+                spriteLeft < wallRight &&
+                spriteBottom > wallTop &&
+                spriteTop < wallBottom
+              ) {
+                return true;
+              }
+            }
+
+            // Check right wall (extends from top-halfWall to bottom+halfWall)
+            if (cell.walls.right) {
+              const wallLeft = cellRight - halfWall;
+              const wallRight = cellRight + halfWall;
+              const wallTop = cellTop - halfWall;
+              const wallBottom = cellBottom + halfWall;
+
+              if (
+                spriteRight > wallLeft &&
+                spriteLeft < wallRight &&
+                spriteBottom > wallTop &&
+                spriteTop < wallBottom
+              ) {
+                return true;
+              }
+            }
+          }
         }
 
         return false;
@@ -392,45 +423,47 @@
         for (let y = startRow; y < endRow; y++) {
           for (let x = startCol; x < endCol; x++) {
             const cell = maze[y][x];
-            const px = x * scaledCellSize - camera.x;
-            const py = y * scaledCellSize - camera.y;
+            const px = Math.round(x * scaledCellSize - camera.x);
+            const py = Math.round(y * scaledCellSize - camera.y);
 
-            const halfWall = scaledWallThickness / 2;
+            const halfWall = Math.round(scaledWallThickness / 2);
+            const cellSize = Math.round(scaledCellSize);
+            const wallThickness = Math.round(scaledWallThickness);
 
             // Draw top wall as rectangle
             if (cell.walls.top) {
               ctx.fillRect(
-                px,
+                px - halfWall,
                 py - halfWall,
-                scaledCellSize,
-                scaledWallThickness
-              );
-            }
-            // Draw right wall as rectangle
-            if (cell.walls.right) {
-              ctx.fillRect(
-                px + scaledCellSize - halfWall,
-                py,
-                scaledWallThickness,
-                scaledCellSize
+                cellSize + wallThickness,
+                wallThickness
               );
             }
             // Draw bottom wall as rectangle
             if (cell.walls.bottom) {
               ctx.fillRect(
-                px,
-                py + scaledCellSize - halfWall,
-                scaledCellSize,
-                scaledWallThickness
+                px - halfWall,
+                py + cellSize - halfWall,
+                cellSize + wallThickness,
+                wallThickness
               );
             }
             // Draw left wall as rectangle
             if (cell.walls.left) {
               ctx.fillRect(
                 px - halfWall,
-                py,
-                scaledWallThickness,
-                scaledCellSize
+                py - halfWall,
+                wallThickness,
+                cellSize + wallThickness
+              );
+            }
+            // Draw right wall as rectangle
+            if (cell.walls.right) {
+              ctx.fillRect(
+                px + cellSize - halfWall,
+                py - halfWall,
+                wallThickness,
+                cellSize + wallThickness
               );
             }
           }
