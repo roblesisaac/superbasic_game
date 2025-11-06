@@ -1,7 +1,19 @@
 // ---- Caching + prerender helpers (sync) ------------------------------------
 type BitmapCacheKey = string;
 type SpriteSource = HTMLCanvasElement | OffscreenCanvas;
+
 const _bitmapCache = new Map<BitmapCacheKey, SpriteSource>();
+
+// Per-sprite random reveal state (for the appear effect)
+interface RevealState {
+  canvas: SpriteSource;
+  ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+  order: Uint32Array; // shuffled indices of non-transparent pixels
+  cursor: number;     // how many pixels have been revealed so far
+  done: boolean;
+}
+
+const _bitmapRevealCache = new Map<BitmapCacheKey, RevealState>();
 
 function cacheKey(
   pattern: string[],
@@ -107,6 +119,78 @@ function prerenderBitmapToCanvas(
   return off;
 }
 
+// Build or reset the random reveal state for a sprite
+function createRevealState(
+  key: BitmapCacheKey,
+  cols: number,
+  rows: number,
+  pattern: string[],
+  effectiveMap: Record<string, string>,
+  transparentChars: string,
+): RevealState {
+  const revealCanvas: SpriteSource =
+    typeof OffscreenCanvas !== "undefined"
+      ? new OffscreenCanvas(cols, rows)
+      : (() => {
+          const c = document.createElement("canvas");
+          c.width = cols;
+          c.height = rows;
+          return c;
+        })();
+
+  const revealCtx = (revealCanvas as any).getContext("2d") as
+    | OffscreenCanvasRenderingContext2D
+    | CanvasRenderingContext2D;
+
+  // Start fully transparent
+  revealCtx.clearRect(0, 0, cols, rows);
+
+  // Decide which pixels are non-transparent purely from the pattern + transparentChars
+  const indices: number[] = [];
+  for (let y = 0; y < rows; y++) {
+    const line = pattern[y] ?? "";
+    for (let x = 0; x < cols; x++) {
+      const rawCh = line[x];
+      const ch = rawCh ?? " ";
+      const colorKey =
+        rawCh === undefined || ch.trim().length === 0 ? "null" : ch;
+      const hasMappedColor = Object.prototype.hasOwnProperty.call(
+        effectiveMap,
+        colorKey,
+      );
+
+      const shouldSkip =
+        !hasMappedColor &&
+        (rawCh === undefined
+          ? transparentChars.includes(" ")
+          : transparentChars.includes(ch));
+
+      if (!shouldSkip) {
+        indices.push(y * cols + x);
+      }
+    }
+  }
+
+  // Fisher–Yates shuffle for random order
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    const tmp = indices[i];
+    indices[i] = indices[j];
+    indices[j] = tmp;
+  }
+
+  const state: RevealState = {
+    canvas: revealCanvas,
+    ctx: revealCtx,
+    order: new Uint32Array(indices),
+    cursor: 0,
+    done: indices.length === 0,
+  };
+
+  _bitmapRevealCache.set(key, state);
+  return state;
+}
+
 // ---- Utilities --------------------------------------------------------------
 function normalizeToLines(value?: string | string[]): string[] | undefined {
   if (value == null) return undefined;
@@ -150,6 +234,11 @@ export function drawBitmap2(
     brighten?: number;
     darken?: number;
     transparentChars?: string;
+
+    // New: random appear effect
+    randomAppear?: boolean;      // enable per-pixel random reveal
+    pixelsPerFrame?: number;     // how many pixels to reveal per call
+    resetRandomAppear?: boolean; // force restart of the animation for this sprite key
   },
 ): void {
   const {
@@ -169,6 +258,10 @@ export function drawBitmap2(
     brighten = 0,
     darken = 0,
     transparentChars = " ",
+
+    randomAppear = false,
+    pixelsPerFrame = 64,
+    resetRandomAppear = false,
   } = config;
 
   // Resolve pattern synchronously (no fetch)
@@ -226,8 +319,58 @@ export function drawBitmap2(
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
   ctx.imageSmoothingEnabled = false; // keep pixels crisp
 
-  // Draw in strict call order (sync)
-  ctx.drawImage(sprite as CanvasImageSource, originX, originY, drawW, drawH);
+  if (!randomAppear) {
+    // Normal instant draw path
+    ctx.drawImage(sprite as CanvasImageSource, originX, originY, drawW, drawH);
+  } else {
+    // Random pixel appear path
+    let state = _bitmapRevealCache.get(key);
+
+    if (!state || resetRandomAppear) {
+      state = createRevealState(
+        key,
+        cols,
+        rows,
+        pattern,
+        effectiveMap,
+        transparentChars,
+      );
+    }
+
+    if (!state.done) {
+      const steps = Math.max(1, (pixelsPerFrame | 0) || 1);
+      const total = state.order.length;
+
+      for (let i = 0; i < steps && state.cursor < total; i++) {
+        const idx = state.order[state.cursor++];
+        const sx = idx % cols;
+        const sy = (idx / cols) | 0;
+
+        // Copy exactly one pixel from the full sprite into the reveal canvas
+        state.ctx.drawImage(
+          sprite as CanvasImageSource,
+          sx,
+          sy,
+          1,
+          1,
+          sx,
+          sy,
+          1,
+          1,
+        );
+      }
+
+      if (state.cursor >= total) {
+        state.done = true;
+      }
+    }
+
+    const sourceForDraw = state.done
+      ? (sprite as CanvasImageSource)
+      : (state.canvas as CanvasImageSource);
+
+    ctx.drawImage(sourceForDraw, originX, originY, drawW, drawH);
+  }
 
   ctx.globalAlpha = prevAlpha;
 }
