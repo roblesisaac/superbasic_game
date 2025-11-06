@@ -259,7 +259,7 @@ export function drawBitmap2(
     darken = 0,
     transparentChars = " ",
 
-    randomAppear = false,
+    randomAppear = true,
     pixelsPerFrame = 64,
     resetRandomAppear = false,
   } = config;
