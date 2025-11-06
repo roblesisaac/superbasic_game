@@ -429,6 +429,7 @@ export class Ride {
 export function createRideFromInput({
   distance,
   durationMs,
+  screenX,
   screenY,
   cameraY,
   canvasWidth,
@@ -448,7 +449,16 @@ export function createRideFromInput({
   );
 
   const worldY = screenY + cameraY;
-  const startX = direction > 0 ? -width : canvasWidth;
+
+  // Place the TIP of the ride at the swipe position:
+  // - swipe right (direction > 0): tip is right edge, so x + width = screenX -> x = screenX - width
+  // - swipe left  (direction < 0): tip is left edge, so x = screenX
+  let startX;
+  if (direction > 0) {
+    startX = screenX - width;
+  } else {
+    startX = screenX;
+  }
 
   return new Ride({
     x: startX,

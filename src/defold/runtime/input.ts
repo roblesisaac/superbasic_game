@@ -32,6 +32,7 @@ type PointSample = { x: number; y: number; time: number };
 type RideGesture = {
   distance: number;
   durationMs: number;
+  screenX: number;
   screenY: number;
   cameraY: number;
   canvasWidth: number;
@@ -210,7 +211,7 @@ export class InputHandler {
     this.ensureReset = ensureReset;
 
     this.touchStart = null;
-    this.touchSamples = [];
+       this.touchSamples = [];
     this.touchSwipe = false;
     this.isJoystickMode = false;
 
@@ -446,10 +447,15 @@ export class InputHandler {
             dt >= MIN_SWIPE_TIME
           ) {
             if (spriteAirborne && !spriteSwimming && sprite) {
+              // Airborne swipe: spawn ride immediately at swipe tip
               this.touchSwipe = true;
               sprite.charging = false;
               sprite.cancelMovementCharging();
+
+              const dx = sample.x - this.touchStart.x;
+              this.spawnRideFromGesture(dx, dt, sample.x, sample.y);
             } else if (sprite) {
+              // Grounded: enter joystick mode
               this.isJoystickMode = true;
               sprite.charging = false;
               sprite.startMovementCharging(direction);
@@ -494,8 +500,6 @@ export class InputHandler {
         }
 
         const sprite = this.game.sprite;
-        const spriteAirborne = !!(sprite && !sprite.onGround);
-        const spriteSwimming = !!(sprite && sprite.inWater);
 
         const endTime = Date.now();
         const last =
@@ -507,28 +511,18 @@ export class InputHandler {
 
         const lumenActive = this.game.lumenLoop.isActive;
 
-        // Check for tap-to-jump when Lumen-Loop is active
-        // Only trigger if it's a quick tap and not a drag-release jump
         const isTap = total <= TAP_MAX_DURATION && distance <= TAP_MAX_DISTANCE;
         const dragReleaseJumpTriggered = this.lumenLoopJumpIntent !== null;
-        
+
         if (lumenActive && isTap && !dragReleaseJumpTriggered) {
           this.game.sprite?.releaseJump();
-        } else if (
-          !lumenActive &&
-          this.touchSwipe &&
-          sprite &&
-          spriteAirborne &&
-          !spriteSwimming
-        ) {
-          this.spawnRideFromGesture(dx, total, last.y);
         } else if (!lumenActive && this.isJoystickMode && this.game.sprite) {
           this.game.sprite.releaseMovement();
-        } else if (!lumenPointerReleased) {
+        } else if (!lumenPointerReleased && !this.touchSwipe) {
           this.game.sprite?.releaseJump();
         }
 
-        this.game.sprite?.stopGliding();
+        sprite?.stopGliding();
         this.endJoystick();
         this.touchStart = null;
         this.touchSamples = [];
@@ -613,7 +607,6 @@ export class InputHandler {
           this.game.sprite.startGliding();
         }
       } else if (this.game.lumenLoop.isActive) {
-        // Allow charging for tap-to-jump when Lumen-Loop is active
         this.game.sprite?.startCharging();
       }
     });
@@ -657,9 +650,13 @@ export class InputHandler {
           dt >= MIN_SWIPE_TIME
         ) {
           if (spriteAirborne && !spriteSwimming && sprite) {
+            // Airborne mouse swipe: spawn ride immediately
             this.mouseSwipe = true;
             sprite.charging = false;
             sprite.cancelMovementCharging();
+
+            const dx = sample.x - this.mouseStart.x;
+            this.spawnRideFromGesture(dx, dt, sample.x, sample.y);
           } else if (sprite) {
             this.isMouseJoystickMode = true;
             sprite.charging = false;
@@ -705,29 +702,16 @@ export class InputHandler {
       const total = Math.max(1, endTime - this.mouseStart.time);
 
       const sprite = this.game.sprite;
-      const spriteAirborne = !!(sprite && !sprite.onGround);
-      const spriteSwimming = !!(sprite && sprite.inWater);
-
       const lumenActive = this.game.lumenLoop.isActive;
 
-      // Check for tap-to-jump when Lumen-Loop is active
-      // Only trigger if it's a quick tap and not a drag-release jump
       const isTap = total <= TAP_MAX_DURATION && distance <= TAP_MAX_DISTANCE;
       const dragReleaseJumpTriggered = this.lumenLoopJumpIntent !== null;
-      
+
       if (lumenActive && isTap && !dragReleaseJumpTriggered) {
         this.game.sprite?.releaseJump();
-      } else if (
-        !lumenActive &&
-        this.mouseSwipe &&
-        sprite &&
-        spriteAirborne &&
-        !spriteSwimming
-      ) {
-        this.spawnRideFromGesture(dx, total, last.y);
       } else if (!lumenActive && this.isMouseJoystickMode && this.game.sprite) {
         this.game.sprite.releaseMovement();
-      } else if (!lumenPointerReleased) {
+      } else if (!lumenPointerReleased && !this.mouseSwipe) {
         this.game.sprite?.releaseJump();
       }
 
@@ -782,8 +766,9 @@ export class InputHandler {
             !this.game.sprite.inWater
           ) {
             const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-            this.spawnRideFromGesture(totalDeltaX, totalTime, mouseY);
+            this.spawnRideFromGesture(totalDeltaX, totalTime, mouseX, mouseY);
             this.trackpadGestureActive = false;
           }
         } else {
@@ -890,7 +875,12 @@ export class InputHandler {
     this.keyboardMovementDirection = { x, y };
   }
 
-  spawnRideFromGesture(dx: number, totalTimeMs: number, screenY: number) {
+  spawnRideFromGesture(
+    dx: number,
+    totalTimeMs: number,
+    screenX: number,
+    screenY: number,
+  ) {
     if (this.game.lumenLoop.isActive) {
       return;
     }
@@ -910,6 +900,7 @@ export class InputHandler {
     const gesture: RideGesture = {
       distance: dx,
       durationMs: totalTimeMs,
+      screenX,
       screenY,
       cameraY,
       canvasWidth,
